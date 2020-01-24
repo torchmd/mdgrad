@@ -44,7 +44,7 @@ class MLP(torch.nn.Module):
 
 class PairPot(torch.nn.Module):
 
-    def __init__(self, pair_model, model_arg, cell, device=0, cutoff=1.2):
+    def __init__(self, pair_model, model_arg, cell, device=0, cutoff=2.5):
         super().__init__()
         self.model = pair_model(**model_arg)
         self.cell = torch.Tensor(cell).to(device)
@@ -66,7 +66,6 @@ class PairPot(torch.nn.Module):
         pair_dis = dis_sq[mask].sqrt()
 
         # compute pair energy 
-        #energy = LJ(pair_dis, self.sigma, self.epsilon).sum()
         energy = self.model(pair_dis[..., None])
 
         return energy
