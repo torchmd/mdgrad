@@ -24,11 +24,19 @@ def DiffRDF(xyz,
     dis_mat = dis_mat + offsets * cell
 
     dis_sq = dis_mat.pow(2).sum(-1)
-    mask = (dis_sq < cutoff ** 2 * 1.02) & (dis_sq != 0)
+    mask = (dis_sq < cutoff ** 2 * 1.1) & (dis_sq != 0)
 
     pair_dis = dis_sq[mask].sqrt()
     
-    count = smear_model(pair_dis.squeeze()[..., None]).sum(0)
-    rdf =  count / (vol *  mask.sum() / box_volume)
+    N_count = mask.sum()
     
-    return rdf  
+    count = smear_model(pair_dis.squeeze()[..., None]).sum(0)
+    norm = count.sum()
+    
+#     count = count * mask.sum() / norm
+#     rdf =  count / (2 * vol *  mask.sum() / box_volume) # interactions are considered twice 
+
+    count = count / norm
+    rdf =  count / (2 * vol / box_volume) # interactions are considered twice 
+     
+    return rdf 
