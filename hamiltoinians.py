@@ -22,25 +22,56 @@ class LennardJones(torch.nn.Module):
     def forward(self, x):
         return self.LJ(x, self.sigma, self.epsilon)
 
+class LennardJones69(torch.nn.Module):
+    def __init__(self, sigma=1.0, epsilon=1.0):
+        super(LennardJones69, self).__init__()
+        self.sigma = torch.nn.Parameter(torch.Tensor([sigma]))
+        self.epsilon = torch.nn.Parameter(torch.Tensor([epsilon]))
+
+    def LJ(self, r, sigma, epsilon):
+        return 4 * epsilon * ((sigma/r)**9 - (sigma/r)**6)
+
+    def forward(self, x):
+        return self.LJ(x, self.sigma, self.epsilon)
+
+class Buck(torch.nn.Module):
+    def __init__(self, A=1.0, B=1.0, C=1.0):
+        super(Buck, self).__init__()
+        self.A = torch.nn.Parameter(torch.Tensor([A]))
+        self.B = torch.nn.Parameter(torch.Tensor([B]))
+        self.C = torch.nn.Parameter(torch.Tensor([C]))
+
+    def Buckingham(self, r, A, B, C):
+        return A * torch.exp(- B * r) - C / r**6
+
+    def forward(self, x):
+        return self.Buckingham(x, self.A, self.B, self.C)
+
 
 class MLP(torch.nn.Module):
-    def __init__(self, D_in=1, H=128, D_out=1, num_layers=3, act='relu'):
+    def __init__(self, D_in=1, H=128, D_out=1, num_layers=3, act='relu', excluded_vol=True):
         super(MLP, self).__init__()
         
         act_dict = {'relu': torch.nn.ReLU()}
         
         self.NN = torch.nn.ModuleList([])
         self.NN.append(torch.nn.Linear(D_in, H))
+        self.NN.append(act_dict['relu'])
         for i in range(num_layers):
             self.NN.append(torch.nn.Linear(H, H))
             self.NN.append(act_dict['relu'])
         self.NN.append(torch.nn.Linear(H, 1))
+        self.excluded_vol = excluded_vol
         
     def forward(self, x):
-        
+        if self.excluded_vol:
+            u_ex =  (0.6/x) ** 12
+        else:
+            u_ex = 0.0 
         for layer in self.NN:
             x = layer(x)
-        return x
+        u_ex += x
+        return u_ex
 
 class PairPot(torch.nn.Module):
 
