@@ -70,18 +70,21 @@ class NHODE(torch.nn.Module):
 
 class NHCHAIN_ODE(torch.nn.Module):
 
-    def __init__(self, model, mass, target_momentum=4.0, num_chains=2, ttime = 10.0, dt= 0.005, device=0, dim=3):
+    def __init__(self, model, mass, target_momentum=3.0, num_chains=2, Q=1.0, dt= 0.005, device=0, dim=3):
         super().__init__()
         self.model = model  
         self.mass = torch.Tensor(mass).to(device)
         self.device = device 
         self.target_momentum = target_momentum
-        self.ttime = ttime 
         self.N_dof = mass.shape[0] * dim
         self.target_ke = (0.5 * self.N_dof * self.target_momentum **2 )
         
         self.T = self.target_momentum **2
         self.num_chains = num_chains
+#         self.Q = np.array([self.N_dof * self.T * (ttime * dt)**2,
+#                    *[self.T * (self.ttime * dt)**2]*(num_chains-1)])
+        self.Q = np.array([Q,
+                   *[Q/mass.shape[0]]*(num_chains-1)])
         self.Q = torch.Tensor(self.Q).to(device)
         self.dim = dim
         
@@ -108,7 +111,5 @@ class NHCHAIN_ODE(torch.nn.Module):
             dpvdt_0 = 2 * (sys_ke - self.T * self.N_dof * 0.5) - p_v[0] * p_v[1]/ self.Q[1]
             dpvdt_mid = (p_v[:-2].pow(2) / self.Q[:-2] - self.T) - p_v[2:]*p_v[1:-1]/ self.Q[2:]
             dpvdt_last = p_v[-2].pow(2) / self.Q[-2] - self.T
-                
-            print("KE {} Target KE{} ".format( sys_ke.item(), self.target_ke)) 
             
         return torch.cat((dpdt, dqdt, dpvdt_0[None], dpvdt_mid, dpvdt_last[None]))
