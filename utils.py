@@ -1,10 +1,12 @@
 
 from ase import io 
 from ase import Atoms 
+import copy 
 import numpy as np 
 import torch
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 matplotlib.rcParams.update({'font.size': 15})
 matplotlib.rc('lines', linewidth=4, color='g')
@@ -25,6 +27,8 @@ def plot_lesp(model, traj=None, res=50, start=[3.5, 0.8], end=[0.8, 3.5], fname=
     xlist = np.linspace(0.5, 5.0, res)
     ylist = np.linspace(0.5, 5.0, res)
     X, Y = np.meshgrid(xlist, ylist)
+
+    model = copy.deepcopy(model).to("cpu")
 
     data = torch.Tensor(np.concatenate((X[:,:, None],Y[:,:,None]), axis=2).reshape(-1,2))
     E = model(data).detach().cpu().numpy().reshape(res, res)
