@@ -9,6 +9,54 @@ MLPPARAMS = {'D_in': 1,
               'act': 'relu',
               'D_out': 1}
 
+class leps(torch.nn.Module):
+    def __init__(self):
+        super(leps, self).__init__()
+        
+    def Q(self, d, r ):
+        alpha = 1.942
+        r0 = 0.742
+        return d*( 3*torch.exp(-2*alpha*(r-r0))/2 - torch.exp(-alpha*(r-r0)) )/2
+               
+    def J(self, d, r ):
+        alpha = 1.942
+        r0 = 0.742
+        return d*( torch.exp(-2*alpha*(r-r0)) - 6*torch.exp(-alpha*(r-r0)) )/4
+        
+    def getEnergy(self, r):  
+        x=r[:, 0]
+        y=r[:, 1]
+        
+        a = 0.05
+        b = 0.3
+        c = 0.05
+        dAB = 4.746
+        dBC = 4.746
+        dAC = 3.445
+
+        rAB = x
+        rBC = y
+        rAC = rAB + rBC
+
+        JABred = self.J(dAB, rAB)/(1+a)
+        JBCred = self.J(dBC, rBC)/(1+b)
+        JACred = self.J(dAC, rAC)/(1+c)
+                              
+        return self.Q(dAB, rAB)/(1+a) + \
+               self.Q(dBC, rBC)/(1+b) + \
+               self.Q(dAC, rAC)/(1+c) - \
+               torch.sqrt( JABred*JABred + \
+                           JBCred*JBCred + \
+                           JACred*JACred - \
+                           JABred*JBCred - \
+                           JBCred*JACred - \
+                           JABred*JACred )
+    def forward(self, xyz):
+        
+        if len( xyz.shape) == 1:
+            xyz = xyz[None, ...]
+        return self.getEnergy(xyz)
+
 
 class LennardJones(torch.nn.Module):
     def __init__(self, sigma=1.0, epsilon=1.0):
