@@ -1,15 +1,17 @@
 import torch
 from nff.utils.scatter import compute_grad
+import numpy as np 
 import math 
 
 
 class ODE(torch.nn.Module):
 
-    def __init__(self, model, mass, device=0):
+    def __init__(self, model, mass, dim=3, device=0):
         super().__init__()
         self.model = model  # declarce model that outputs a dictionary with key ['energy']
         self.mass = torch.Tensor(mass).to(device)
         self.device = device 
+        self.dim = dim
         
     def forward(self, t, pq):
         # pq are the canonical momentum and position variables
@@ -20,12 +22,13 @@ class ODE(torch.nn.Module):
             p = pq[:N]
             q = pq[N:]
             
-            q = q.reshape(-1, 3)
+            q = q.reshape(-1, self.dim)
             
             u = self.model(q)
             
-            v = (p.reshape(-1, 3) / self.mass[:, None]).reshape(-1)
+            v = (p.reshape(-1, self.dim) / self.mass[:, None]).reshape(-1)
             f = -compute_grad(inputs=q, output=u).reshape(-1)
+            #print(f.shape, f)
         return torch.cat((f, v))
 
 
