@@ -1,7 +1,20 @@
+"""Summary
+"""
 import torch
 from nff.nn.layers import GaussianSmearing
 import numpy as np
 
+def var_K(N_atoms, avg_momentum):
+    """compute variances of kinetic energy 
+    
+    Args:
+        N_atoms (TYPE): Description
+        avg_momentum (TYPE): Description
+    
+    Returns:
+        TYPE: Description
+    """
+    return (2 * ((0.5 * 3 * N_atoms * avg_momentum **2 ) ** 2)/(3 * N_atoms) ) ** (1/2)
 
 def DiffRDF(xyz, 
             cell, 
@@ -12,7 +25,22 @@ def DiffRDF(xyz,
             vol, 
             device,
             skip=10):  
+    """Summary
     
+    Args:
+        xyz (TYPE): Description
+        cell (TYPE): Description
+        box_volume (TYPE): Description
+        dis_bin (TYPE): Description
+        smear_model (TYPE): Description
+        cutoff (TYPE): Description
+        vol (TYPE): Description
+        device (TYPE): Description
+        skip (int, optional): Description
+    
+    Returns:
+        TYPE: Description
+    """
     assert skip <= xyz.shape[0]
 
     PI = torch.Tensor([np.pi]).to(device)
