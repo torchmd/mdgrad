@@ -4,6 +4,13 @@ import torch
 from nff.nn.layers import GaussianSmearing
 import numpy as np
 
+def plot_ke(v, target_mometum):
+    target = 0.5 * Natoms * 3 * (target_mometum **2)
+    particle_ke = 0.5 * (v.reshape(-1, Natoms, 3).pow(2) / f_x.mass[:, None])
+    sys_ke = particle_ke.sum(-1).sum(-1)
+    plt.plot(sys_ke.detach().cpu().numpy())
+    plt.plot([i for i in range(sys_ke.shape[0])], [target for i in range(sys_ke.shape[0])] )
+
 def VACF(vel, t_stop=30):
     
     t_list= [i for i in range(1, t_stop, 1)]
