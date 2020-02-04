@@ -4,6 +4,14 @@ import torch
 from nff.nn.layers import GaussianSmearing
 import numpy as np
 
+def VACF(vel, t_stop=30):
+    
+    t_list= [i for i in range(1, t_stop, 1)]
+    vacf = [(vel * vel).mean()[None]]
+    vacf += [ (vel[t:] * vel[:-t]).mean()[None] for t in t_list]
+    
+    return torch.cat(vacf)
+
 def compute_virial(q, model):
     u = model(q)
     f = -compute_grad(inputs=q, output=u)
