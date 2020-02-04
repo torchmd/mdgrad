@@ -4,6 +4,13 @@ import torch
 from nff.nn.layers import GaussianSmearing
 import numpy as np
 
+def compute_virial(q, model):
+    u = model(q)
+    f = -compute_grad(inputs=q, output=u)
+    virial = (f * q).sum(-1).sum(-1)
+    
+    return virial 
+
 def var_K(N_atoms, avg_momentum):
     """compute variances of kinetic energy 
     
