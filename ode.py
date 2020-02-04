@@ -109,7 +109,7 @@ class NHCHAIN_ODE(torch.nn.Module):
             u = self.model(q)
             
             dqdt = (p.reshape(-1, self.dim) / self.mass[:, None]).reshape(-1)
-            dpdt = -compute_grad(inputs=q, output=u).reshape(-1) - p_v[0] * p / self.Q[0]
+            dpdt = -compute_grad(inputs=q, output=u.sum(-1)).reshape(-1) - p_v[0] * p / self.Q[0]
         
             dpvdt_0 = 2 * (sys_ke - self.T * self.N_dof * 0.5) - p_v[0] * p_v[1]/ self.Q[1]
             dpvdt_mid = (p_v[:-2].pow(2) / self.Q[:-2] - self.T) - p_v[2:]*p_v[1:-1]/ self.Q[2:]
