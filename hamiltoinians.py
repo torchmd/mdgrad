@@ -133,7 +133,7 @@ class PairPot(torch.nn.Module):
     def forward(self, xyz):
         
         # get_nbr_list 
-        dis_mat = xyz[None, :, :] - xyz[:, None, :]
+        dis_mat = xyz[..., None, :, :] - xyz[..., :, None, :]
 
         offsets = -dis_mat.ge(0.5 *  self.cell).to(torch.float).to(self.device) + \
                         dis_mat.lt(-0.5 *  self.cell).to(torch.float).to(self.device)
