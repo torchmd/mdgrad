@@ -9,6 +9,22 @@ MLPPARAMS = {'D_in': 1,
               'act': 'relu',
               'D_out': 1}
 
+class Stack(torch.nn.Module):
+    def __init__(self, model_dict, mode='sum'):
+        super().__init__()
+        self.models = ModuleDict(model_dict)
+        
+    def forward(self, x):
+        
+        for i, key in enumerate(self.models.keys()):
+            if i == 0:
+                result = self.models[key](x)
+            else:
+                new_result = self.models[key](x)
+                result += new_result
+        
+        return result
+
 class leps(torch.nn.Module):
     def __init__(self):
         super(leps, self).__init__()
