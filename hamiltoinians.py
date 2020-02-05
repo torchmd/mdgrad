@@ -1,4 +1,5 @@
 import torch
+from torch.nn import Sequential, Linear, ReLU, LeakyReLU, ModuleDict
 
 LJPARAMS = {'epsilon': 1.0, 
              'sigma': 1.0}
@@ -24,6 +25,36 @@ class Stack(torch.nn.Module):
                 result += new_result
         
         return result
+
+class toy2d(torch.nn.Module):
+    def __init__(self):
+        super(toy2d, self).__init__()
+        
+    def Q(self, d, r ):
+        alpha = 1.942
+        r0 = 0.742
+        return d*( 3*torch.exp(-2*alpha*(r-r0))/2 - torch.exp(-alpha*(r-r0)) )/2
+               
+    def J(self, d, r ):
+        alpha = 1.942
+        r0 = 0.742
+        return d*( torch.exp(-2*alpha*(r-r0)) - 6*torch.exp(-alpha*(r-r0)) )/4
+        
+    def getEnergy(self, r):  
+        x=r[:, 0]
+        y=r[:, 1]
+        
+        return (x.pow(2) + y.pow(2)).pow(2) - \
+                10 * torch.exp(- 30 * (x-0.2).pow(2) - 3*(y-0.4).pow(2)) \
+                - 10 * torch.exp(-30 * (x + 0.2).pow(2) - 3 * (y + 0.4).pow(2))
+        
+    def forward(self, xyz):
+        
+        if len( xyz.shape) == 1:
+            xyz = xyz[None, ...]
+        return self.getEnergy(xyz)
+        
+
 
 class leps(torch.nn.Module):
     def __init__(self):
