@@ -57,6 +57,25 @@ class leps(torch.nn.Module):
             xyz = xyz[None, ...]
         return self.getEnergy(xyz)
 
+class MLP2d(torch.nn.Module):
+    def __init__(self, D_in=2, H=128, D_out=1, num_layers=3, act='relu', excluded_vol=True):
+        super(MLP2d, self).__init__()
+        
+        act_dict = {'relu': torch.nn.ReLU()}
+        
+        self.NN = torch.nn.ModuleList([])
+        self.NN.append(torch.nn.Linear(D_in, H))
+        self.NN.append(act_dict['relu'])
+        for i in range(num_layers):
+            self.NN.append(torch.nn.Linear(H, H))
+            self.NN.append(act_dict['relu'])
+        self.NN.append(torch.nn.Linear(H, 1))
+        
+    def forward(self, x):
+        for layer in self.NN:
+            x = layer(x)
+        return x.squeeze()
+
 
 class LennardJones(torch.nn.Module):
     def __init__(self, sigma=1.0, epsilon=1.0):
