@@ -4,6 +4,9 @@ import numpy as np
 import math 
 
 
+def init_vel(Natoms, target_momentum):
+    return (torch.rand(Natoms * 3) - 0.5) * target_momentum * 4
+
 class ODE(torch.nn.Module):
 
     def __init__(self, model, mass, dim=3, device=0):
