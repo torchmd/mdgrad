@@ -26,6 +26,37 @@ def compute_virial(q, model):
     
     return virial 
 
+def compute_angle(xyz, angles):
+    assert len(xyz.shape) == 3 
+    n_frames = xyz.shape[0]
+    xyz = xyz[:, :, None, :]
+    N = xyz.shape[1]
+    D = xyz.expand(n_frames, N,N,3)-xyz.expand(n_frames, N,N,3).transpose(1,2)
+    angle_vec1 = D[:, angles[:,0], angles[:,1], :]
+    angle_vec2 = D[:, angles[:,1], angles[:,2], :]
+    dot_unnorm = (-angle_vec1*angle_vec2).sum(-1)
+    norm = torch.sqrt((angle_vec1.pow(2)).sum(-1)*(angle_vec2.pow(2)).sum(-1))
+    cos_theta = (dot_unnorm/norm)
+    return cos_theta
+
+def compute_dihe(xyz, dihes): 
+    assert len(xyz.shape) == 3
+    n_frames = xyz.shape[0]
+    N = xyz.shape[1]
+    xyz = xyz[:, :, None, :]
+    D = xyz.expand(n_frames, N,N,3)-xyz.expand(n_frames, N,N,3).transpose(1,2)
+    vec1 = D[:, dihes[:,1], dihes[:,0]]
+    vec2 = D[:, dihes[:,1], dihes[:,2]]
+    vec3 = D[:, dihes[:,2], dihes[:,1]]
+    vec4 = D[:, dihes[:,2], dihes[:,3]]
+    cross1 = torch.cross(vec1, vec2)
+    cross2 = torch.cross(vec3, vec4)
+
+    norm = (cross1.pow(2).sum(-1)*cross2.pow(2).sum(-1)).sqrt()
+    cos_phi = 1.0*((cross1*cross2).sum(-1)/norm)
+    
+    return cos_phi 
+
 def var_K(N_atoms, avg_momentum):
     """compute variances of kinetic energy 
     
