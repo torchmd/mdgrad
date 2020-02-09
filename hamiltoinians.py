@@ -10,21 +10,16 @@ MLPPARAMS = {'D_in': 1,
               'act': 'relu',
               'D_out': 1}
 
-class Stack(torch.nn.Module):
-    def __init__(self, model_dict, mode='sum'):
-        super().__init__()
-        self.models = ModuleDict(model_dict)
+class gaussianchain(torch.nn.Module):
+    def __init__(self,  nbr_list, bond_dis=1.0, device='cpu'):
+        super(gaussianchain, self).__init__()
+        self.nbr_list = nbr_list.to(device)
+        self.bond_dis = bond_dis
         
-    def forward(self, x):
-        
-        for i, key in enumerate(self.models.keys()):
-            if i == 0:
-                result = self.models[key](x)
-            else:
-                new_result = self.models[key](x)
-                result += new_result
-        
-        return result
+    def forward(self, q):   
+        bond_dist = (q[self.nbr_list[:, 0]] - q[self.nbr_list[:, 1]]).pow(2).sum(-1).sqrt() 
+        return (bond_dist - self.bond_dis).pow(2).sum(-1)
+
 
 class toy2d(torch.nn.Module):
     def __init__(self):
@@ -54,7 +49,6 @@ class toy2d(torch.nn.Module):
             xyz = xyz[None, ...]
         return self.getEnergy(xyz)
         
-
 
 class leps(torch.nn.Module):
     def __init__(self):
