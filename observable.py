@@ -26,6 +26,11 @@ def compute_virial(q, model):
     
     return virial 
 
+def compute_bond(xyz, bonds):
+    assert len(xyz.shape) == 3 
+    bonds = (xyz[:, bonds[:,0], :] - xyz[:, bonds[:,1], :]).pow(2).sum(-1).sqrt()
+    return bonds
+
 def compute_angle(xyz, angles):
     assert len(xyz.shape) == 3 
     n_frames = xyz.shape[0]
