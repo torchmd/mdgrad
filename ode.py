@@ -119,3 +119,53 @@ class NHCHAIN_ODE(torch.nn.Module):
             dpvdt_last = p_v[-2].pow(2) / self.Q[-2] - self.T
             
         return torch.cat((dpdt, dqdt, dpvdt_0[None], dpvdt_mid, dpvdt_last[None]))
+
+
+
+class ISOM_ODE(torch.nn.Module):
+
+    """ODE class for model isomerization"""
+
+    def __init__(self, dipole, e_field, ham, max_e_t, device=0):
+        super().__init__()
+
+        self.device = device
+        self.dipole = dipole.to(self.device)
+        # hamiltonian
+        self.ham = ham.to(self.device)
+        # hilbert space dimension
+        self.dim = len(ham)
+    
+        # optimizable electric field
+        self.e_field = torch.nn.Parameter(e_field)
+        # max time the electric field can be on
+        self.max_e_t = max_e_t
+
+    
+    def forward(self, t, psi):
+        with torch.set_grad_enabled(True):
+            psi.requires_grad = True      
+            
+            # real and imaginary parts of psi
+            psi_R = psi[:self.dim]
+            psi_I =  psi[self.dim:]
+
+            if t < self.max_e_t:
+                # find the value of E at the time closest
+                # to now
+                t_index = torch.argmin(abs(self.e_field[:, 0] - t))
+                e_now = self.e_field[t_index][-1]
+            else:
+                e_now = 0
+
+            # total Hamiltonian =  H - mu \dot E
+            H_eff = self.ham - self.dipole * e_now
+            
+            # d/dt of real and imaginary parts of psi
+            dpsi_R = torch.matmul(H_eff, psi_I)
+            dpsi_I = -torch.matmul(H_eff, psi_R)
+            
+            d_psi_dt = torch.cat((dpsi_R, dpsi_I))
+
+        return d_psi_dt
+
