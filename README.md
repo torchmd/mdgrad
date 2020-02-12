@@ -1,5 +1,13 @@
+# A package for learning and controlling Molecular Simulations 
 
-# required packages
+## Demonstrations 
+
+### examples 1: Folding a polymer into a helix
+<p align="center">
+  <img src="figures/fold.gif" width="400"/> 
+</p>
+
+## required packages
 
 [NeuralForceField](https://github.mit.edu/MLMat/NeuralForceField/tree/reorganize)
 
