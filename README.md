@@ -4,7 +4,7 @@
 
 ### examples 1: Folding a polymer into a helix
 <p align="center">
-  <img src="figures/fold.gif" width="400"/> 
+  <img src="figures/fold.mp4" width="400"/> 
 </p>
 
 ## required packages
