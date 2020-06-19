@@ -4,6 +4,61 @@ import torch
 from nff.nn.layers import GaussianSmearing
 import numpy as np
 
+
+class Observable(torch.nn.Module):
+    def __init__(self):
+        super(Observable, self).__init__()
+    
+
+class rdf(Observable):
+    def __init__(self, atoms, nbins, device, cutoff):
+        super(rdf, self).__init__()
+        PI = np.pi
+        self.bins = torch.linspace(0, cutoff, nbins + 1).to(device)
+        
+        self.smear = GaussianSmearing(
+                    start=0.0,
+                    stop=self.bins[-1],
+                    n_gaussians=nbins,
+                    trainable=False
+                ).to(device)
+        self.volume = atoms.get_volume()
+        self.cutoff = cutoff
+        self.cell = torch.Tensor( atoms.get_cell()).diag().to(device)
+        self.vol_bins = 4 * PI /3*(self.bins[1:]**3 - self.bins[:-1]**3).to(device)
+        self.device = device 
+        self.natoms = atoms.get_number_of_atoms()
+        self.nbins = nbins
+        
+        # scale cutoff to adjust smearing error of the last bin 
+        self.cutoff += (self.bins[1] - self.bins[0]) * 2
+        
+        
+    def forward(self, xyz):
+        
+        if len(list( xyz.shape )) != 3 and xyz.shape[-1] != 3:
+            # Get positions 
+            xyz = xyz[:, self.natoms * 3:].reshape(-1, self.natoms, 3)
+
+        # Compute RDF         
+        dis_mat = xyz[:, None, :, :] - xyz[:, :, None, :]
+        offsets = -dis_mat.ge(0.5 * self.cell).to(torch.float).to(self.device) + \
+                        dis_mat.lt(-0.5 * self.cell).to(torch.float).to(self.device)
+        dis_mat = dis_mat + offsets * self.cell
+
+        dis_sq = dis_mat.pow(2).sum(-1)
+        mask = (dis_sq < (self.cutoff) ** 2) & (dis_sq != 0)
+
+        pair_dis = dis_sq[mask].sqrt()
+
+        N_count = mask.sum()
+        count = self.smear(pair_dis.squeeze()[..., None]).sum(0) 
+        norm = count.sum() # normalization factor for histogram 
+        count = count / norm # normalize to get probability distributions 
+        rdf =  count / (2 * self.vol_bins / ( (2 * self.cutoff) ** 3)) # interactions are considered twice 
+        
+        return self.bins, rdf 
+
 def plot_ke(v, target_mometum):
     target = 0.5 * Natoms * 3 * (target_mometum **2)
     particle_ke = 0.5 * (v.reshape(-1, Natoms, 3).pow(2) / f_x.mass[:, None])
