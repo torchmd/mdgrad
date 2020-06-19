@@ -76,19 +76,16 @@ class NHODE(torch.nn.Module):
 
 class NHCHAIN_ODE(torch.nn.Module):
 
-    def __init__(self, model, mass, target_momentum=3.0, num_chains=2, Q=1.0, dt= 0.005, device=0, dim=3):
+    def __init__(self, model, mass, T, num_chains=2, Q=1.0,  device=0, dim=3):
         super().__init__()
         self.model = model  
         self.mass = torch.Tensor(mass).to(device)
         self.device = device 
-        self.target_momentum = target_momentum
+        self.T = T
         self.N_dof = mass.shape[0] * dim
-        self.target_ke = (0.5 * self.N_dof * self.target_momentum **2 )
+        self.target_ke = (0.5 * self.N_dof * T )
         
-        self.T = self.target_momentum **2
         self.num_chains = num_chains
-#         self.Q = np.array([self.N_dof * self.T * (ttime * dt)**2,
-#                    *[self.T * (self.ttime * dt)**2]*(num_chains-1)])
         self.Q = np.array([Q,
                    *[Q/mass.shape[0]]*(num_chains-1)])
         self.Q = torch.Tensor(self.Q).to(device)
