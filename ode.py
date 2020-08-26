@@ -98,26 +98,24 @@ class NHCHAIN_ODE(torch.nn.Module):
             
             N = self.N_dof
             
-            p = pq[:N]
+            p = pq[:N].reshape(-1, self.dim) * self.mass[:, None]
             q = pq[N:2* N].reshape(-1, self.dim)
             
-            sys_ke = 0.5 * (p.reshape(-1, self.dim).pow(2) \
-                 / self.mass[:, None]).sum() 
+            sys_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum() 
             
-            # definite all the virtual momentums 
             p_v = pq[-self.num_chains:]      
             u = self.model(q)
             
-            dqdt = (p.reshape(-1, self.dim) / self.mass[:, None]).reshape(-1)
-            dpdt = -compute_grad(inputs=q, output=u.sum(-1)).reshape(-1) - p_v[0] * p / self.Q[0]
-        
+            dqdt = (p / self.mass[:, None]).reshape(-1)
+            dpdt = -compute_grad(inputs=q, output=u.sum(-1)).reshape(-1) - p_v[0] * p.reshape(-1) / self.Q[0]
+            
+            #print(sys_ke.item(), self.T * self.N_dof * 0.5)
+            
             dpvdt_0 = 2 * (sys_ke - self.T * self.N_dof * 0.5) - p_v[0] * p_v[1]/ self.Q[1]
             dpvdt_mid = (p_v[:-2].pow(2) / self.Q[:-2] - self.T) - p_v[2:]*p_v[1:-1]/ self.Q[2:]
             dpvdt_last = p_v[-2].pow(2) / self.Q[-2] - self.T
             
         return torch.cat((dpdt, dqdt, dpvdt_0[None], dpvdt_mid, dpvdt_last[None]))
-
-
 
 class ISOM_ODE(torch.nn.Module):
 
