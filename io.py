@@ -28,7 +28,6 @@ class schwrap(torch.nn.Module):
         results = self.model(self.batch, xyz)
         return results['energy']
 
-
 class Stack(torch.nn.Module):
     def __init__(self, model_dict, mode='sum'):
         super().__init__()
@@ -40,6 +39,6 @@ class Stack(torch.nn.Module):
                 result = self.models[key](x).reshape(-1)
             else:
                 new_result = self.models[key](x)
-                result += new_result.reshape(-1)
+                result += new_result.sum().reshape(-1)
         
         return result
