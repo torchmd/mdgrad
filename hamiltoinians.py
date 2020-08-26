@@ -144,7 +144,7 @@ class LennardJones69(torch.nn.Module):
 
 class ExcludedVolume(torch.nn.Module):
     def __init__(self, sigma=1.0, epsilon=1.0, power=12):
-        super(LennardJones, self).__init__()
+        super(ExcludedVolume, self).__init__()
         self.sigma = torch.nn.Parameter(torch.Tensor([sigma]))
         self.epsilon = torch.nn.Parameter(torch.Tensor([epsilon]))
         self.power = power
