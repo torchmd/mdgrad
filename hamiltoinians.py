@@ -142,6 +142,19 @@ class LennardJones69(torch.nn.Module):
     def forward(self, x):
         return self.LJ(x, self.sigma, self.epsilon)
 
+class ExcludedVolume(torch.nn.Module):
+    def __init__(self, sigma=1.0, epsilon=1.0, power=12):
+        super(LennardJones, self).__init__()
+        self.sigma = torch.nn.Parameter(torch.Tensor([sigma]))
+        self.epsilon = torch.nn.Parameter(torch.Tensor([epsilon]))
+        self.power = power
+
+    def LJ(self, r, sigma, epsilon):
+        return 4 * epsilon * ((sigma/r)**self.power )
+
+    def forward(self, x):
+        return self.LJ(x, self.sigma, self.epsilon)
+
 class Buck(torch.nn.Module):
     def __init__(self, A=1.0, B=1.0, C=1.0):
         super(Buck, self).__init__()
