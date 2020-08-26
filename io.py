@@ -4,16 +4,21 @@ from nff.utils import batch_to
 from torch.nn import ModuleDict
 
 class schwrap(torch.nn.Module):
-    def __init__(self, model, batch, cutoff = 5.0):
+    def __init__(self, model, batch, cell, device, cutoff = 5.0):
         super().__init__()
         self.model = model 
         self.cutoff = cutoff
-        self.batch = batch_to(batch, model.device)
+        self.batch = batch_to(batch, device)
+        self.cell = torch.Tensor(cell).to(device)
+        self.device = model.device 
         
     def generate_nbr_list(self, xyz, cutoff=5.0):
-        dis_mat = xyz[None, :, :] - xyz[:, None, :]
+        dis_mat = xyz[..., None, :, :] - xyz[..., :, None, :]
+        offsets = -dis_mat.ge(0.5 *  self.cell).to(torch.float).to(self.device) + \
+                        dis_mat.lt(-0.5 *  self.cell).to(torch.float).to(self.device)
+        dis_mat = dis_mat + offsets * self.cell
         dis_sq = dis_mat.pow(2).sum(-1)
-        mask = (dis_sq < cutoff ** 2) & (dis_sq != 0)
+        mask = (dis_sq < self.cutoff ** 2) & (dis_sq != 0)
         nbr_list = torch.triu(mask.to(torch.long)).nonzero()
         return nbr_list
         
