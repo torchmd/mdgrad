@@ -10,6 +10,8 @@ class Observable(torch.nn.Module):
         super(Observable, self).__init__()
     
 
+from torchmd.observable import Observable
+
 class rdf(Observable):
     def __init__(self, atoms, nbins, device, cutoff):
         super(rdf, self).__init__()
@@ -31,7 +33,7 @@ class rdf(Observable):
         self.nbins = nbins
         
         # scale cutoff to adjust smearing error of the last bin 
-        self.cutoff += (self.bins[1] - self.bins[0]) * 2
+        self.cutoff_boundary = self.cutoff + 2e-1#(self.bins[1] - self.bins[0]) * 2
         
         
     def forward(self, xyz):
@@ -47,17 +49,22 @@ class rdf(Observable):
         dis_mat = dis_mat + offsets * self.cell
 
         dis_sq = dis_mat.pow(2).sum(-1)
-        mask = (dis_sq < (self.cutoff) ** 2) & (dis_sq != 0)
+        mask = (dis_sq < (self.cutoff_boundary) ** 2) & (dis_sq != 0)
 
         pair_dis = dis_sq[mask].sqrt()
 
-        N_count = mask.sum()
+        #N_count = mask.sum()
         count = self.smear(pair_dis.squeeze()[..., None]).sum(0) 
-        norm = count.sum() # normalization factor for histogram 
-        count = count / norm # normalize to get probability distributions 
-        rdf =  count / (2 * self.vol_bins / ( (2 * self.cutoff) ** 3)) # interactions are considered twice 
+        norm = count.sum()   # normalization factor for histogram 
+        count = count / norm   # normalize 
+        count = count
+                         
+        V = (4/3)* np.pi * (self.cutoff) ** 3
+        #print(self.cutoff)
         
-        return self.bins, rdf 
+        rdf =  count / (self.vol_bins / V )  # interactions are considered twice 
+        
+        return count, self.bins, rdf 
 
 def plot_ke(v, target_mometum):
     target = 0.5 * Natoms * 3 * (target_mometum **2)
