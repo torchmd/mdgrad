@@ -11,8 +11,6 @@ gaussian_dict = {'tiny': 16,
                'high': 128}
 
 
-T_MAX = 25000 #100000
-
 def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_name):
 
 
@@ -21,6 +19,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     L = sys_params['L']
     r_range = sys_params['r_range']
     nbins = sys_params['nbins']
+    tmax = sys_params['tmax']
 
     print(assignments)
 
@@ -28,7 +27,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     os.makedirs(model_path)
 
     tau =  assignments['opt_freq'] 
-    num_epochs = T_MAX // tau
+    num_epochs = tmax // tau
 
     print(num_epochs)
     # load RDF data 
@@ -133,6 +132,8 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     e0 = 1e-4
 
     loss_log = []
+    traj = []
+
 
     for i in range(0, num_epochs):
         
@@ -153,7 +154,9 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
             p = x[-1, :N * 3 ].detach().cpu().reshape(-1)
             p_v = x[-1, N*3*2: ].detach().cpu().reshape(-1)
             t = torch.Tensor([0.25 * units.fs * i for i in range(tau)]).to(device)
-            
+
+            traj.append(xyz.detach().cpu().numpy().reshape(-N, 3))
+
         pq = torch.cat((p, xyz, p_v)).to(device)
         pq.requires_grad= True
         x = odeint(f_x, pq, t, method='rk4')
@@ -198,5 +201,31 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     plt.savefig(model_path + '/loss.jpg')
     plt.close()
 
+    save_traj(traj, atoms, model_path + '/train.xyz')
+
+    # Inference 
+    # --------------- simulate with trained FF ---------------
+    xyz = frames[-1].detach().cpu()#.reshape(-1)
+    xyz = torch.Tensor( wrap_positions( xyz.numpy(), atoms.get_cell()) ).reshape(-1)
+    p = x[-1, :N * 3 ].detach().cpu().reshape(-1)
+    p_v = x[-1, N*3*2: ].detach().cpu().reshape(-1)
+    t = torch.Tensor([0.25 * units.fs * i for i in range(2000)]).to(device)
+    traj.append(xyz.detach().cpu().numpy())
+
+    pq = torch.cat((p, xyz, p_v)).to(device)
+    pq.requires_grad= True
+    x = odeint(f_x, pq, t, method='rk4')
+
+    sim_trajs = x[::, N*3: N*3*2].reshape(-1, N, 3).detach().cpu().numpy() 
+    save_traj(sim_trajs, atoms, model_path + '/sim.xyz')
+
+    # return loss 
     return loss_js.item()
+
+def save_traj(traj, atoms, fname):
+    atoms_list = []
+    for xyz in traj:
+        frame = Atoms(positions=xyz, numbers=atoms.get_atomic_numbers())
+        atoms_list.append(frame)
+    ase.io.write(fname, atoms_list) 
 
