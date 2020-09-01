@@ -52,14 +52,14 @@ elif type(params['id']) == int:
     experiment = conn.experiments(params['id']).fetch()
 
 if params['data'] == 'water':
-    data = np.load("../experiments/water_exp_pccp.npy")
+    data = np.load("../data/water_exp_pccp.npy")
     size = 4
     L = 19.73 / size
     r_range = 7.5
     nbins = 100
 
 elif params['data'] == 'argon':
-    data = np.load("../experiments/argon_exp.npy")
+    data = np.load("../data/argon_exp.npy")
     size = 4
     L = 22.884 / size
     r_range = 9.0 
