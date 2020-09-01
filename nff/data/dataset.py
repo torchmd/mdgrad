@@ -14,7 +14,7 @@ from torch.utils.data import Dataset as TorchDataset
 from nff.data.sparse import sparsify_tensor
 from nff.data.topology import update_props_topologies
 from nff.data.graphs import reconstruct_atoms
-from nff.io import AtomsBatch
+#from nff.io import AtomsBatch
 
 
 class Dataset(TorchDataset):
