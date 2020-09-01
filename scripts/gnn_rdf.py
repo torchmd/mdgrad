@@ -20,6 +20,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     r_range = sys_params['r_range']
     nbins = sys_params['nbins']
     tmax = sys_params['tmax']
+    dt = sys_params['dt']
 
     print(assignments)
 
@@ -30,6 +31,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     num_epochs = tmax // tau
 
     print(num_epochs)
+
     # load RDF data 
     f = interpolate.interp1d(data[:,0], data[:,1])
     xnew = np.linspace(0.0, r_range, nbins)
@@ -92,7 +94,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     stack = Stack(model_dict)
 
 
-    T= 300.0 * units.kB
+    T= 298.0 * units.kB
 
     # declare position and momentum as initial values
     xyz = torch.Tensor(atoms.get_positions())
@@ -118,9 +120,8 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     # initialize observable function 
     obs = rdf(atoms, nbins, device, r_range)
 
-    # target observable 
+    # compute target observable 
     V = (4/3)* np.pi * (r_range) ** 3
-
     g_obs = torch.Tensor(f(xnew)).to(device)
     g_obs_norm = ((g_obs.detach() * obs.vol_bins).sum()).item()
     g_obs = g_obs * (V/g_obs_norm)
@@ -132,6 +133,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     e0 = 1e-4
 
     loss_log = []
+    loss_js_log = []
     traj = []
 
 
@@ -146,14 +148,14 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
             # generate random velocity 
             p = torch.Tensor( atoms.get_velocities().reshape(-1))
             p_v = torch.Tensor([0.0] * 5)
-            t = torch.Tensor([0.25 * units.fs * i for i in range(tau)]).to(device)
+            t = torch.Tensor([dt * units.fs * i for i in range(tau)]).to(device)
             
         else:
             xyz = frames[-1].detach().cpu()#.reshape(-1)
             xyz = torch.Tensor( wrap_positions( xyz.numpy(), atoms.get_cell()) ).reshape(-1)
             p = x[-1, :N * 3 ].detach().cpu().reshape(-1)
             p_v = x[-1, N*3*2: ].detach().cpu().reshape(-1)
-            t = torch.Tensor([0.25 * units.fs * i for i in range(tau)]).to(device)
+            t = torch.Tensor([dt * units.fs * i for i in range(tau)]).to(device)
 
             traj.append(xyz.detach().cpu().numpy().reshape(-N, 3))
 
@@ -161,13 +163,15 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
         pq.requires_grad= True
         x = odeint(f_x, pq, t, method='rk4')
         
-        frames = x[::, N*3: N*3*2].reshape(-1, N, 3)
+        frames = x[::3, N*3: N*3*2].reshape(-1, N, 3)
         _, bins, g = obs(frames)
         
         plt.title("epoch {}".format(i))
-        plt.plot(xnew, g.detach().cpu().numpy())
-        plt.plot(xnew, g_obs.detach().cpu().numpy())
-        plt.savefig(model_path + '/{}.jpg'.format(i))
+        plt.plot(xnew, g.detach().cpu().numpy() , linewidth=4, alpha=0.6,)
+        plt.plot(xnew, g_obs.detach().cpu().numpy(), linewidth=2,linestyle='--', c='black')
+        plt.xlabel("$\AA$")
+        plt.ylabel("g(r)")
+        plt.savefig(model_path + '/{}.jpg'.format(i), bbox_inches='tight')
         plt.show()
         plt.close()
         
@@ -176,56 +180,84 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
         loss_js += ( -(g + e0 ) * (torch.log(g_m + e0 ) - torch.log(g + e0) ) ).sum()
         loss = loss_js + assignments['mse_weight'] * (g- g_obs).pow(2).sum()
                 
-        print(loss.item())
+        print(loss_js.item(), loss.item())
         loss.backward()
         
-        dt = (datetime.now() - current_time)
-        #print( "{} seconds".format(dt.total_seconds())) 
+        duration = (datetime.now() - current_time)
+        #print( "{} seconds".format(duration.total_seconds())) 
         
-        if i !=0:
-            optimizer.step()
-            optimizer.zero_grad()
-        else:
-            optimizer.zero_grad()
-
+        optimizer.step()
+        optimizer.zero_grad()
 
         if torch.isnan(loss):
             plt.plot(loss_log)
+            plt.yscale("log")
             plt.savefig(model_path + '/loss.jpg')
             plt.close()
-            return loss_log[-1]
+            return np.array(loss_log[-16:-2]).mean()
         else:
             loss_log.append(loss_js.item())
 
     plt.plot(loss_log)
-    plt.savefig(model_path + '/loss.jpg')
+    plt.yscale("log")
+    plt.savefig(model_path + '/loss.jpg', bbox_inches='tight')
     plt.close()
 
-    save_traj(traj, atoms, model_path + '/train.xyz')
+    save_traj(traj, atoms, model_path + '/train.xyz', skip=10)
 
     # Inference 
-    # --------------- simulate with trained FF ---------------
-    xyz = frames[-1].detach().cpu()#.reshape(-1)
-    xyz = torch.Tensor( wrap_positions( xyz.numpy(), atoms.get_cell()) ).reshape(-1)
-    p = x[-1, :N * 3 ].detach().cpu().reshape(-1)
-    p_v = x[-1, N*3*2: ].detach().cpu().reshape(-1)
-    t = torch.Tensor([0.25 * units.fs * i for i in range(2000)]).to(device)
-    traj.append(xyz.detach().cpu().numpy())
+    sim_trajs = []
+    for i in range(20):
+        # --------------- simulate with trained FF ---------------
+        xyz = frames[-1].detach().cpu()#.reshape(-1)
+        xyz = torch.Tensor( wrap_positions( xyz.numpy(), atoms.get_cell()) ).reshape(-1)
+        p = x[-1, :N * 3 ].detach().cpu().reshape(-1)
+        p_v = x[-1, N*3*2: ].detach().cpu().reshape(-1)
+        t = torch.Tensor([dt* units.fs * i for i in range(100)]).to(device)
+        pq = torch.cat((p, xyz, p_v)).to(device)
+        pq.requires_grad= True
+        x = odeint(f_x, pq, t, method='rk4')
+        frames = x[::25, N*3: N*3*2].reshape(-1, N, 3).detach()
+        print(frames.shape)
+        sim_trajs.append(frames.detach().cpu().numpy())
 
-    pq = torch.cat((p, xyz, p_v)).to(device)
-    pq.requires_grad= True
-    x = odeint(f_x, pq, t, method='rk4')
+    #print(len(sim_trajs))
+    sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device).reshape(-1, N, 3)
 
-    sim_trajs = x[::, N*3: N*3*2].reshape(-1, N, 3).detach().cpu().numpy() 
-    save_traj(sim_trajs, atoms, model_path + '/sim.xyz')
+    #print(sim_trajs.shape)
+    # compute equilibrate rdf 
+    _, bins, g = obs(sim_trajs)
+
+    # compute equilibrated rdf 
+    g_m = 0.5 * (g_obs + g)
+    loss_js =  ( -(g_obs + e0 ) * (torch.log(g_m + e0 ) - torch.log(g_obs +  e0)) ).sum()
+    loss_js += ( -(g + e0 ) * (torch.log(g_m + e0 ) - torch.log(g + e0) ) ).sum()
+
+    save_traj(sim_trajs.detach().cpu().numpy(), atoms, 
+                        model_path + '/sim.xyz', 
+                        skip=1)
+
+    plt.plot(xnew, g.detach().cpu().numpy(), linewidth=4, alpha=0.6, label='sim')
+    plt.plot(xnew, g_obs.detach().cpu().numpy() , linewidth=2, linestyle='--', c='black', label='exp')
+    plt.legend()
+    plt.xlabel("$\AA$")
+    plt.ylabel("g(r)")
+    plt.savefig(model_path + '/final.jpg', bbox_inches='tight')
+    plt.show()
+    plt.close()
+
+    np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
     # return loss 
+    # metric = np.array(loss_log[-16:-1]).mean()
+    # print(metric)
     return loss_js.item()
 
-def save_traj(traj, atoms, fname):
+def save_traj(traj, atoms, fname, skip=10):
     atoms_list = []
-    for xyz in traj:
-        frame = Atoms(positions=xyz, numbers=atoms.get_atomic_numbers())
-        atoms_list.append(frame)
+    for i, xyz in enumerate(traj):
+        if i % skip == 0: 
+            frame = Atoms(positions=xyz, numbers=atoms.get_atomic_numbers())
+            atoms_list.append(frame)
     ase.io.write(fname, atoms_list) 
 
