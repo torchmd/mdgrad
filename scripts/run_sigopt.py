@@ -15,9 +15,11 @@ params = vars(parser.parse_args())
 if params['dry_run']:
     token = 'FSDXBSGDUZUQEDGDCYPCXFTRXFNYBVXVACKZQUWNSOKGKGFN'
     n_obs = 2
+    tmax = 200
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 500
+    tmax = 25000
 
 logdir = params['logdir']
 
@@ -32,16 +34,18 @@ if params['id'] == None:
         parameters=[
             dict(name='n_atom_basis', type='categorical',categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='n_filters', type='categorical', categorical_values=["tiny", "low", "mid", "high"]),
-            dict(name='n_gaussians', type='categorical', categorical_values= ["tiny", "low", "mid", "high"]),
+            dict(name='n_gaussians', type='categorical', categorical_values= ["tiny", "low"]),
             dict(name='n_convolutions', type='int', bounds=dict(min=1, max=2)),
-            dict(name='sigma', type='double', bounds=dict(min=2.5, max=4.0)),
-            dict(name='epsilon', type='double', bounds=dict(min=0.001, max=0.025)),
-            dict(name='opt_freq', type='int', bounds=dict(min=10, max=70)),
-            dict(name='lr', type='double', bounds=dict(min=1e-5, max=2e-3)),
-            dict(name='cutoff', type='double', bounds=dict(min=2.75, max=7.0)),
-            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=10.0))
+            dict(name='sigma', type='double', bounds=dict(min=2.25, max=3.0)),
+            dict(name='epsilon', type='double', bounds=dict(min=0.005, max=0.025)),
+            dict(name='opt_freq', type='int', bounds=dict(min=10, max=120)),
+            dict(name='lr', type='double', bounds=dict(min=1e-6, max=2e-4)),
+            dict(name='cutoff', type='double', bounds=dict(min=4.0, max=7.0)),
+            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=10.0)),
+            dict(name='t_increment', type='int', bounds=dict(min=0, max=5))
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
+        parallel_bandwidth=10,
     )
 
 elif type(params['id']) == int:
@@ -52,14 +56,14 @@ if params['data'] == 'water':
     size = 4
     L = 19.73 / size
     r_range = 7.5
-    nbins = 80
+    nbins = 100
 
 elif params['data'] == 'argon':
     data = np.load("../experiments/argon_exp.npy")
     size = 4
     L = 22.884 / size
     r_range = 9.0 
-    nbins = 100
+    nbins = 1
 
 i = 0
 while experiment.progress.observation_count < experiment.observation_budget:
@@ -71,7 +75,9 @@ while experiment.progress.observation_count < experiment.observation_budget:
     'size': size,
     'L': L, 
     'r_range': r_range,
-    'nbins': nbins 
+    'nbins': nbins,
+    'tmax': tmax,
+    'dt': 1.0
     }
 
     value = evaluate_model(assignments=suggestion.assignments, 
@@ -80,7 +86,6 @@ while experiment.progress.observation_count < experiment.observation_budget:
                             device=params['device'],
                             sys_params=sys_params,
                             project_name=logdir)
-
 
     print(value)
 
