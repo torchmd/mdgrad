@@ -16,10 +16,14 @@ if params['dry_run']:
     token = 'FSDXBSGDUZUQEDGDCYPCXFTRXFNYBVXVACKZQUWNSOKGKGFN'
     n_obs = 2
     tmax = 200
+    n_epochs = 2
+    n_sim = 2
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 500
     tmax = 25000
+    n_epochs = 500
+    n_sim = 50
 
 logdir = params['logdir']
 
@@ -76,7 +80,9 @@ while experiment.progress.observation_count < experiment.observation_budget:
     'r_range': r_range,
     'nbins': nbins,
     'tmax': tmax,
-    'dt': 1.0
+    'dt': 1.0,
+    'n_epochs': n_epochs,
+    'n_sim': n_sim
     }
 
     value = evaluate_model(assignments=suggestion.assignments, 

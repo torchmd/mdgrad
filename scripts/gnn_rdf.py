@@ -10,9 +10,20 @@ gaussian_dict = {'tiny': 16,
                'mid': 64, 
                'high': 128}
 
+def get_exp_rdf(data, nbins, r_range, obs):
+    # load RDF data 
+    f = interpolate.interp1d(data[:,0], data[:,1])
+    xnew = np.linspace(0.0, r_range, nbins)
+
+    V = (4/3)* np.pi * (r_range) ** 3
+    g_obs = torch.Tensor(f(xnew)).to(obs.device)
+    g_obs_norm = ((g_obs.detach() * obs.vol_bins).sum()).item()
+    g_obs = g_obs * (V/g_obs_norm)
+    count_obs = g_obs * obs.vol_bins / V
+
+    return count_obs, g_obs
 
 def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_name):
-
 
     data = sys_params['data']
     size = sys_params['size']
@@ -21,6 +32,8 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     nbins = sys_params['nbins']
     tmax = sys_params['tmax']
     dt = sys_params['dt']
+    n_epochs = sys_params['n_epochs'] 
+    n_sim = sys_params['n_sim'] 
 
     print(assignments)
 
@@ -28,13 +41,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     os.makedirs(model_path)
 
     tau = assignments['opt_freq'] 
-    num_epochs = 500 #tmax // tau
-
-    print(num_epochs)
-
-    # load RDF data 
-    f = interpolate.interp1d(data[:,0], data[:,1])
-    xnew = np.linspace(0.0, r_range, nbins)
+    print("Training for {} epochs".format(n_epochs))
 
     # set up lattices to have the same density as water at 300K 1atm
     CUTOFF = assignments['cutoff']
@@ -48,7 +55,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     N = atoms.get_number_of_atoms()
     mass = atoms.get_masses()
 
-    print(atoms.get_cell())
+    print(np.array(atoms.get_cell()))
 
     # construct graphs 
     edge_from, edge_to, offsets = neighbor_list('ijS', atoms, CUTOFF)
@@ -57,7 +64,6 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     nbr_list = nbr_list[nbr_list[:, 1] > nbr_list[:,0]]
 
     # contruct NN model 
-
     atoms = AtomsBatch(atoms)
     batch = {'nxyz': torch.Tensor(atoms.get_nxyz()), 
              'nrb_list': nbr_list, 
@@ -93,7 +99,6 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
 
     stack = Stack(model_dict)
 
-
     T= 298.0 * units.kB
 
     # declare position and momentum as initial values
@@ -108,7 +113,6 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     pq = torch.cat((p, xyz, p_v)).to(device)
     pq.requires_grad= True
 
-
     # define the equation of motion to propagate 
     f_x = NHCHAIN_ODE(stack, 
             mass, 
@@ -120,13 +124,10 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     # initialize observable function 
     obs = rdf(atoms, nbins, device, r_range)
 
-    # compute target observable 
-    V = (4/3)* np.pi * (r_range) ** 3
-    g_obs = torch.Tensor(f(xnew)).to(device)
-    g_obs_norm = ((g_obs.detach() * obs.vol_bins).sum()).item()
-    g_obs = g_obs * (V/g_obs_norm)
-    count_obs = g_obs * obs.vol_bins / V
+    xnew = np.linspace(0.0, r_range, nbins)
+    count_obs, g_obs = get_exp_rdf(data, nbins, r_range, obs)
 
+    # compute target observable 
     # define optimizer 
     optimizer = torch.optim.Adam(list( f_x.parameters() ), lr=assignments['lr'])
 
@@ -137,7 +138,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     traj = []
 
 
-    for i in range(0, num_epochs):
+    for i in range(0, n_epochs):
         
         current_time = datetime.now() 
         
@@ -207,7 +208,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
 
     # Inference 
     sim_trajs = []
-    for i in range(40):
+    for i in range(n_sim):
         # --------------- simulate with trained FF ---------------
         xyz = frames[-1].detach().cpu()#.reshape(-1)
         xyz = torch.Tensor( wrap_positions( xyz.numpy(), atoms.get_cell()) ).reshape(-1)
@@ -225,8 +226,12 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device).reshape(-1, N, 3)
 
     #print(sim_trajs.shape)
-    # compute equilibrate rdf 
-    _, bins, g = obs(sim_trajs)
+    # compute equilibrate rdf with finer bins 
+    test_nbins = 128
+    obs = rdf(atoms, test_nbins, device, r_range)
+    xnew = np.linspace(0.0, r_range, test_nbins)
+    count_obs, g_obs = get_exp_rdf(data, test_nbins, r_range, obs) # recompute exp. rdf
+    _, bins, g = obs(sim_trajs) # compute simulated rdf
 
     # compute equilibrated rdf 
     g_m = 0.5 * (g_obs + g)
@@ -248,9 +253,6 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
 
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
-    # return loss 
-    # metric = np.array(loss_log[-16:-1]).mean()
-    # print(metric)
     return loss_js.item()
 
 def save_traj(traj, atoms, fname, skip=10):
