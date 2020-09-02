@@ -45,7 +45,8 @@ if params['id'] == None:
             dict(name='opt_freq', type='int', bounds=dict(min=10, max=100)),
             dict(name='lr', type='double', bounds=dict(min=1e-6, max=2e-4)),
             dict(name='cutoff', type='double', bounds=dict(min=4.0, max=7.0)),
-            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=10.0))
+            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=10.0)),
+            dict(name='nbins', type='int', bounds=dict(min=32, max=128))
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
@@ -59,14 +60,12 @@ if params['data'] == 'water':
     size = 4
     L = 19.73 / size
     r_range = 7.5
-    nbins = 100
 
 elif params['data'] == 'argon':
     data = np.load("../data/argon_exp.npy")
     size = 4
     L = 22.884 / size
     r_range = 9.0 
-    nbins = 100
 
 i = 0
 while experiment.progress.observation_count < experiment.observation_budget:
@@ -78,7 +77,6 @@ while experiment.progress.observation_count < experiment.observation_budget:
     'size': size,
     'L': L, 
     'r_range': r_range,
-    'nbins': nbins,
     'tmax': tmax,
     'dt': 1.0,
     'n_epochs': n_epochs,

@@ -29,12 +29,12 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     size = sys_params['size']
     L = sys_params['L']
     r_range = sys_params['r_range']
-    nbins = sys_params['nbins']
     tmax = sys_params['tmax']
     dt = sys_params['dt']
     n_epochs = sys_params['n_epochs'] 
     n_sim = sys_params['n_sim'] 
 
+    nbins = assignments['nbins']
     print(assignments)
 
     model_path = '{}/{}'.format(project_name, suggestion_id)
@@ -136,7 +136,6 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     loss_log = []
     loss_js_log = []
     traj = []
-
 
     for i in range(0, n_epochs):
         
