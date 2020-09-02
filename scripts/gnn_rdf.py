@@ -27,8 +27,8 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     model_path = '{}/{}'.format(project_name, suggestion_id)
     os.makedirs(model_path)
 
-    tau =  assignments['opt_freq'] 
-    num_epochs = tmax // tau
+    tau = assignments['opt_freq'] 
+    num_epochs = 500 #tmax // tau
 
     print(num_epochs)
 
@@ -207,7 +207,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
 
     # Inference 
     sim_trajs = []
-    for i in range(20):
+    for i in range(40):
         # --------------- simulate with trained FF ---------------
         xyz = frames[-1].detach().cpu()#.reshape(-1)
         xyz = torch.Tensor( wrap_positions( xyz.numpy(), atoms.get_cell()) ).reshape(-1)

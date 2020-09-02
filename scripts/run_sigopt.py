@@ -35,17 +35,16 @@ if params['id'] == None:
             dict(name='n_atom_basis', type='categorical',categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='n_filters', type='categorical', categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='n_gaussians', type='categorical', categorical_values= ["tiny", "low"]),
-            dict(name='n_convolutions', type='int', bounds=dict(min=1, max=2)),
+            dict(name='n_convolutions', type='int', bounds=dict(min=1, max=3)),
             dict(name='sigma', type='double', bounds=dict(min=2.25, max=3.0)),
             dict(name='epsilon', type='double', bounds=dict(min=0.005, max=0.025)),
-            dict(name='opt_freq', type='int', bounds=dict(min=10, max=120)),
+            dict(name='opt_freq', type='int', bounds=dict(min=10, max=100)),
             dict(name='lr', type='double', bounds=dict(min=1e-6, max=2e-4)),
             dict(name='cutoff', type='double', bounds=dict(min=4.0, max=7.0)),
-            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=10.0)),
-            dict(name='t_increment', type='int', bounds=dict(min=0, max=5))
+            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=10.0))
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
-        parallel_bandwidth=10,
+        parallel_bandwidth=25,
     )
 
 elif type(params['id']) == int:
@@ -63,7 +62,7 @@ elif params['data'] == 'argon':
     size = 4
     L = 22.884 / size
     r_range = 9.0 
-    nbins = 1
+    nbins = 100
 
 i = 0
 while experiment.progress.observation_count < experiment.observation_budget:
