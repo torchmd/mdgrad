@@ -44,7 +44,7 @@ if params['id'] == None:
             dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=10.0))
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
-        parallel_bandwidth=25,
+        parallel_bandwidth=10,
     )
 
 elif type(params['id']) == int:
