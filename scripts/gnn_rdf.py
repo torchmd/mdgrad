@@ -190,6 +190,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
         optimizer.step()
         optimizer.zero_grad()
 
+
         if torch.isnan(loss):
             plt.plot(loss_log)
             plt.yscale("log")
@@ -198,6 +199,13 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
             return np.array(loss_log[-16:-2]).mean()
         else:
             loss_log.append(loss_js.item())
+
+        # check for loss convergence
+        min_idx = np.array(loss_log).argmin()
+
+        if i - min_idx >= 50:
+            print("converged")
+            break
 
     plt.plot(loss_log)
     plt.yscale("log")
