@@ -22,7 +22,7 @@ else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 500
     tmax = 25000
-    n_epochs = 500
+    n_epochs = 800
     n_sim = 50
 
 logdir = params['logdir']
@@ -42,7 +42,7 @@ if params['id'] == None:
             dict(name='n_convolutions', type='int', bounds=dict(min=1, max=3)),
             dict(name='sigma', type='double', bounds=dict(min=2.25, max=3.0)),
             dict(name='epsilon', type='double', bounds=dict(min=0.005, max=0.025)),
-            dict(name='opt_freq', type='int', bounds=dict(min=10, max=100)),
+            dict(name='opt_freq', type='int', bounds=dict(min=10, max=60)),
             dict(name='lr', type='double', bounds=dict(min=1e-6, max=2e-4)),
             dict(name='cutoff', type='double', bounds=dict(min=4.0, max=7.0)),
             dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=10.0)),
