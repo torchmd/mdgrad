@@ -38,14 +38,14 @@ if params['id'] == None:
         parameters=[
             dict(name='n_atom_basis', type='categorical',categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='n_filters', type='categorical', categorical_values=["tiny", "low", "mid", "high"]),
-            dict(name='n_gaussians', type='categorical', categorical_values= ["tiny", "low"]),
+            dict(name='n_gaussians', type='categorical', categorical_values= ["tiny", "low", "mid"]),
             dict(name='n_convolutions', type='int', bounds=dict(min=1, max=3)),
             dict(name='sigma', type='double', bounds=dict(min=2.25, max=3.0)),
             dict(name='epsilon', type='double', bounds=dict(min=0.005, max=0.025)),
-            dict(name='opt_freq', type='int', bounds=dict(min=10, max=60)),
-            dict(name='lr', type='double', bounds=dict(min=1e-6, max=2e-4)),
-            dict(name='cutoff', type='double', bounds=dict(min=4.0, max=7.0)),
-            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=10.0)),
+            dict(name='opt_freq', type='int', bounds=dict(min=10, max=100)),
+            dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-4)),
+            dict(name='cutoff', type='double', bounds=dict(min=4.0, max=8.0)),
+            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=15.0)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128))
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
