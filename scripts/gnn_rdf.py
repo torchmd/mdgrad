@@ -203,7 +203,7 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
         # check for loss convergence
         min_idx = np.array(loss_log).argmin()
 
-        if i - min_idx >= 50:
+        if i - min_idx >= 100:
             print("converged")
             break
 
