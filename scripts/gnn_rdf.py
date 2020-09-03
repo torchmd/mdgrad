@@ -166,14 +166,15 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
         frames = x[::3, N*3: N*3*2].reshape(-1, N, 3)
         _, bins, g = obs(frames)
         
-        plt.title("epoch {}".format(i))
-        plt.plot(xnew, g.detach().cpu().numpy() , linewidth=4, alpha=0.6,)
-        plt.plot(xnew, g_obs.detach().cpu().numpy(), linewidth=2,linestyle='--', c='black')
-        plt.xlabel("$\AA$")
-        plt.ylabel("g(r)")
-        plt.savefig(model_path + '/{}.jpg'.format(i), bbox_inches='tight')
-        plt.show()
-        plt.close()
+        if i % 20 == 0:
+            plt.title("epoch {}".format(i))
+            plt.plot(xnew, g.detach().cpu().numpy() , linewidth=4, alpha=0.6,)
+            plt.plot(xnew, g_obs.detach().cpu().numpy(), linewidth=2,linestyle='--', c='black')
+            plt.xlabel("$\AA$")
+            plt.ylabel("g(r)")
+            plt.savefig(model_path + '/{}.jpg'.format(i), bbox_inches='tight')
+            plt.show()
+            plt.close()
         
         g_m = 0.5 * (g_obs + g)
         loss_js =  ( -(g_obs + e0 ) * (torch.log(g_m + e0 ) - torch.log(g_obs +  e0)) ).sum()
