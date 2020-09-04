@@ -23,7 +23,7 @@ else:
     n_obs = 500
     tmax = 25000
     n_epochs = 800
-    n_sim = 50
+    n_sim = 15
 
 logdir = params['logdir']
 
