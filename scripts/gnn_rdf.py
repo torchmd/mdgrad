@@ -23,6 +23,11 @@ def get_exp_rdf(data, nbins, r_range, obs):
 
     return count_obs, g_obs
 
+def JS_rdf(g1, g2):
+
+    return None 
+
+
 def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     data = sys_params['data']
@@ -219,7 +224,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
         v_t, q_t, pv_t = odeint_adjoint(f_x, (v, q, pv), t, method=integration_method)
 
-        sim_trajs.append(q_t.detach().cpu().numpy())
+        sim_trajs.append(q_t[::20].detach().cpu().numpy())
 
     sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device).reshape(-1, N, 3)
 
