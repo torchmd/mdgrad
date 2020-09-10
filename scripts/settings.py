@@ -14,10 +14,9 @@ sys.path.insert(0, '../')
 
 import torch
 from torch.optim import Adam
-from torchdiffeq import odeint_adjoint as odeint
-from torchmd.ode import ODE, NHCHAIN_ODE
+from torchmd.md import NHCHAIN_ODE
 from torchmd.observable import rdf
-from torchmd.hamiltoinians import PairPot, MLP, LennardJones, ExcludedVolume, Buck, LennardJones69
+from torchmd.potentials import PairPot, MLP, LennardJones, ExcludedVolume, Buck, LennardJones69
 from torchmd.utils import *
 from nff.io.ase import AtomsBatch
 
