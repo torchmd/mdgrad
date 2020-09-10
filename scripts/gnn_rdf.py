@@ -100,18 +100,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     stack = Stack(model_dict)
 
     T= 298.0 * units.kB
-
-    # declare position and momentum as initial values
-    # xyz = torch.Tensor(atoms.get_positions())
-    # xyz = xyz.reshape(-1)
-
     # generate random velocity 
     MaxwellBoltzmannDistribution(atoms, T)
-
-    # p = torch.Tensor( atoms.get_velocities().reshape(-1)) #.to(device)
-    # pq = torch.cat((p, xyz, p_v)).to(device)
-    # pq.requires_grad= True
-
     # define the equation of motion to propagate 
     f_x = NHCHAIN_ODE(stack, 
             mass, 
@@ -126,8 +116,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     xnew = np.linspace(0.0, r_range, nbins)
     count_obs, g_obs = get_exp_rdf(data, nbins, r_range, obs)
-
-    # compute target observable 
     # define optimizer 
     optimizer = torch.optim.Adam(list( f_x.parameters() ), lr=assignments['lr'])
 
@@ -165,8 +153,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         pv = pv.to(device)
 
         v_t, q_t, pv_t = odeint_adjoint(f_x, (v, q, pv), t, method=integration_method)
-
-        #frames = x[::3, N*3: N*3*2].reshape(-1, N, 3)
         _, bins, g = obs(q_t)
         
         if i % 20 == 0:
@@ -213,24 +199,11 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     plt.yscale("log")
     plt.savefig(model_path + '/loss.jpg', bbox_inches='tight')
     plt.close()
-
     save_traj(traj, atoms, model_path + '/train.xyz', skip=10)
 
     # Inference 
     sim_trajs = []
     for i in range(n_sim):
-        # --------------- simulate with trained FF ---------------
-        # xyz = frames[-1].detach().cpu()#.reshape(-1)
-        # xyz = torch.Tensor( wrap_positions( xyz.numpy(), atoms.get_cell()) ).reshape(-1)
-        # p = x[-1, :N * 3 ].detach().cpu().reshape(-1)
-        # p_v = x[-1, N*3*2: ].detach().cpu().reshape(-1)
-        # t = torch.Tensor([dt* units.fs * i for i in range(100)]).to(device)
-        # pq = torch.cat((p, xyz, p_v)).to(device)
-        # pq.requires_grad= True
-        # x = odeint(f_x, pq, t, method='rk4')
-        # frames = x[::25, N*3: N*3*2].reshape(-1, N, 3).detach()
-        # print(frames.shape)
-        # sim_trajs.append(frames.detach().cpu().numpy())
 
         q = q_t[-1].detach().cpu().numpy()
         q = torch.Tensor( wrap_positions(q, atoms.get_cell()) )
@@ -248,10 +221,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
         sim_trajs.append(q_t.detach().cpu().numpy())
 
-    #print(len(sim_trajs))
     sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device).reshape(-1, N, 3)
 
-    #print(sim_trajs.shape)
     # compute equilibrate rdf with finer bins 
     test_nbins = 128
     obs = rdf(atoms, test_nbins, device, r_range)
