@@ -155,7 +155,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         v_t, q_t, pv_t = odeint_adjoint(f_x, (v, q, pv), t, method=integration_method)
         _, bins, g = obs(q_t)
         
-        if i % 20 == 0:
+        if i % 25 == 0:
             plt.title("epoch {}".format(i))
             plt.plot(xnew, g.detach().cpu().numpy() , linewidth=4, alpha=0.6,)
             plt.plot(xnew, g_obs.detach().cpu().numpy(), linewidth=2,linestyle='--', c='black')

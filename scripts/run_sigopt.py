@@ -16,13 +16,13 @@ if params['dry_run']:
     token = 'FSDXBSGDUZUQEDGDCYPCXFTRXFNYBVXVACKZQUWNSOKGKGFN'
     n_obs = 2
     tmax = 200
-    n_epochs = 2
+    n_epochs = 4
     n_sim = 2
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
-    n_obs = 2000
+    n_obs = 1000
     tmax = 25000
-    n_epochs = 800
+    n_epochs = 1000
     n_sim = 15
 
 logdir = params['logdir']
