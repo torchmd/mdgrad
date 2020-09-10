@@ -23,7 +23,7 @@ def get_exp_rdf(data, nbins, r_range, obs):
 
     return count_obs, g_obs
 
-def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_name):
+def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     data = sys_params['data']
     size = sys_params['size']
@@ -102,16 +102,15 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     T= 298.0 * units.kB
 
     # declare position and momentum as initial values
-    xyz = torch.Tensor(atoms.get_positions())
-    xyz = xyz.reshape(-1)
+    # xyz = torch.Tensor(atoms.get_positions())
+    # xyz = xyz.reshape(-1)
 
     # generate random velocity 
     MaxwellBoltzmannDistribution(atoms, T)
 
-    p = torch.Tensor( atoms.get_velocities().reshape(-1)) #.to(device)
-    p_v = torch.Tensor([0.0] * 5)
-    pq = torch.cat((p, xyz, p_v)).to(device)
-    pq.requires_grad= True
+    # p = torch.Tensor( atoms.get_velocities().reshape(-1)) #.to(device)
+    # pq = torch.cat((p, xyz, p_v)).to(device)
+    # pq.requires_grad= True
 
     # define the equation of motion to propagate 
     f_x = NHCHAIN_ODE(stack, 
@@ -119,7 +118,8 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
             Q=50.0, 
             T=T,
             num_chains=5, 
-            device=device).to(device)
+            device=device,
+            adjoint=True).to(device)
 
     # initialize observable function 
     obs = rdf(atoms, nbins, device, r_range)
@@ -137,34 +137,37 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     loss_js_log = []
     traj = []
 
+    integration_method = 'NH_verlet'
+
+
     for i in range(0, n_epochs):
         
         current_time = datetime.now() 
-        
+        t = torch.Tensor([dt * units.fs * i for i in range(tau)]).to(device)
+
         if i == 0:
-            xyz = torch.Tensor(atoms.get_positions() 
-                              # + np.random.rand(N, 3) * 0.1
-                              ).reshape(-1) 
+            q = torch.Tensor(atoms.get_positions() 
+                              )
             # generate random velocity 
-            p = torch.Tensor( atoms.get_velocities().reshape(-1))
-            p_v = torch.Tensor([0.0] * 5)
-            t = torch.Tensor([dt * units.fs * i for i in range(tau)]).to(device)
+            v = torch.Tensor( atoms.get_velocities())
+            pv = torch.Tensor([0.0] * 5)
             
         else:
-            xyz = frames[-1].detach().cpu()#.reshape(-1)
-            xyz = torch.Tensor( wrap_positions( xyz.numpy(), atoms.get_cell()) ).reshape(-1)
-            p = x[-1, :N * 3 ].detach().cpu().reshape(-1)
-            p_v = x[-1, N*3*2: ].detach().cpu().reshape(-1)
-            t = torch.Tensor([dt * units.fs * i for i in range(tau)]).to(device)
+            q = q_t[-1].detach().cpu().numpy()
+            q = torch.Tensor( wrap_positions(q, atoms.get_cell()) )
+            v = v_t[-1].detach().cpu()
+            pv = pv_t[-1].detach().cpu().reshape(-1)
 
-            traj.append(xyz.detach().cpu().numpy().reshape(-N, 3))
-
-        pq = torch.cat((p, xyz, p_v)).to(device)
-        pq.requires_grad= True
-        x = odeint(f_x, pq, t, method='rk4')
+            traj.append(q.detach().cpu().numpy())
         
-        frames = x[::3, N*3: N*3*2].reshape(-1, N, 3)
-        _, bins, g = obs(frames)
+        v = v.to(device)
+        q = q.to(device)
+        pv = pv.to(device)
+
+        v_t, q_t, pv_t = odeint_adjoint(f_x, (v, q, pv), t, method=integration_method)
+
+        #frames = x[::3, N*3: N*3*2].reshape(-1, N, 3)
+        _, bins, g = obs(q_t)
         
         if i % 20 == 0:
             plt.title("epoch {}".format(i))
@@ -189,7 +192,6 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
         
         optimizer.step()
         optimizer.zero_grad()
-
 
         if torch.isnan(loss):
             plt.plot(loss_log)
@@ -218,17 +220,33 @@ def evaluate_model(assignments, i, suggestion_id, device, sys_params, project_na
     sim_trajs = []
     for i in range(n_sim):
         # --------------- simulate with trained FF ---------------
-        xyz = frames[-1].detach().cpu()#.reshape(-1)
-        xyz = torch.Tensor( wrap_positions( xyz.numpy(), atoms.get_cell()) ).reshape(-1)
-        p = x[-1, :N * 3 ].detach().cpu().reshape(-1)
-        p_v = x[-1, N*3*2: ].detach().cpu().reshape(-1)
+        # xyz = frames[-1].detach().cpu()#.reshape(-1)
+        # xyz = torch.Tensor( wrap_positions( xyz.numpy(), atoms.get_cell()) ).reshape(-1)
+        # p = x[-1, :N * 3 ].detach().cpu().reshape(-1)
+        # p_v = x[-1, N*3*2: ].detach().cpu().reshape(-1)
+        # t = torch.Tensor([dt* units.fs * i for i in range(100)]).to(device)
+        # pq = torch.cat((p, xyz, p_v)).to(device)
+        # pq.requires_grad= True
+        # x = odeint(f_x, pq, t, method='rk4')
+        # frames = x[::25, N*3: N*3*2].reshape(-1, N, 3).detach()
+        # print(frames.shape)
+        # sim_trajs.append(frames.detach().cpu().numpy())
+
+        q = q_t[-1].detach().cpu().numpy()
+        q = torch.Tensor( wrap_positions(q, atoms.get_cell()) )
+        v = v_t[-1].detach().cpu()
+        pv = pv_t[-1].detach().cpu().reshape(-1)
+
+        traj.append(q.detach().cpu().numpy())
+        
+        v = v.to(device)
+        q = q.to(device)
+        pv = pv.to(device)
         t = torch.Tensor([dt* units.fs * i for i in range(100)]).to(device)
-        pq = torch.cat((p, xyz, p_v)).to(device)
-        pq.requires_grad= True
-        x = odeint(f_x, pq, t, method='rk4')
-        frames = x[::25, N*3: N*3*2].reshape(-1, N, 3).detach()
-        print(frames.shape)
-        sim_trajs.append(frames.detach().cpu().numpy())
+
+        v_t, q_t, pv_t = odeint_adjoint(f_x, (v, q, pv), t, method=integration_method)
+
+        sim_trajs.append(q_t.detach().cpu().numpy())
 
     #print(len(sim_trajs))
     sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device).reshape(-1, N, 3)

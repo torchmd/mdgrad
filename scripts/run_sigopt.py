@@ -83,7 +83,7 @@ while experiment.progress.observation_count < experiment.observation_budget:
     'n_sim': n_sim
     }
 
-    value = evaluate_model(assignments=suggestion.assignments, 
+    value = fit_rdf(assignments=suggestion.assignments, 
                             i=i, 
                             suggestion_id=suggestion.id, 
                             device=params['device'],
