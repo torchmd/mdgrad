@@ -20,7 +20,7 @@ if params['dry_run']:
     n_sim = 2
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
-    n_obs = 500
+    n_obs = 2000
     tmax = 25000
     n_epochs = 800
     n_sim = 15
