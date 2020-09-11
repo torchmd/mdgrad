@@ -10,31 +10,30 @@ class Simulations():
     def __init__(self,
                  system,
                   intergrator,
-                  steps,
-                  dt,
                   adjoint=True,
-                  save_frequency = 50):
+                  method="NH_verlet"):
         self.system = system 
         self.device = system.device
         self.intergrator = intergrator
-        self.dt = dt 
         self.adjoint = adjoint
-        self.steps = steps 
-        self.save_frequency = save_frequency
-        self.sim_epochs = int(steps//save_frequency)
+        self.solvemethod = method
         
-    def simulate(self):
+    def simulate(self, steps=1, dt=1.0 * units.fs, frequency=1):
         
         states = self.system.initial_conditions()
-        
-        t = torch.Tensor([self.dt * units.fs * i for i in range(self.save_frequency)]).to(self.device)
-        for epoch in range(self.sim_epochs): 
-            trajs = odeint_adjoint(self.intergrator, states, t, method="NH_verlet")
+        sim_epochs = int(steps//frequency)
+        t = torch.Tensor([dt * units.fs * i for i in range(frequency)]).to(self.device)
+
+        for epoch in range(sim_epochs):
+
+            if self.adjoint:
+                trajs = odeint_adjoint(self.intergrator, states, t, method=self.solvemethod)
+            else:
+                trajs = odeint(self.intergrator, states, t, method=self.solvemethod)
+
             self.system.update_traj(tuple([var[-1] for var in trajs]))
+
         return trajs
-        
-    def attach_frame():
-        pass 
     
 
 class NVE(torch.nn.Module):
@@ -61,7 +60,7 @@ class NVE(torch.nn.Module):
             
             v = (p.reshape(-1, self.dim) / self.mass[:, None]).reshape(-1)
             f = -compute_grad(inputs=q, output=u).reshape(-1)
-            #print(f.shape, f)
+
         return torch.cat((f, v))
 
 class NoseHoover(torch.nn.Module):
@@ -74,7 +73,7 @@ class NoseHoover(torch.nn.Module):
         self.target_momentum = target_momentum
         self.ttime = ttime 
         N = mass.shape[0]
-        self.target_ke = (0.5 * 3*  N * self.target_momentum **2 )
+        self.target_ke = (0.5 * 3 *  N * self.target_momentum **2 )
         self.Q = (0.5 * 3 *  N * self.target_momentum **2  * ttime ** 2 )
         
     def forward(self, t, pq):
@@ -166,7 +165,6 @@ class Isomerization(torch.nn.Module):
         self.ham = ham.to(self.device)
         # hilbert space dimension
         self.dim = len(ham)
-    
         # optimizable electric field
         self.e_field = torch.nn.Parameter(e_field)
         # max time the electric field can be on
