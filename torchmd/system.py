@@ -97,7 +97,36 @@ class GNNPotentials(torch.nn.Module):
         results = self.module(self.inputs, q)
         return results['energy']
 
-    
+
+class PairPot(torch.nn.Module):
+
+    def __init__(self, pair_model, model_arg, cell, device=0, cutoff=2.5):
+        super().__init__()
+        self.model = pair_model(**model_arg)
+        self.cell = torch.Tensor(cell).to(device)
+        self.device = device
+        self.cutoff = cutoff
+
+    def forward(self, xyz):
+        
+        # get_nbr_list 
+        dis_mat = xyz[..., None, :, :] - xyz[..., :, None, :]
+
+        offsets = -dis_mat.ge(0.5 *  self.cell).to(torch.float).to(self.device) + \
+                        dis_mat.lt(-0.5 *  self.cell).to(torch.float).to(self.device)
+        dis_mat = dis_mat + offsets * self.cell
+
+        dis_sq = dis_mat.pow(2).sum(-1)
+        mask = (dis_sq < self.cutoff ** 2) & (dis_sq != 0)
+
+        pair_dis = dis_sq[mask].sqrt()
+
+        # compute pair energy 
+        energy = self.model(pair_dis[..., None])
+
+        return energy
+   
+
 class Stack(torch.nn.Module):
     def __init__(self, model_dict, mode='sum'):
         super().__init__()
