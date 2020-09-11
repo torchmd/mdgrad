@@ -48,25 +48,13 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     tau = assignments['opt_freq'] 
     print("Training for {} epochs".format(n_epochs))
 
-    # set up lattices to have the same density as water at 300K 1atm
-    CUTOFF = assignments['cutoff']
-
     atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                               symbol='H',
                               size=(size, size, size),
                               latticeconstant= L,
                               pbc=True)
 
-    N = atoms.get_number_of_atoms()
     mass = atoms.get_masses()
-
-    print(np.array(atoms.get_cell()))
-
-    # construct graphs 
-    edge_from, edge_to, offsets = neighbor_list('ijS', atoms, CUTOFF)
-    nbr_list = torch.LongTensor(np.stack([edge_from, edge_to], axis=1))
-    offsets = torch.Tensor(offsets)[nbr_list[:, 1] > nbr_list[:, 0]].detach().cpu().numpy()
-    nbr_list = nbr_list[nbr_list[:, 1] > nbr_list[:,0]]
 
     # contruct NN model 
     atoms = AtomsBatch(atoms)
@@ -107,6 +95,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     T= 298.0 * units.kB
     # generate random velocity 
     MaxwellBoltzmannDistribution(atoms, T)
+
     # define the equation of motion to propagate 
     f_x = NHCHAIN_ODE(stack, 
             mass, 
