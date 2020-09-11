@@ -7,7 +7,7 @@ import math
 def init_vel(Natoms, target_momentum):
     return (torch.rand(Natoms * 3) - 0.5) * target_momentum * 4
 
-class ODE(torch.nn.Module):
+class NVE(torch.nn.Module):
 
     def __init__(self, model, mass, dim=3, device=0):
         super().__init__()
@@ -34,8 +34,7 @@ class ODE(torch.nn.Module):
             #print(f.shape, f)
         return torch.cat((f, v))
 
-
-class NHODE(torch.nn.Module):
+class NoseHoover(torch.nn.Module):
 
     def __init__(self, model, mass, target_momentum=4.0, ttime = 100.0, device=0):
         super().__init__()
@@ -74,7 +73,7 @@ class NHODE(torch.nn.Module):
         return torch.cat((f, v, dzdt[None]))
 
 
-class NHCHAIN_ODE(torch.nn.Module):
+class NoseHooverChain(torch.nn.Module):
 
     def __init__(self, model, mass, T, num_chains=2, Q=1.0,  device=0, dim=3, adjoint=True):
         super().__init__()
@@ -124,7 +123,7 @@ class NHCHAIN_ODE(torch.nn.Module):
             
         return (dvdt, v, torch.cat((dpvdt_0[None], dpvdt_mid, dpvdt_last[None])))
 
-class ISOM_ODE(torch.nn.Module):
+class Isomerization(torch.nn.Module):
 
     """ODE class for model isomerization"""
 
