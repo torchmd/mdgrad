@@ -2,10 +2,40 @@ import torch
 from nff.utils.scatter import compute_grad
 import numpy as np 
 import math 
+from ase import units
+from torchmd.sovlers import odeint_adjoint, odeint
 
-
-def init_vel(Natoms, target_momentum):
-    return (torch.rand(Natoms * 3) - 0.5) * target_momentum * 4
+class Simulations():
+    
+    def __init__(self,
+                 system,
+                  intergrator,
+                  steps,
+                  dt,
+                  adjoint=True,
+                  save_frequency = 50):
+        self.system = system 
+        self.device = system.device
+        self.intergrator = intergrator
+        self.dt = dt 
+        self.adjoint = adjoint
+        self.steps = steps 
+        self.save_frequency = save_frequency
+        self.sim_epochs = int(steps//save_frequency)
+        
+    def simulate(self):
+        
+        states = self.system.initial_conditions()
+        
+        t = torch.Tensor([self.dt * units.fs * i for i in range(self.save_frequency)]).to(self.device)
+        for epoch in range(self.sim_epochs): 
+            trajs = odeint_adjoint(self.intergrator, states, t, method="NH_verlet")
+            self.system.update_traj(tuple([var[-1] for var in trajs]))
+        return trajs
+        
+    def attach_frame():
+        pass 
+    
 
 class NVE(torch.nn.Module):
 
@@ -106,7 +136,7 @@ class NoseHooverChain(torch.nn.Module):
             
             p = v.reshape(-1, self.dim) * self.mass[:, None]
             q = q.reshape(-1, self.dim)
-            
+
             sys_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum() 
             
             u = self.model(q)
