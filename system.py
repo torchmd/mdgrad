@@ -47,7 +47,6 @@ class System(Atoms):
         return nxyz
     
     def get_cell_len(self):
-        
         return np.diag( self.get_cell() )
 
     def get_batch(self):
@@ -61,9 +60,9 @@ class System(Atoms):
     def set_temperature(self, T):
         MaxwellBoltzmannDistribution(self, T * units.kB )
     
-    def intialize(self):
+    def initial_conditions(self):
+        # This should be in the integrator, the initialization should be integrator specific
         
-        # This should be in the integrator, the initialization should be integrator specific 
         if hasattr(self, 'traj'):            
             return tuple([torch.Tensor(var).to(self.device) for var in self.traj[-1]])
 
@@ -72,13 +71,15 @@ class System(Atoms):
 
             return tuple([torch.Tensor(var).to(self.device) for var in self.traj[-1]])
     
-    #def simulate(nsteps=1, dt=1.0)
-    #
-    #
-    
-    def update_traj(states):
-        
-        self.traj.append(list(states))
+    def update_traj(self, states):
+        assert len(states) == 3
+        assert all([type(state) == torch.Tensor for state in states])        
+        if states[0].device != 'cpu':
+            self.traj.append([var.detach().cpu().numpy() for var in states])
+        else:
+            self.traj.append([var.detach().cpu().numpy() for var in states])
+
+        # TODO: update system states for velocity and momenta
         
         
 
