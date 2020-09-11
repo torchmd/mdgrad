@@ -33,7 +33,7 @@ class rdf(Observable):
         self.nbins = nbins
         
         # scale cutoff to adjust smearing error of the last bin 
-        self.cutoff_boundary = self.cutoff + 2e-1#(self.bins[1] - self.bins[0]) * 2
+        self.cutoff_boundary = self.cutoff + 5e-1#(self.bins[1] - self.bins[0]) * 2
         
         
     def forward(self, xyz):
