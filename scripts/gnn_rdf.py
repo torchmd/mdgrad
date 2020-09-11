@@ -1,5 +1,12 @@
 from settings import *
 
+from nff.train import get_model
+from torchmd.system import GNNPotentials, System, Stack
+from torchmd.md import Simulations
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from ase import units
+
+
 width_dict = {'tiny': 64,
                'low': 128,
                'mid': 256, 
@@ -30,6 +37,7 @@ def JS_rdf(g1, g2):
 
 def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
+    # parse params 
     data = sys_params['data']
     size = sys_params['size']
     L = sys_params['L']
@@ -38,6 +46,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     dt = sys_params['dt']
     n_epochs = sys_params['n_epochs'] 
     n_sim = sys_params['n_sim'] 
+    cutoff = assignments['cutoff']
 
     nbins = assignments['nbins']
     print(assignments)
@@ -48,33 +57,12 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     tau = assignments['opt_freq'] 
     print("Training for {} epochs".format(n_epochs))
 
-    atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                              symbol='H',
-                              size=(size, size, size),
-                              latticeconstant= L,
-                              pbc=True)
-
-    mass = atoms.get_masses()
-
-    # contruct NN model 
-    atoms = AtomsBatch(atoms)
-    batch = {'nxyz': torch.Tensor(atoms.get_nxyz()), 
-             'nrb_list': nbr_list, 
-             'num_atoms': torch.LongTensor([atoms.get_number_of_atoms()]),
-             'energy': torch.Tensor([0.]) }
-
     # Define prior potential 
     lj_params = {'epsilon': assignments['epsilon'], 
                  'sigma': assignments['sigma'], 
                  'power': 12}
 
-    pair = PairPot(ExcludedVolume, lj_params,
-                    cell=torch.Tensor(atoms.get_cell()).diag(), 
-                    device=device,
-                    cutoff=9.0,
-                    ).to(device)
-
-    params = {
+    gnn_params = {
         'n_atom_basis': width_dict[assignments['n_atom_basis']],
         'n_filters': width_dict[assignments['n_filters']],
         'n_gaussians': width_dict[assignments['n_gaussians']],
@@ -83,71 +71,63 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         'trainable_gauss': False
     }
 
-    model = get_model(params)
-    batch = batch_to(batch, device)
-    wrap = schwrap(model=model, batch=batch, device=device , cell=np.diag(atoms.get_cell())) 
+    # initialize states with ASE 
+    atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                              symbol='H',
+                              size=(size, size, size),
+                              latticeconstant= L,
+                              pbc=True)
+    system = System(atoms, device=device)
+    system.set_temperature(298.0)
 
-    model_dict = {'gcn': wrap,
-                 'prior': pair}
+    print(system.get_temperature())
 
-    stack = Stack(model_dict)
+    # Initialize potentials 
+    model = get_model(gnn_params)
+    GNN = GNNPotentials(model, system.get_batch(), system.get_cell_len(), cutoff=cutoff, device=system.device)
+    pair = PairPot(ExcludedVolume, lj_params,
+                    cell=torch.Tensor(system.get_cell_len()), 
+                    device=device,
+                    cutoff=8.0,
+                    ).to(device)
 
-    T= 298.0 * units.kB
-    # generate random velocity 
-    MaxwellBoltzmannDistribution(atoms, T)
+    model = Stack({'gnn': GNN, 'pair': pair})
 
     # define the equation of motion to propagate 
-    f_x = NHCHAIN_ODE(stack, 
-            mass, 
+    diffeq = NoseHooverChain(model, 
+            system.get_masses(), 
             Q=50.0, 
-            T=T,
+            T=298.0 * units.kB,
             num_chains=5, 
             device=device,
             adjoint=True).to(device)
+    # define simulator with 
+    sim = Simulations(system, diffeq)
 
     # initialize observable function 
     obs = rdf(atoms, nbins, device, r_range)
-
     xnew = np.linspace(0.0, r_range, nbins)
     count_obs, g_obs = get_exp_rdf(data, nbins, r_range, obs)
     # define optimizer 
-    optimizer = torch.optim.Adam(list( f_x.parameters() ), lr=assignments['lr'])
+    optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=assignments['lr'])
 
     e0 = 1e-4
-
     loss_log = []
     loss_js_log = []
     traj = []
 
-    integration_method = 'NH_verlet'
-
+    solver_method = 'NH_verlet'
 
     for i in range(0, n_epochs):
         
         current_time = datetime.now() 
-        t = torch.Tensor([dt * units.fs * i for i in range(tau)]).to(device)
+        #t = torch.Tensor([dt * units.fs * i for i in range(tau)]).to(device)
 
-        if i == 0:
-            q = torch.Tensor(atoms.get_positions() 
-                              )
-            # generate random velocity 
-            v = torch.Tensor( atoms.get_velocities())
-            pv = torch.Tensor([0.0] * 5)
-            
-        else:
-            q = q_t[-1].detach().cpu().numpy()
-            q = torch.Tensor( wrap_positions(q, atoms.get_cell()) )
-            v = v_t[-1].detach().cpu()
-            pv = pv_t[-1].detach().cpu().reshape(-1)
+        trajs = sim.simulate(steps=tau, frequency=int(tau//2))
 
-            traj.append(q.detach().cpu().numpy())
-        
-        v = v.to(device)
-        q = q.to(device)
-        pv = pv.to(device)
+        q_t, v_t, pv_t = trajs 
 
-        v_t, q_t, pv_t = odeint_adjoint(f_x, (v, q, pv), t, method=integration_method)
-        _, bins, g = obs(q_t)
+        _, bins, g = obs(trajs[1])
         
         if i % 25 == 0:
             plt.title("epoch {}".format(i))
@@ -159,6 +139,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             plt.show()
             plt.close()
         
+        # this shoud be wrapped in some way 
         g_m = 0.5 * (g_obs + g)
         loss_js =  ( -(g_obs + e0 ) * (torch.log(g_m + e0 ) - torch.log(g_obs +  e0)) ).sum()
         loss_js += ( -(g + e0 ) * (torch.log(g_m + e0 ) - torch.log(g + e0) ) ).sum()
@@ -168,7 +149,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         loss.backward()
         
         duration = (datetime.now() - current_time)
-        #print( "{} seconds".format(duration.total_seconds())) 
         
         optimizer.step()
         optimizer.zero_grad()
@@ -193,29 +173,15 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     plt.yscale("log")
     plt.savefig(model_path + '/loss.jpg', bbox_inches='tight')
     plt.close()
-    save_traj(traj, atoms, model_path + '/train.xyz', skip=10)
+    save_traj(system, model_path + '/train.xyz', skip=10)
 
     # Inference 
     sim_trajs = []
     for i in range(n_sim):
+        _, q_t, _ = sim.simulate(steps=100, frequency=25)
+        sim_trajs.append(q_t.detach().cpu().numpy())
 
-        q = q_t[-1].detach().cpu().numpy()
-        q = torch.Tensor( wrap_positions(q, atoms.get_cell()) )
-        v = v_t[-1].detach().cpu()
-        pv = pv_t[-1].detach().cpu().reshape(-1)
-
-        traj.append(q.detach().cpu().numpy())
-        
-        v = v.to(device)
-        q = q.to(device)
-        pv = pv.to(device)
-        t = torch.Tensor([dt* units.fs * i for i in range(100)]).to(device)
-
-        v_t, q_t, pv_t = odeint_adjoint(f_x, (v, q, pv), t, method=integration_method)
-
-        sim_trajs.append(q_t[::20].detach().cpu().numpy())
-
-    sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device).reshape(-1, N, 3)
+    sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device)
 
     # compute equilibrate rdf with finer bins 
     test_nbins = 128
@@ -229,8 +195,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     loss_js =  ( -(g_obs + e0 ) * (torch.log(g_m + e0 ) - torch.log(g_obs +  e0)) ).sum()
     loss_js += ( -(g + e0 ) * (torch.log(g_m + e0 ) - torch.log(g + e0) ) ).sum()
 
-    save_traj(sim_trajs.detach().cpu().numpy(), atoms, 
-                        model_path + '/sim.xyz', 
+    save_traj(system, model_path + '/sim.xyz', 
                         skip=1)
 
     plt.plot(xnew, g.detach().cpu().numpy(), linewidth=4, alpha=0.6, label='sim')
@@ -246,11 +211,11 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     return loss_js.item()
 
-def save_traj(traj, atoms, fname, skip=10):
+def save_traj(system, fname, skip=10):
     atoms_list = []
-    for i, xyz in enumerate(traj):
+    for i, states in enumerate(system.traj):
         if i % skip == 0: 
-            frame = Atoms(positions=xyz, numbers=atoms.get_atomic_numbers())
+            frame = Atoms(positions=states[1], numbers=system.get_atomic_numbers())
             atoms_list.append(frame)
     ase.io.write(fname, atoms_list) 
 
