@@ -22,7 +22,7 @@ class Simulations():
         
         states = self.system.initial_conditions()
         sim_epochs = int(steps//frequency)
-        t = torch.Tensor([dt * units.fs * i for i in range(frequency)]).to(self.device)
+        t = torch.Tensor([dt * i for i in range(frequency)]).to(self.device)
 
         for epoch in range(sim_epochs):
 
@@ -35,6 +35,9 @@ class Simulations():
 
         return trajs
     
+def _check_T(T):
+    if T >= units.kB * 1000:
+        print("The input temperature {} K, It seems too high.".format(T / units.kB) )
 
 class NVE(torch.nn.Module):
 
@@ -95,8 +98,6 @@ class NoseHoover(torch.nn.Module):
             
             sys_ke = (0.5 * (p.reshape(-1, 3).pow(2) / self.mass[:, None]).sum() )
             dzdt = (1/self.Q )* ( sys_ke - self.target_ke )
-            
-            print(z.item())
         
             print("KE {} Target KE{} ".format( sys_ke.item(), self.target_ke)) 
         return torch.cat((f, v, dzdt[None]))
@@ -119,6 +120,9 @@ class NoseHooverChain(torch.nn.Module):
         self.Q = torch.Tensor(self.Q).to(device)
         self.dim = dim
         self.adjoint = adjoint
+
+        # check temperature
+        _check_T(T)
         
     def forward(self, t, state):
         # pq are the canonical momentum and position variables
@@ -136,15 +140,19 @@ class NoseHooverChain(torch.nn.Module):
             p = v.reshape(-1, self.dim) * self.mass[:, None]
             q = q.reshape(-1, self.dim)
 
+            #print(self.mass.max())
+
             sys_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum() 
             
             u = self.model(q)
 
-            dqdt = (p / self.mass[:, None]).reshape(-1)
+            dqdt = (p / self.mass[:, None]).reshape(-1) # mass is just a scalar?
             
             f = -compute_grad(inputs=q, output=u.sum(-1))
 
-            dvdt = f - (p_v[0] * p.reshape(-1) / self.Q[0]).reshape(-1, 3)
+            coupled_forces = (p_v[0] * p.reshape(-1) / self.Q[0]).reshape(-1, 3)
+
+            dvdt = f - coupled_forces
 
             dpvdt_0 = 2 * (sys_ke - self.T * self.N_dof * 0.5) - p_v[0] * p_v[1]/ self.Q[1]
             dpvdt_mid = (p_v[:-2].pow(2) / self.Q[:-2] - self.T) - p_v[2:]*p_v[1:-1]/ self.Q[2:]
