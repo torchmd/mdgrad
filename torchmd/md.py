@@ -68,10 +68,11 @@ class NVE(torch.nn.Module):
 
 class NoseHoover(torch.nn.Module):
 
-    def __init__(self, model, mass, target_momentum=4.0, ttime = 100.0, device=0):
+    def __init__(self, model, system, target_momentum=4.0, ttime = 100.0, device=0):
         super().__init__()
-        self.model = model  
-        self.mass = torch.Tensor(mass).to(device)
+        self.model = model
+        self.device = system.device
+        self.mass = torch.Tensor(system.get_masses()).to(self.device)
         self.device = device 
         self.target_momentum = target_momentum
         self.ttime = ttime 
@@ -105,24 +106,28 @@ class NoseHoover(torch.nn.Module):
 
 class NoseHooverChain(torch.nn.Module):
 
-    def __init__(self, model, mass, T, num_chains=2, Q=1.0,  device=0, dim=3, adjoint=True):
+    def __init__(self, potentials, system, T, num_chains=2, Q=1.0, adjoint=True):
         super().__init__()
-        self.model = model  
-        self.mass = torch.Tensor(mass).to(device)
-        self.device = device 
-        self.T = T
-        self.N_dof = mass.shape[0] * dim
+        self.model = potentials 
+        self.system = system
+        self.device = system.device
+        self.mass = torch.Tensor(system.get_masses()).to(self.device)
+        self.T = T # in energy unit(eV)
+        self.N_dof = self.mass.shape[0] * system.dim
         self.target_ke = (0.5 * self.N_dof * T )
         
         self.num_chains = num_chains
         self.Q = np.array([Q,
-                   *[Q/mass.shape[0]]*(num_chains-1)])
-        self.Q = torch.Tensor(self.Q).to(device)
-        self.dim = dim
+                   *[Q/self.system.get_number_of_atoms()]*(num_chains-1)])
+        self.Q = torch.Tensor(self.Q).to(self.device)
+        self.dim = system.dim
         self.adjoint = adjoint
 
         # check temperature
         _check_T(T)
+
+    def initial_conditions():
+        pass
         
     def forward(self, t, state):
         # pq are the canonical momentum and position variables
