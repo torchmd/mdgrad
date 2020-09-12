@@ -3,38 +3,35 @@
 import torch
 from nff.nn.layers import GaussianSmearing
 import numpy as np
+from torchmd.system import generate_nbr_list
 
 
 class Observable(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, system):
         super(Observable, self).__init__()
-    
-
-from torchmd.observable import Observable
+        self.device = system.device
+        self.volume = system.get_volume()
+        self.cell = torch.Tensor( system.get_cell()).diag().to(self.device)
+        self.natoms = system.get_number_of_atoms()
 
 class rdf(Observable):
-    def __init__(self, atoms, nbins, device, cutoff):
-        super(rdf, self).__init__()
+    def __init__(self, system, nbins, cutoff):
+        super(rdf, self).__init__(system)
         PI = np.pi
-        self.bins = torch.linspace(0, cutoff, nbins + 1).to(device)
-        
+
+        self.device = system.device
+        self.bins = torch.linspace(0, cutoff, nbins + 1).to(self.device)
         self.smear = GaussianSmearing(
-                    start=0.0,
-                    stop=self.bins[-1],
-                    n_gaussians=nbins,
-                    trainable=False
-                ).to(device)
-        self.volume = atoms.get_volume()
+            start=0.0,
+            stop=self.bins[-1],
+            n_gaussians=nbins,
+            trainable=False
+        ).to(self.device)
         self.cutoff = cutoff
-        self.cell = torch.Tensor( atoms.get_cell()).diag().to(device)
-        self.vol_bins = 4 * PI /3*(self.bins[1:]**3 - self.bins[:-1]**3).to(device)
-        self.device = device 
-        self.natoms = atoms.get_number_of_atoms()
+        # compute volume differential 
+        self.vol_bins = 4 * PI /3*(self.bins[1:]**3 - self.bins[:-1]**3).to(self.device)
         self.nbins = nbins
-        
-        # scale cutoff to adjust smearing error of the last bin 
-        self.cutoff_boundary = self.cutoff + 5e-1#(self.bins[1] - self.bins[0]) * 2
-        
+        self.cutoff_boundary = self.cutoff + 5e-1
         
     def forward(self, xyz):
         
@@ -47,21 +44,16 @@ class rdf(Observable):
         offsets = -dis_mat.ge(0.5 * self.cell).to(torch.float).to(self.device) + \
                         dis_mat.lt(-0.5 * self.cell).to(torch.float).to(self.device)
         dis_mat = dis_mat + offsets * self.cell
-
         dis_sq = dis_mat.pow(2).sum(-1)
         mask = (dis_sq < (self.cutoff_boundary) ** 2) & (dis_sq != 0)
-
         pair_dis = dis_sq[mask].sqrt()
 
-        #N_count = mask.sum()
         count = self.smear(pair_dis.squeeze()[..., None]).sum(0) 
         norm = count.sum()   # normalization factor for histogram 
         count = count / norm   # normalize 
         count = count
                          
         V = (4/3)* np.pi * (self.cutoff) ** 3
-        #print(self.cutoff)
-        
         rdf =  count / (self.vol_bins / V )  # interactions are considered twice 
         
         return count, self.bins, rdf 
