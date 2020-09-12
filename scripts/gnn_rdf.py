@@ -34,9 +34,17 @@ def JS_rdf(g1, g2):
 
     return None 
 
+def plot_rdfs(bins, target_g, simulated_g, fname, path):
+    plt.title("epoch {}".format(fname))
+    plt.plot(bins, simulated_g.detach().cpu().numpy() , linewidth=4, alpha=0.6, label='sim.' )
+    plt.plot(bins, target_g.detach().cpu().numpy(), linewidth=2,linestyle='--', c='black', label='exp.')
+    plt.xlabel("$\AA$")
+    plt.ylabel("g(r)")
+    plt.savefig(path + '/{}.jpg'.format(fname), bbox_inches='tight')
+    plt.show()
+    plt.close()
 
 def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
-
     # parse params 
     data = sys_params['data']
     size = sys_params['size']
@@ -101,12 +109,14 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             num_chains=5, 
             device=device,
             adjoint=True).to(device)
+
     # define simulator with 
     sim = Simulations(system, diffeq)
 
     # initialize observable function 
-    obs = rdf(atoms, nbins, device, r_range)
+    obs = rdf(system, nbins, r_range)
     xnew = np.linspace(0.0, r_range, nbins)
+    # get experimental rdf 
     count_obs, g_obs = get_exp_rdf(data, nbins, r_range, obs)
     # define optimizer 
     optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=assignments['lr'])
@@ -121,23 +131,13 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     for i in range(0, n_epochs):
         
         current_time = datetime.now() 
-        #t = torch.Tensor([dt * units.fs * i for i in range(tau)]).to(device)
-
         trajs = sim.simulate(steps=tau, frequency=int(tau//2))
+        v_t, q_t, pv_t = trajs 
 
-        q_t, v_t, pv_t = trajs 
-
-        _, bins, g = obs(trajs[1])
+        _, bins, g = obs(q_t)
         
         if i % 25 == 0:
-            plt.title("epoch {}".format(i))
-            plt.plot(xnew, g.detach().cpu().numpy() , linewidth=4, alpha=0.6,)
-            plt.plot(xnew, g_obs.detach().cpu().numpy(), linewidth=2,linestyle='--', c='black')
-            plt.xlabel("$\AA$")
-            plt.ylabel("g(r)")
-            plt.savefig(model_path + '/{}.jpg'.format(i), bbox_inches='tight')
-            plt.show()
-            plt.close()
+           plot_rdfs(xnew, g_obs, g, i, model_path)
         
         # this shoud be wrapped in some way 
         g_m = 0.5 * (g_obs + g)
@@ -179,13 +179,13 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     sim_trajs = []
     for i in range(n_sim):
         _, q_t, _ = sim.simulate(steps=100, frequency=25)
-        sim_trajs.append(q_t.detach().cpu().numpy())
+        sim_trajs.append(q_t[-1].detach().cpu().numpy())
 
     sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device)
 
     # compute equilibrate rdf with finer bins 
     test_nbins = 128
-    obs = rdf(atoms, test_nbins, device, r_range)
+    obs = rdf(system, test_nbins, r_range)
     xnew = np.linspace(0.0, r_range, test_nbins)
     count_obs, g_obs = get_exp_rdf(data, test_nbins, r_range, obs) # recompute exp. rdf
     _, bins, g = obs(sim_trajs) # compute simulated rdf
@@ -198,14 +198,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     save_traj(system, model_path + '/sim.xyz', 
                         skip=1)
 
-    plt.plot(xnew, g.detach().cpu().numpy(), linewidth=4, alpha=0.6, label='sim')
-    plt.plot(xnew, g_obs.detach().cpu().numpy() , linewidth=2, linestyle='--', c='black', label='exp')
-    plt.legend()
-    plt.xlabel("$\AA$")
-    plt.ylabel("g(r)")
-    plt.savefig(model_path + '/final.jpg', bbox_inches='tight')
-    plt.show()
-    plt.close()
+    plot_rdfs(xnew, g_obs, g, "final", model_path)
 
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
