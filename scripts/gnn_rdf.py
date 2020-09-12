@@ -30,9 +30,13 @@ def get_exp_rdf(data, nbins, r_range, obs):
 
     return count_obs, g_obs
 
-def JS_rdf(g1, g2):
+def JS_rdf(g_obs, g):
+    e0 = 1e-4
+    g_m = 0.5 * (g_obs + g)
+    loss_js =  ( -(g_obs + e0 ) * (torch.log(g_m + e0 ) - torch.log(g_obs +  e0)) ).sum()
+    loss_js += ( -(g + e0 ) * (torch.log(g_m + e0 ) - torch.log(g + e0) ) ).sum()
 
-    return None 
+    return loss_js
 
 def plot_rdfs(bins, target_g, simulated_g, fname, path):
     plt.title("epoch {}".format(fname))
@@ -103,11 +107,10 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     # define the equation of motion to propagate 
     diffeq = NoseHooverChain(model, 
-            system.get_masses(), 
+            system,
             Q=50.0, 
             T=298.0 * units.kB,
             num_chains=5, 
-            device=device,
             adjoint=True).to(device)
 
     # define simulator with 
@@ -121,7 +124,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     # define optimizer 
     optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=assignments['lr'])
 
-    e0 = 1e-4
     loss_log = []
     loss_js_log = []
     traj = []
@@ -140,9 +142,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
            plot_rdfs(xnew, g_obs, g, i, model_path)
         
         # this shoud be wrapped in some way 
-        g_m = 0.5 * (g_obs + g)
-        loss_js =  ( -(g_obs + e0 ) * (torch.log(g_m + e0 ) - torch.log(g_obs +  e0)) ).sum()
-        loss_js += ( -(g + e0 ) * (torch.log(g_m + e0 ) - torch.log(g + e0) ) ).sum()
+        loss_js = JS_rdf(g_obs, g)
         loss = loss_js + assignments['mse_weight'] * (g- g_obs).pow(2).sum()
                 
         print(loss_js.item(), loss.item())
@@ -191,9 +191,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     _, bins, g = obs(sim_trajs) # compute simulated rdf
 
     # compute equilibrated rdf 
-    g_m = 0.5 * (g_obs + g)
-    loss_js =  ( -(g_obs + e0 ) * (torch.log(g_m + e0 ) - torch.log(g_obs +  e0)) ).sum()
-    loss_js += ( -(g + e0 ) * (torch.log(g_m + e0 ) - torch.log(g + e0) ) ).sum()
+    loss_js = JS_rdf(g_obs, g)
 
     save_traj(system, model_path + '/sim.xyz', 
                         skip=1)
