@@ -79,7 +79,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     gnn_params = {
         'n_atom_basis': width_dict[assignments['n_atom_basis']],
         'n_filters': width_dict[assignments['n_filters']],
-        'n_gaussians': width_dict[assignments['n_gaussians']],
+        'n_gaussians': gaussian_dict[assignments['n_gaussians']],
         'n_convolutions': assignments['n_convolutions'],
         'cutoff': assignments['cutoff'],
         'trainable_gauss': False
@@ -176,7 +176,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         # check for loss convergence
         min_idx = np.array(loss_log).argmin()
 
-        if i - min_idx >= 100:
+        if i - min_idx >= 125:
             print("converged")
             break
 
@@ -193,6 +193,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         sim_trajs.append(q_t[-1].detach().cpu().numpy())
 
     sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device)
+    sim_trajs.requires_grad = False # no gradient required 
 
     # compute equilibrate rdf with finer bins 
     test_nbins = 128
