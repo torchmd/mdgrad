@@ -1,8 +1,8 @@
- 
-#from settings import *
+
 import argparse
 from sigopt import Connection
 from gnn_rdf import *
+import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-logdir", type=str)
