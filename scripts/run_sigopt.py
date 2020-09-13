@@ -59,13 +59,13 @@ if params['data'] == 'water':
     data = np.load("../data/water_exp_pccp.npy")
     size = 4
     L = 19.73 / size
-    r_range = 7.5
+    end = 7.5
 
 elif params['data'] == 'argon':
     data = np.load("../data/argon_exp.npy")
     size = 4
     L = 22.884 / size
-    r_range = 9.0 
+    end = 9.0 
 
 i = 0
 while experiment.progress.observation_count < experiment.observation_budget:
@@ -76,7 +76,7 @@ while experiment.progress.observation_count < experiment.observation_budget:
     'data': data, 
     'size': size,
     'L': L, 
-    'r_range': r_range,
+    'end': end,
     'tmax': tmax,
     'dt': 1.0,
     'n_epochs': n_epochs,

@@ -20,9 +20,11 @@ gaussian_dict = {'tiny': 16,
 def get_exp_rdf(data, nbins, r_range, obs):
     # load RDF data 
     f = interpolate.interp1d(data[:,0], data[:,1])
-    xnew = np.linspace(0.0, r_range, nbins)
+    start = r_range[0]
+    end = r_range[1]
+    xnew = np.linspace(start, end, nbins)
 
-    V = (4/3)* np.pi * (r_range) ** 3
+    V = (4/3)* np.pi * (end ** 3 - start ** 3)
     g_obs = torch.Tensor(f(xnew)).to(obs.device)
     g_obs_norm = ((g_obs.detach() * obs.vol_bins).sum()).item()
     g_obs = g_obs * (V/g_obs_norm)
@@ -53,7 +55,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     data = sys_params['data']
     size = sys_params['size']
     L = sys_params['L']
-    r_range = sys_params['r_range']
+    end = sys_params['end']
     tmax = sys_params['tmax']
     dt = sys_params['dt']
     n_epochs = sys_params['n_epochs'] 
@@ -115,12 +117,15 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     # define simulator with 
     sim = Simulations(system, diffeq)
+    start = 2.0
 
     # initialize observable function 
-    obs = rdf(system, nbins, r_range)
-    xnew = np.linspace(0.0, r_range, nbins)
+    obs = rdf(system, nbins, (start, end) )
+    vacf_obs = vacf(system, t_range=int(tau//2))
+
+    xnew = np.linspace(start, end, nbins)
     # get experimental rdf 
-    count_obs, g_obs = get_exp_rdf(data, nbins, r_range, obs)
+    count_obs, g_obs = get_exp_rdf(data, nbins, (start, end), obs)
     # define optimizer 
     optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=assignments['lr'])
 
@@ -135,6 +140,12 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         current_time = datetime.now() 
         trajs = sim.simulate(steps=tau, frequency=int(tau//2))
         v_t, q_t, pv_t = trajs 
+        #import ipdb; ipdb.set_trace()
+        # vacf_sim = vacf_obs(v_t.detach())
+        # plt.plot(vacf_sim.detach().cpu().numpy())
+        # plt.savefig(model_path + '/{}.jpg'.format("vacf"), bbox_inches='tight')
+        # plt.show()
+        # plt.close()
 
         _, bins, g = obs(q_t)
         
@@ -185,9 +196,9 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     # compute equilibrate rdf with finer bins 
     test_nbins = 128
-    obs = rdf(system, test_nbins, r_range)
-    xnew = np.linspace(0.0, r_range, test_nbins)
-    count_obs, g_obs = get_exp_rdf(data, test_nbins, r_range, obs) # recompute exp. rdf
+    obs = rdf(system, test_nbins,  (start, end))
+    xnew = np.linspace(start, end, test_nbins)
+    count_obs, g_obs = get_exp_rdf(data, test_nbins, (start, end), obs) # recompute exp. rdf
     _, bins, g = obs(sim_trajs) # compute simulated rdf
 
     # compute equilibrated rdf 
