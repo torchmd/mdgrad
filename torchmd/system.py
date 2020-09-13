@@ -1,4 +1,5 @@
 import torch
+import torchmd
 from nff.utils.scatter import compute_grad
 from nff.utils import batch_to
 from torch.nn import ModuleDict
