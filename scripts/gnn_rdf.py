@@ -1,5 +1,13 @@
-from settings import *
+#from settings import *
+import sys
 
+# ODE_PATH = '/home/wwj/Repo/projects/torchdiffeq/'
+
+# sys.path.insert(0, ODE_PATH)
+# sys.path.insert(0, '../')
+
+import torchmd
+from scripts import * 
 from nff.train import get_model
 from torchmd.system import GNNPotentials, System, Stack
 from torchmd.md import Simulations
@@ -212,7 +220,10 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
-    return loss_js.item()
+    if torch.isnan(loss_js):
+        return np.array(loss_log[-16:-2]).mean()
+    else:
+        return loss_js.item()
 
 def save_traj(system, fname, skip=10):
     atoms_list = []

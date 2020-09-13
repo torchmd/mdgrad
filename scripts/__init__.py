@@ -5,11 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys 
 
-ODE_PATH = '/home/wwj/Repo/projects/torchdiffeq/'
-
-sys.path.insert(0, ODE_PATH)
-sys.path.insert(0, '../')
-
 import torch
 from torch.optim import Adam
 from torchmd.md import NoseHooverChain
