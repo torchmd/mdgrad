@@ -1,14 +1,20 @@
 """Summary
 """
 import torch
+import torchmd
 from nff.nn.layers import GaussianSmearing
 import numpy as np
 from torchmd.system import generate_nbr_list
+
+def check_system(object):
+    if object.__class__ != torchmd.system.System:
+        raise TypeError("input should be a torchmd.system.System")
 
 
 class Observable(torch.nn.Module):
     def __init__(self, system):
         super(Observable, self).__init__()
+        check_system(system)
         self.device = system.device
         self.volume = system.get_volume()
         self.cell = torch.Tensor( system.get_cell()).diag().to(self.device)
@@ -58,20 +64,25 @@ class rdf(Observable):
         
         return count, self.bins, rdf 
 
+
+class vacf(Observable):
+    def __init__(self, system, t_range):
+        super(vacf, self).__init__(system)
+        self.t_window = [i for i in range(1, t_range, 1)]
+
+    def forward(self, vel):
+        vacf = [(vel * vel).mean()[None]]
+        # can be implemented in parrallel
+        vacf += [ (vel[t:] * vel[:-t]).mean()[None] for t in self.t_window]
+
+        return torch.stack(vacf).reshape(-1)
+
 def plot_ke(v, target_mometum):
     target = 0.5 * Natoms * 3 * (target_mometum **2)
     particle_ke = 0.5 * (v.reshape(-1, Natoms, 3).pow(2) / f_x.mass[:, None])
     sys_ke = particle_ke.sum(-1).sum(-1)
     plt.plot(sys_ke.detach().cpu().numpy())
     plt.plot([i for i in range(sys_ke.shape[0])], [target for i in range(sys_ke.shape[0])] )
-
-def VACF(vel, t_stop=30):
-    
-    t_list= [i for i in range(1, t_stop, 1)]
-    vacf = [(vel * vel).mean()[None]]
-    vacf += [ (vel[t:] * vel[:-t]).mean()[None] for t in t_list]
-    
-    return torch.cat(vacf)
 
 def compute_virial(q, model):
     u = model(q)
