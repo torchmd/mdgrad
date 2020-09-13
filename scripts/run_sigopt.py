@@ -45,7 +45,7 @@ if params['id'] == None:
             dict(name='opt_freq', type='int', bounds=dict(min=10, max=100)),
             dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-4)),
             dict(name='cutoff', type='double', bounds=dict(min=4.0, max=8.0)),
-            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=15.0)),
+            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=20.0)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128))
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
