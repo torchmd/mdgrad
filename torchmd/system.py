@@ -8,6 +8,10 @@ from ase.geometry import wrap_positions
 from ase import units
 import numpy as np 
 
+def check_system(object):
+    if object.__class__ != torchmd.system.System:
+        raise TypeError("input should be a torchmd.system.System")
+
 def generate_nbr_list(xyz, cutoff, cell):
     
     # todo to make it compatible for non-cubic cells
