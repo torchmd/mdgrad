@@ -4,12 +4,7 @@ import torch
 import torchmd
 from nff.nn.layers import GaussianSmearing
 import numpy as np
-from torchmd.system import generate_nbr_list
-
-def check_system(object):
-    if object.__class__ != torchmd.system.System:
-        raise TypeError("input should be a torchmd.system.System")
-
+from torchmd.system import generate_nbr_list, check_system
 
 class Observable(torch.nn.Module):
     def __init__(self, system):
@@ -21,19 +16,22 @@ class Observable(torch.nn.Module):
         self.natoms = system.get_number_of_atoms()
 
 class rdf(Observable):
-    def __init__(self, system, nbins, cutoff):
+    def __init__(self, system, nbins, r_range):
         super(rdf, self).__init__(system)
         PI = np.pi
 
+        start = r_range[0]
+        end = r_range[1]
+
         self.device = system.device
-        self.bins = torch.linspace(0, cutoff, nbins + 1).to(self.device)
+        self.bins = torch.linspace(start, end, nbins + 1).to(self.device)
         self.smear = GaussianSmearing(
-            start=0.0,
+            start=start,
             stop=self.bins[-1],
             n_gaussians=nbins,
             trainable=False
         ).to(self.device)
-        self.cutoff = cutoff
+        self.cutoff = end
         # compute volume differential 
         self.vol_bins = 4 * PI /3*(self.bins[1:]**3 - self.bins[:-1]**3).to(self.device)
         self.nbins = nbins
