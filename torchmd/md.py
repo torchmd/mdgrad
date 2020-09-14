@@ -5,6 +5,10 @@ import math
 from ase import units
 from torchmd.sovlers import odeint_adjoint, odeint
 
+def _check_T(T):
+    if T >= units.kB * 1000:
+        print("The input temperature is {} K, it seems too high.".format(T / units.kB) )
+
 class Simulations():
     
     def __init__(self,
@@ -19,6 +23,7 @@ class Simulations():
         self.solvemethod = method
         
     def simulate(self, steps=1, dt=1.0 * units.fs, frequency=1):
+
         
         states = self.system.initial_conditions()
         sim_epochs = int(steps//frequency)
@@ -34,10 +39,6 @@ class Simulations():
             self.system.update_traj(tuple([var[-1] for var in trajs]))
 
         return trajs
-    
-def _check_T(T):
-    if T >= units.kB * 1000:
-        print("The input temperature {} K, It seems too high.".format(T / units.kB) )
 
 class NVE(torch.nn.Module):
 
@@ -106,15 +107,10 @@ class NoseHooverChain(torch.nn.Module):
             
             p = v.reshape(-1, self.dim) * self.mass[:, None]
             q = q.reshape(-1, self.dim)
-
-            #print(self.mass.max())
-
+            
             sys_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum() 
             
             u = self.model(q)
-
-            dqdt = (p / self.mass[:, None]).reshape(-1) # mass is just a scalar?
-            
             f = -compute_grad(inputs=q, output=u.sum(-1))
 
             coupled_forces = (p_v[0] * p.reshape(-1) / self.Q[0]).reshape(-1, 3)
