@@ -107,7 +107,7 @@ class NoseHooverChain(torch.nn.Module):
             
             p = v.reshape(-1, self.dim) * self.mass[:, None]
             q = q.reshape(-1, self.dim)
-            
+
             sys_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum() 
             
             u = self.model(q)
@@ -122,6 +122,63 @@ class NoseHooverChain(torch.nn.Module):
             dpvdt_last = p_v[-2].pow(2) / self.Q[-2] - self.T
             
         return (dvdt, v, torch.cat((dpvdt_0[None], dpvdt_mid, dpvdt_last[None])))
+
+
+class NeuralNVT(torch.nn.Module):
+
+    def __init__(self, potentials, bathnn, system, T, num_chains=2, Q=1.0, adjoint=True):
+        super().__init__()
+        self.model = potentials 
+        self.system = system
+        self.device = system.device
+        self.mass = torch.Tensor(system.get_masses()).to(self.device)
+        self.T = T # in energy unit(eV)
+        self.N_dof = self.mass.shape[0] * system.dim
+        self.target_ke = (0.5 * self.N_dof * T )
+        self.dim = system.dim
+        self.adjoint = adjoint
+        
+        self.bath = bath
+        # check temperature
+        _check_T(T)
+
+    def initial_conditions():
+        pass
+        
+    def forward(self, t, state):
+        # pq are the canonical momentum and position variables
+        with torch.set_grad_enabled(True):        
+            
+            v = state[0]
+            q = state[1]
+            
+            if self.adjoint:
+                q.requires_grad = True
+                p.requires_grad = True
+            
+            N = self.N_dof
+            
+            p = v.reshape(-1, self.dim) * self.mass[:, None]
+            q = q.reshape(-1, self.dim)
+            
+            u = self.model(q)
+            f = -compute_grad(inputs=q, output=u.sum(-1))
+
+            
+            atomwise_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum(-1)
+            sys_ke = atomwise_ke.sum()
+            bath_input = atomwise_ke - self.T * 3 * 0.5
+            bath_u = self.bath(bath_input)
+            
+            coupled_forces = -compute_grad(inputs=p, output=u.sum(-1))
+            
+            dvdt = f - coupled_forces
+            
+            bath_input = atomwise_ke - self.T * 3 * 0.5
+            u_bath = self.bath(bath_input)
+            
+        return (dvdt, v)
+
 
 class Isomerization(torch.nn.Module):
 
