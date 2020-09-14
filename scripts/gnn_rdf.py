@@ -83,7 +83,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     gnn_params = {
         'n_atom_basis': width_dict[assignments['n_atom_basis']],
         'n_filters': width_dict[assignments['n_filters']],
-        'n_gaussians': gaussian_dict[assignments['n_gaussians']],
+        #'n_gaussians': gaussian_dict[assignments['n_gaussians']],
+        'n_gaussians': int(assignments['cutoff']//assignments['gaussian_width']),
         'n_convolutions': assignments['n_convolutions'],
         'cutoff': assignments['cutoff'],
         'trainable_gauss': False

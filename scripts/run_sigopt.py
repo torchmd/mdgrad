@@ -37,7 +37,8 @@ if params['id'] == None:
         parameters=[
             dict(name='n_atom_basis', type='categorical',categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='n_filters', type='categorical', categorical_values=["tiny", "low", "mid", "high"]),
-            dict(name='n_gaussians', type='categorical', categorical_values= ["tiny", "low", "mid"]),
+            #dict(name='n_gaussians', type='categorical', categorical_values= ["tiny", "low", "mid"]),
+            dict(name='gaussian_width', type='double', bounds=dict(min=0.05, max=0.25)),
             dict(name='n_convolutions', type='int', bounds=dict(min=1, max=3)),
             dict(name='sigma', type='double', bounds=dict(min=2.25, max=3.0)),
             dict(name='epsilon', type='double', bounds=dict(min=0.005, max=0.025)),
