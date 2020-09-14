@@ -96,6 +96,7 @@ class GNNPotentials(torch.nn.Module):
         super().__init__()
         self.module = module
         self.cutoff = cutoff
+        # initialize the dictionary for model inputs 
         self.inputs = batch_to(inputs, device)
         self.cell = torch.Tensor(cell).to(device)
         self.to(device)
@@ -106,7 +107,7 @@ class GNNPotentials(torch.nn.Module):
         return results['energy']
 
 
-class PairPot(torch.nn.Module):
+class PairPotentials(torch.nn.Module):
 
     def __init__(self, pair_model, model_arg, cell, device=0, cutoff=2.5):
         super().__init__()

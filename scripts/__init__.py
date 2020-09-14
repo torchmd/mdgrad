@@ -23,7 +23,6 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 
 from datetime import datetime
 
-from torchmd.system import Stack, System, GNNPotentials, PairPot
 from torchmd.sovlers import odeint_adjoint, odeint
 
 from nff.utils.scatter import compute_grad

@@ -1,15 +1,10 @@
 #from settings import *
 import sys
 
-# ODE_PATH = '/home/wwj/Repo/projects/torchdiffeq/'
-
-# sys.path.insert(0, ODE_PATH)
-# sys.path.insert(0, '../')
-
 import torchmd
 from scripts import * 
 from nff.train import get_model
-from torchmd.system import GNNPotentials, System, Stack
+from torchmd.system import GNNPotentials, PairPotentials, System, Stack
 from torchmd.md import Simulations
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase import units
@@ -32,6 +27,7 @@ def get_exp_rdf(data, nbins, r_range, obs):
     end = r_range[1]
     xnew = np.linspace(start, end, nbins)
 
+    # make sure the rdf data is normalized
     V = (4/3)* np.pi * (end ** 3 - start ** 3)
     g_obs = torch.Tensor(f(xnew)).to(obs.device)
     g_obs_norm = ((g_obs.detach() * obs.vol_bins).sum()).item()
@@ -107,7 +103,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     # Initialize potentials 
     model = get_model(gnn_params)
     GNN = GNNPotentials(model, system.get_batch(), system.get_cell_len(), cutoff=cutoff, device=system.device)
-    pair = PairPot(ExcludedVolume, lj_params,
+    pair = PairPotentials(ExcludedVolume, lj_params,
                     cell=torch.Tensor(system.get_cell_len()), 
                     device=device,
                     cutoff=8.0,
