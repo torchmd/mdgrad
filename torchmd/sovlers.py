@@ -21,9 +21,64 @@ from torch import nn
 class NHVerlet(FixedGridODESolver):
 
     def step_func(self, func, t, dt, y):
+        return NHverlet_update(func, t, dt, y)
+
+class Verlet(FixedGridODESolver):
+
+    def step_func(self, func, t, dt, y):
         return verlet_update(func, t, dt, y)
 
 def verlet_update(func, t, dt, y):
+
+    if len(y) == 2: # integrator in the forward call 
+        a_0, v_0 = func(t, y)
+
+        # update half step 
+        v_step_half = 1/2 *  a_0 * dt 
+
+        # update full step in positions 
+        q_step_full = (y[0] + v_step_half) * dt 
+
+        # gradient full at t + dt 
+        a_dt, v_half = func(t, (y[0] + v_step_half, y[1] + q_step_full))
+
+        # full step update 
+        v_step_full = v_step_half + 1/2 * a_dt * dt
+
+        return tuple((v_step_full, q_step_full))
+    
+    else: # integrator in the backward call 
+        dydt_0 = func(t, y)
+        
+        v_step_half = 1/2 * dydt_0[0] * dt 
+        #vadjoint_step_half = 1/2 * dydt_0[0 + 3] * dt # update adjoint state 
+        
+        q_step_full = (y[0] + v_step_half) * dt 
+        
+        # half step adjoint update 
+        vadjoint_half = dydt_0[2] * 0.5 * dt # update adjoint state 
+        qadjoint_half = dydt_0[3] * 0.5 * dt 
+        dLdt_half = dydt_0[4] * 0.5 * dt 
+        dLdpar_half = dydt_0[5] * 0.5 * dt 
+        
+        dydt_mid = func(t, (y[0] + v_step_half, y[1] + q_step_full, 
+                    y[2] + vadjoint_half, y[3] + qadjoint_half, 
+                    y[4] + dLdt_half, y[5] + dLdpar_half
+                   ))
+
+        v_step_full = v_step_half + 1/2 * dydt_mid[0] * dt 
+        
+        # half step adjoint update 
+        vadjoint_step = dydt_mid[2] * dt # update adjoint state 
+        qadjoint_step = dydt_mid[3] * dt 
+        dLdt_step = dydt_mid[4] * dt 
+        dLdpar_step = dydt_mid[5] * dt         
+        
+        return (v_step_full, q_step_full,
+                vadjoint_step, qadjoint_step, 
+                dLdt_step, dLdpar_step)
+
+def NHverlet_update(func, t, dt, y):
 
     if len(y) == 3: # integrator in the forward call 
         a_0, v_0, dpvdt_0 = func(t, y)
@@ -88,7 +143,8 @@ def odeint(func, y0, t, rtol=1e-7, atol=1e-9, method=None, options=None):
     'dopri5': Dopri5Solver,
     'euler': Euler,
     'rk4': RK4,
-    'NH_verlet': NHVerlet
+    'NH_verlet': NHVerlet,
+    'verlet': Verlet
     }
 
     tensor_input, func, y0, t = _check_inputs(func, y0, t)
