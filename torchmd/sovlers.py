@@ -1,14 +1,7 @@
 from torchdiffeq._impl.misc import _check_inputs
-#from torchdiffeq._impl.tsit5 import Tsit5Solver
-from torchdiffeq._impl.dopri5 import Dopri5Solver
-#from torchdiffeq._impl.adaptive_heun import AdaptiveHeunSolver
 from torchdiffeq._impl.fixed_grid import Euler, Midpoint, RK4
-# from torchdiffeq._impl.fixed_adams import AdamsBashforth, AdamsBashforthMoulton
-# from torchdiffeq._impl.adams import VariableCoefficientAdamsBashforth
 from torchdiffeq._impl.misc import _check_inputs, _flatten, _flatten_convert_none_to_zeros
 from torchdiffeq._impl.solvers import FixedGridODESolver
-from torchdiffeq._impl.adjoint import OdeintAdjointMethod
-#from torchdiffeq._impl.misc import _flatten, _flatten_convert_none_to_zeros
 
 import torch 
 from torch import nn
@@ -30,7 +23,9 @@ class Verlet(FixedGridODESolver):
 
 def verlet_update(func, t, dt, y):
 
-    if len(y) == 2: # integrator in the forward call 
+    NUM_VAR = 2
+
+    if len(y) == NUM_VAR: # integrator in the forward call 
         a_0, v_0 = func(t, y)
 
         # update half step 
@@ -47,7 +42,7 @@ def verlet_update(func, t, dt, y):
 
         return tuple((v_step_full, q_step_full))
     
-    else: # integrator in the backward call 
+    elif len(y) == NUM_VAR * 2 + 2: # integrator in the backward call 
         dydt_0 = func(t, y)
         
         v_step_half = 1/2 * dydt_0[0] * dt 
@@ -77,10 +72,15 @@ def verlet_update(func, t, dt, y):
         return (v_step_full, q_step_full,
                 vadjoint_step, qadjoint_step, 
                 dLdt_step, dLdpar_step)
+    else:
+        raise ValueError("received {} argumets integration, but should be {} for the forward call or {} for the backward call".format(
+                len(y), NUM_VAR, 2 * NUM_VAR + 2))
 
 def NHverlet_update(func, t, dt, y):
 
-    if len(y) == 3: # integrator in the forward call 
+    NUM_VAR = 3
+
+    if len(y) == NUM_VAR: # integrator in the forward call 
         a_0, v_0, dpvdt_0 = func(t, y)
 
         # update half step 
@@ -99,7 +99,7 @@ def NHverlet_update(func, t, dt, y):
 
         return tuple((v_step_full, q_step_full, pv_step_full))
     
-    else: # integrator in the backward call 
+    elif len(y) == NUM_VAR * 2 + 2: # integrator in the backward call 
         dydt_0 = func(t, y)
         
         v_step_half = 1/2 * dydt_0[0] * dt 
@@ -136,12 +136,14 @@ def NHverlet_update(func, t, dt, y):
                 vadjoint_step, qadjoint_step, pvadjoint_step,
                 dLdt_step, dLdpar_step)
 
+    else:
+        raise ValueError("received {} argumets integration, but should be {} for the forward call or {} for the backward call".format(
+                len(y), NUM_VAR, 2 * NUM_VAR + 2))
+
 
 def odeint(func, y0, t, rtol=1e-7, atol=1e-9, method=None, options=None):
 
     SOLVERS = {
-    'dopri5': Dopri5Solver,
-    'euler': Euler,
     'rk4': RK4,
     'NH_verlet': NHVerlet,
     'verlet': Verlet
