@@ -13,18 +13,40 @@ def check_system(object):
     if object.__class__ != torchmd.system.System:
         raise TypeError("input should be a torchmd.system.System")
 
-def generate_nbr_list(xyz, cutoff, cell):
+def generate_nbr_list(xyz, cutoff, cell, atom_index=None, get_dis=False):
     
-    # todo to make it compatible for non-cubic cells
-    device = xyz.device 
-    dis_mat = xyz[..., None, :, :] - xyz[..., :, None, :]
+    # todo: make it compatible for non-cubic cells
+    # todo: topology should be a class to handle some initialization 
+    device = xyz.device
+
+    if atom_index is not None:
+        N = xyz.shape[0]
+        atom_index = atom_index.to(device)
+        mask_sel = torch.zeros(N, N, dtype=torch.float, device=device)
+        #a = np.array(long_list)
+        a = torch.triu_indices(atom_index.shape[0], atom_index.shape[0]).t().to(device)
+        i, j = atom_index[a[:,0]], atom_index[a[:,1]]
+        mask_sel[i, j] = 1
+        # todo handle this calculation like a sparse tensor 
+        dis_mat = (xyz[..., None, :, :] - xyz[..., :, None, :]) * mask_sel[..., None]
+
+    else:
+        dis_mat = (xyz[..., None, :, :] - xyz[..., :, None, :])
+
     offsets = -dis_mat.ge(0.5 *  cell).to(torch.float).to(device) + \
                     dis_mat.lt(-0.5 *  cell).to(torch.float).to(device)
     dis_mat = dis_mat + offsets * cell
     dis_sq = dis_mat.pow(2).sum(-1)
     mask = (dis_sq < cutoff ** 2) & (dis_sq != 0)
+
     nbr_list = torch.triu(mask.to(torch.long)).nonzero()
-    return nbr_list
+
+    if get_dis:
+        return nbr_list, dis_sq[nbr_list].sqrt() 
+    else:
+        return nbr_list 
+
+
 
 class System(Atoms):
     def __init__(
@@ -120,18 +142,12 @@ class PairPotentials(torch.nn.Module):
         self.cutoff = cutoff
 
     def forward(self, xyz):
-        
-        # get_nbr_list 
-        dis_mat = xyz[..., None, :, :] - xyz[..., :, None, :]
 
-        offsets = -dis_mat.ge(0.5 *  self.cell).to(torch.float).to(self.device) + \
-                        dis_mat.lt(-0.5 *  self.cell).to(torch.float).to(self.device)
-        dis_mat = dis_mat + offsets * self.cell
-
-        dis_sq = dis_mat.pow(2).sum(-1)
-        mask = (dis_sq < self.cutoff ** 2) & (dis_sq != 0)
-
-        pair_dis = dis_sq[mask].sqrt()
+        nbr_list, pair_dis = generate_nbr_list(xyz, 
+                                               self.cutoff, 
+                                               self.cell, 
+                                               atom_index=None, 
+                                               get_dis=True)
 
         # compute pair energy 
         energy = self.model(pair_dis[..., None])
@@ -196,3 +212,9 @@ if __name__ == "__main__":
     PES = GNNPotentials(model, system.get_batch(), system.get_cell_len(), cutoff=5.0, device=system.device)
 
     system.set_temperature(298.0)
+
+
+    # Todo test Pair pot with fixed atom index  
+
+
+
