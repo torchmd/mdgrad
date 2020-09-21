@@ -95,31 +95,6 @@ class System(Atoms):
     def set_temperature(self, T):
         MaxwellBoltzmannDistribution(self, T * units.kB )
     
-    def initial_conditions(self):
-        # This should be in the integrator, the initialization should be integrator specific
-        if hasattr(self, 'traj'):
-            states = [torch.Tensor(var).to(self.device) for var in self.traj[-1]]
-            if all(self.pbc):
-                wrapped_xyz = wrap_positions(self.traj[-1][1], self.get_cell())
-                states[1] = torch.Tensor(wrapped_xyz).to(self.device)
-            return tuple(states)
-
-        else:
-            if all(self.pbc):
-                self.traj = [[self.get_velocities(), wrap_positions(self.get_positions(), self.get_cell()), [0.0] * 5]]
-            else:
-                self.traj = [[self.get_velocities(), self.get_positions(), [0.0] * 5]]
-
-            return tuple([torch.Tensor(var).to(self.device) for var in self.traj[-1]])
-
-    def update_traj(self, states):
-        # should there be a Trajectory objects?
-        assert len(states) == 3
-        assert all([type(state) == torch.Tensor for state in states])        
-        if states[0].device != 'cpu':
-            self.traj.append([var.detach().cpu().numpy() for var in states])
-        else:
-            self.traj.append([var.detach().numpy() for var in states])
         
         
 class GNNPotentials(torch.nn.Module):

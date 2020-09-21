@@ -4,6 +4,7 @@ import numpy as np
 import math 
 from ase import units
 from torchmd.sovlers import odeint_adjoint, odeint
+from ase.geometry import wrap_positions
 
 def _check_T(T):
     if T >= units.kB * 1000:
@@ -13,19 +14,21 @@ class Simulations():
     
     def __init__(self,
                  system,
-                  intergrator,
+                  diffeq,
                   adjoint=True,
                   method="NH_verlet"):
         self.system = system 
         self.device = system.device
-        self.intergrator = intergrator
+        self.intergrator = diffeq
         self.adjoint = adjoint
         self.solvemethod = method
+        # flat for printing out simulation status
+        self.verbose = True
         
     def simulate(self, steps=1, dt=1.0 * units.fs, frequency=1):
 
-        
-        states = self.system.initial_conditions()
+        states = self.intergrator._get_inital_states(all(self.system.pbc))
+
         sim_epochs = int(steps//frequency)
         t = torch.Tensor([dt * i for i in range(frequency)]).to(self.device)
 
@@ -36,7 +39,9 @@ class Simulations():
             else:
                 trajs = odeint(self.intergrator, states, t, method=self.solvemethod)
 
-            self.system.update_traj(tuple([var[-1] for var in trajs]))
+            self.intergrator.update_traj(tuple([var[-1] for var in trajs]))
+
+            states = self.intergrator._get_checkpoints(all(self.system.pbc))
 
         return trajs
 
@@ -73,7 +78,7 @@ class NoseHooverChain(torch.nn.Module):
         super().__init__()
         self.model = potentials 
         self.system = system
-        self.device = system.device
+        self.device = system.device # should just use system.device throughout
         self.mass = torch.Tensor(system.get_masses()).to(self.device)
         self.T = T # in energy unit(eV)
         self.N_dof = self.mass.shape[0] * system.dim
@@ -88,9 +93,6 @@ class NoseHooverChain(torch.nn.Module):
 
         # check temperature
         _check_T(T)
-
-    def initial_conditions():
-        pass
         
     def forward(self, t, state):
         # pq are the canonical momentum and position variables
@@ -122,6 +124,46 @@ class NoseHooverChain(torch.nn.Module):
             dpvdt_last = p_v[-2].pow(2) / self.Q[-2] - self.T
             
         return (dvdt, v, torch.cat((dpvdt_0[None], dpvdt_mid, dpvdt_last[None])))
+
+    def _get_inital_states(self, wrap=True):
+        if wrap:
+            states = [
+                    self.system.get_velocities(),
+                    wrap_positions(self.system.get_positions(), 
+                                self.system.get_cell()), 
+                    [0.0] * self.num_chains
+                    ]
+        else:
+            states = [
+                    self.system.get_velocities(), 
+                    self.system.get_positions(), 
+                    [0.0] * self.num_chains]
+
+        states = [torch.Tensor(var).to(self.system.device) for var in states]
+
+        self.traj = []
+
+        return states
+
+    def _get_checkpoints(self, wrap=True):
+
+        if hasattr(self, 'traj'):
+            states = [torch.Tensor(var).to(self.device) for var in self.traj[-1]]
+
+            if wrap:
+                wrapped_xyz = wrap_positions(self.traj[-1][1], self.system.get_cell())
+                states[1] = torch.Tensor(wrapped_xyz).to(self.device)
+
+        return tuple(states)
+
+    def update_traj(self, states):
+        # should there be a Trajectory objects?
+        assert len(states) == 3
+        assert all([type(state) == torch.Tensor for state in states])        
+        if states[0].device != 'cpu':
+            self.traj.append([var.detach().cpu().numpy() for var in states])
+        else:
+            self.traj.append([var.detach().numpy() for var in states])
 
 
 class NeuralNVT(torch.nn.Module):
@@ -164,7 +206,6 @@ class NeuralNVT(torch.nn.Module):
             u = self.model(q)
             f = -compute_grad(inputs=q, output=u.sum(-1))
 
-            
             atomwise_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum(-1)
             sys_ke = atomwise_ke.sum()
             bath_input = atomwise_ke - self.T * 3 * 0.5
