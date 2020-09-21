@@ -41,8 +41,10 @@ def generate_nbr_list(xyz, cutoff, cell, atom_index=None, get_dis=False):
 
     nbr_list = torch.triu(mask.to(torch.long)).nonzero()
 
+    print(nbr_list.shape)
+
     if get_dis:
-        return nbr_list, dis_sq[nbr_list].sqrt() 
+        return nbr_list, dis_sq[nbr_list[:,0], nbr_list[:, 1] ].sqrt() 
     else:
         return nbr_list 
 
@@ -126,9 +128,9 @@ class GNNPotentials(torch.nn.Module):
         self.cell = torch.Tensor(cell).to(device)
         self.to(device)
 
-    def forward(self, q): 
-        self.inputs['nbr_list'] = generate_nbr_list(q, self.cutoff, self.cell)
-        results = self.module(self.inputs, q)
+    def forward(self, xyz): 
+        self.inputs['nbr_list'] = generate_nbr_list(xyz, self.cutoff, self.cell)
+        results = self.module(self.inputs, xyz)
         return results['energy']
 
 
@@ -149,6 +151,7 @@ class PairPotentials(torch.nn.Module):
                                                atom_index=None, 
                                                get_dis=True)
 
+        print(pair_dis.shape)
         # compute pair energy 
         energy = self.model(pair_dis[..., None])
 
