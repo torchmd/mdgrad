@@ -1,4 +1,5 @@
 
+import ase 
 from ase import io 
 from ase import Atoms 
 import copy 
@@ -8,20 +9,32 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-matplotlib.rcParams.update({'font.size': 15})
+from nglview import show_ase, show_file, show_mdtraj
+import mdtraj
+
+matplotlib.rcParams.update({'font.size': 25})
 matplotlib.rc('lines', linewidth=4, color='g')
 matplotlib.rcParams['axes.linewidth'] = 3.0
 
-def dump_mov(movie, ref_atoms, fname="./LJ.pdb"):
-	atoms_list = []
-	for frame in movie:
-	    sys = Atoms(ref_atoms.get_atomic_numbers(),
-	           positions=frame.reshape(-1, 3), pbc=True, cell=ref_atoms.get_cell()) 
-	    sys.set_positions(sys.get_positions(wrap=True))
-	    atoms_list.append(sys) 
 
-	io.write(fname, atoms_list)
+def to_mdtraj(system, traj):
+    traj = [Atoms(positions=xyz[1], numbers=system.get_atomic_numbers()) for xyz in traj]
+    # create tmp file 
+    ase.io.write("junk.pdb", traj)
+    traj = mdtraj.load_pdb("junk.pdb")
+    import os
+    os.remove('junk.pdb')
+    show_mdtraj(traj)
+    
+    return traj
 
+
+def display_traj(system, traj):
+    from nglview import show_mdtraj
+    
+    return show_mdtraj(to_mdtraj(system, traj))
+
+    io.write(fname, atoms_list)
 
 def plot_lesp(model, traj=None, res=50, start=[3.5, 0.8], end=[0.8, 3.5], fname=None):
     xlist = np.linspace(0.5, 5.0, res)
