@@ -41,13 +41,17 @@ def generate_nbr_list(xyz, cutoff, cell, atom_index=None, get_dis=False):
 
     nbr_list = torch.triu(mask.to(torch.long)).nonzero()
 
-    print(nbr_list.shape)
-
     if get_dis:
         return nbr_list, dis_sq[nbr_list[:,0], nbr_list[:, 1] ].sqrt() 
     else:
         return nbr_list 
 
+def get_offsets(vecs, cell, device):
+    
+    offsets = -vecs.ge(0.5 *  cell).to(torch.float).to(device) + \
+                vecs.lt(-0.5 *  cell).to(torch.float).to(device)
+    
+    return offsets
 
 
 class System(Atoms):
@@ -151,7 +155,6 @@ class PairPotentials(torch.nn.Module):
                                                atom_index=None, 
                                                get_dis=True)
 
-        print(pair_dis.shape)
         # compute pair energy 
         energy = self.model(pair_dis[..., None]).sum()
 
@@ -172,6 +175,57 @@ class Stack(torch.nn.Module):
                 result += new_result
         
         return result
+
+
+class BondPotentials(torch.nn.Module):
+    def __init__(self, system, top, k, ro):
+        super().__init__()
+        self.device = system.device
+        self.cell = torch.Tensor( system.get_cell() )
+        # transform into a diagonal 
+        self.cell = self.cell.diag().to(self.device)
+        self.k = k 
+        self.ro = ro 
+        self.top = top.to(self.device)
+        
+    def forward(self, xyz):
+        bond_vec = xyz[self.top[:,0]] - xyz[self.top[:, 1]]
+        offsets = get_offsets(bond_vec, self.cell, self.device)
+        bond_vec = bond_vec + offsets * self.cell
+        bond = bond_vec.pow(2).sum(-1)
+        
+        energy = 0.5 * self.k * (bond - self.ro).pow(2).sum(-1)
+        
+        return energy
+    
+class AnglePotentials(torch.nn.Module):
+    def __init__(self, system, top, k, thetao):
+        super().__init__()
+        self.device = system.device
+        self.cell = torch.Tensor( system.get_cell() )
+        # transform into a diagonal 
+        self.cell = self.cell.diag().to(self.device)
+        self.k = k 
+        self.thetao = thetao 
+        self.top = top.to(self.device)
+        
+    def forward(self, xyz):
+        
+        bond_vec1 = xyz[self.top[:,0]] - xyz[self.top[:, 1]]
+        bond_vec2 = xyz[self.top[:,2]] - xyz[self.top[:, 1]]
+        bond_vec1 = bond_vec1 + get_offsets(bond_vec1, self.cell, self.device) * self.cell
+        bond_vec2 = bond_vec2 + get_offsets(bond_vec2, self.cell, self.device) * self.cell
+        
+        angle_dot = (bond_vec1 * bond_vec2).sum(-1)
+        norm = ( bond_vec1.pow(2).sum(-1) * bond_vec2.pow(2).sum(-1) ).sqrt()
+
+        cos = angle_dot / norm
+        
+        angle = torch.acos(cos)
+
+        energy = 0.5 * self.k * (angle - self.thetao).pow(2).sum(-1)
+
+        return energy
 
 
 if __name__ == "__main__":
