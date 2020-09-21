@@ -153,7 +153,7 @@ class PairPotentials(torch.nn.Module):
 
         print(pair_dis.shape)
         # compute pair energy 
-        energy = self.model(pair_dis[..., None])
+        energy = self.model(pair_dis[..., None]).sum()
 
         return energy
    
@@ -166,10 +166,10 @@ class Stack(torch.nn.Module):
     def forward(self, x):
         for i, key in enumerate(self.models.keys()):
             if i == 0:
-                result = self.models[key](x).reshape(-1)
+                result = self.models[key](x).sum().reshape(-1)
             else:
-                new_result = self.models[key](x)
-                result += new_result.sum().reshape(-1)
+                new_result = self.models[key](x).sum().reshape(-1)
+                result += new_result
         
         return result
 
