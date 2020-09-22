@@ -173,10 +173,6 @@ class NoseHooverChain(torch.nn.Module):
         else:
             self.traj.append([var.detach().numpy() for var in states])
 
-
-        print(len(self.traj))
-
-
 class NeuralNVT(torch.nn.Module):
 
     def __init__(self, potentials, bathnn, system, T, num_chains=2, Q=1.0, adjoint=True):
