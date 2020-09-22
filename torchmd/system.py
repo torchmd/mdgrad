@@ -13,38 +13,50 @@ def check_system(object):
     if object.__class__ != torchmd.system.System:
         raise TypeError("input should be a torchmd.system.System")
 
-def generate_nbr_list(xyz, cutoff, cell, atom_index=None, get_dis=False):
+
+def generate_pair_index(N, idx1, idx2):
+
+    import itertools
+
+    mask_sel = torch.zeros(N, N)
+
+    pair_mask = torch.LongTensor( [list(items) for items in itertools.product(idx1, 
+                                                                              idx2)]) 
+    print(pair_mask)
+
+    mask_sel[pair_mask[:, 0], pair_mask[:, 1]] = 1
+    
+    return mask_sel
+
+
+def generate_nbr_list(xyz, cutoff, cell, index_tuple=None, get_dis=False):
     
     # todo: make it compatible for non-cubic cells
     # todo: topology should be a class to handle some initialization 
     device = xyz.device
 
-    if atom_index is not None:
-        N = xyz.shape[0]
-        atom_index = atom_index.to(device)
-        mask_sel = torch.zeros(N, N, dtype=torch.float, device=device)
-        #a = np.array(long_list)
-        a = torch.triu_indices(atom_index.shape[0], atom_index.shape[0]).t().to(device)
-        i, j = atom_index[a[:,0]], atom_index[a[:,1]]
-        mask_sel[i, j] = 1
+    if index_tuple is not None:
+        N = xyz.shape[-2] # the 2nd dim is the atoms dim
+
+        mask_sel = generate_pair_index(N, index_tuple[0], index_tuple[1]).to(device)
+
         # todo handle this calculation like a sparse tensor 
         dis_mat = (xyz[..., None, :, :] - xyz[..., :, None, :]) * mask_sel[..., None]
 
     else:
-        dis_mat = (xyz[..., None, :, :] - xyz[..., :, None, :])
+        dis_mat = xyz[..., None, :, :] - xyz[..., :, None, :]
 
     offsets = -dis_mat.ge(0.5 *  cell).to(torch.float).to(device) + \
                     dis_mat.lt(-0.5 *  cell).to(torch.float).to(device)
     dis_mat = dis_mat + offsets * cell
-    dis_sq = dis_mat.pow(2).sum(-1)
+    dis_sq = torch.triu( dis_mat.pow(2).sum(-1) )
     mask = (dis_sq < cutoff ** 2) & (dis_sq != 0)
-
     nbr_list = torch.triu(mask.to(torch.long)).nonzero()
 
     if get_dis:
-        return nbr_list, dis_sq[nbr_list[:,0], nbr_list[:, 1] ].sqrt() 
+        return nbr_list, dis_sq[mask].sqrt() 
     else:
-        return nbr_list 
+        return nbr_list
 
 def get_offsets(vecs, cell, device):
     
@@ -127,7 +139,7 @@ class PairPotentials(torch.nn.Module):
         nbr_list, pair_dis = generate_nbr_list(xyz, 
                                                self.cutoff, 
                                                self.cell, 
-                                               atom_index=None, 
+                                               index_tuple=None, 
                                                get_dis=True)
 
         # compute pair energy 

@@ -16,7 +16,7 @@ class Observable(torch.nn.Module):
         self.natoms = system.get_number_of_atoms()
 
 class rdf(Observable):
-    def __init__(self, system, nbins, r_range):
+    def __init__(self, system, nbins, r_range, index_tuple=None):
         super(rdf, self).__init__(system)
         PI = np.pi
 
@@ -36,29 +36,32 @@ class rdf(Observable):
         self.vol_bins = 4 * PI /3*(self.bins[1:]**3 - self.bins[:-1]**3).to(self.device)
         self.nbins = nbins
         self.cutoff_boundary = self.cutoff + 5e-1
+        self.index_tuple = index_tuple
         
     def forward(self, xyz):
         
-        if len(list( xyz.shape )) != 3 and xyz.shape[-1] != 3:
-            # Get positions 
-            xyz = xyz[:, self.natoms * 3:].reshape(-1, self.natoms, 3)
-
         # Compute RDF         
-        dis_mat = xyz[:, None, :, :] - xyz[:, :, None, :]
-        offsets = -dis_mat.ge(0.5 * self.cell).to(torch.float).to(self.device) + \
-                        dis_mat.lt(-0.5 * self.cell).to(torch.float).to(self.device)
-        dis_mat = dis_mat + offsets * self.cell
-        dis_sq = dis_mat.pow(2).sum(-1)
-        mask = (dis_sq < (self.cutoff_boundary) ** 2) & (dis_sq != 0)
-        pair_dis = dis_sq[mask].sqrt()
+        # dis_mat = xyz[:, None, :, :] - xyz[:, :, None, :]
+        # offsets = -dis_mat.ge(0.5 * self.cell).to(torch.float).to(self.device) + \
+        #                 dis_mat.lt(-0.5 * self.cell).to(torch.float).to(self.device)
+        # dis_mat = dis_mat + offsets * self.cell
+        # dis_sq = dis_mat.pow(2).sum(-1)
+        # mask = (dis_sq < (self.cutoff_boundary) ** 2) & (dis_sq != 0)
+        # pair_dis = dis_sq[mask].sqrt()
 
-        count = self.smear(pair_dis.squeeze()[..., None]).sum(0) 
+        nbr_list, pair_dis = generate_nbr_list(xyz, 
+                                               self.cutoff, 
+                                               self.cell, 
+                                               index_tuple=self.index_tuple, 
+                                               get_dis=True)
+
+        count = self.smear(pair_dis.reshape(-1).squeeze()[..., None]).sum(0) 
         norm = count.sum()   # normalization factor for histogram 
         count = count / norm   # normalize 
         count = count
                          
         V = (4/3)* np.pi * (self.cutoff) ** 3
-        rdf =  count / (self.vol_bins / V )  # interactions are considered twice 
+        rdf =  count / (self.vol_bins / V )  
         
         return count, self.bins, rdf 
 
@@ -136,56 +139,3 @@ def var_K(N_atoms, avg_momentum):
         TYPE: Description
     """
     return (2 * ((0.5 * 3 * N_atoms * avg_momentum **2 ) ** 2)/(3 * N_atoms) ) ** (1/2)
-
-def DiffRDF(xyz, 
-            cell, 
-            box_volume,
-            dis_bin, 
-            smear_model,
-            cutoff, 
-            vol, 
-            device,
-            skip=10):  
-    """Summary
-    
-    Args:
-        xyz (TYPE): Description
-        cell (TYPE): Description
-        box_volume (TYPE): Description
-        dis_bin (TYPE): Description
-        smear_model (TYPE): Description
-        cutoff (TYPE): Description
-        vol (TYPE): Description
-        device (TYPE): Description
-        skip (int, optional): Description
-    
-    Returns:
-        TYPE: Description
-    """
-    assert skip <= xyz.shape[0]
-
-    PI = torch.Tensor([np.pi]).to(device)
-    
-    dis_mat = xyz[skip:, None, :, :] - xyz[skip:, :, None, :]
-
-    offsets = -dis_mat.ge(0.5 *  cell).to(torch.float).to(device) + \
-                    dis_mat.lt(-0.5 * cell).to(torch.float).to(device)
-    dis_mat = dis_mat + offsets * cell
-
-    dis_sq = dis_mat.pow(2).sum(-1)
-    mask = (dis_sq < cutoff ** 2 * 1.1) & (dis_sq != 0)
-
-    pair_dis = dis_sq[mask].sqrt()
-    
-    N_count = mask.sum()
-    
-    count = smear_model(pair_dis.squeeze()[..., None]).sum(0)
-    norm = count.sum()
-    
-#     count = count * mask.sum() / norm
-#     rdf =  count / (2 * vol *  mask.sum() / box_volume) # interactions are considered twice 
-
-    count = count / norm
-    rdf =  count / (2 * vol / box_volume) # interactions are considered twice 
-     
-    return rdf 
