@@ -209,7 +209,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     for i in range(0, n_epochs):
         
         current_time = datetime.now() 
-        trajs = sim.simulate(steps=tau, frequency=int(tau))
+        trajs = sim.simulate(steps=tau, frequency=int(tau), dt=0.5 * units.fs)
         v_t, q_t, pv_t = trajs 
 
         _, bins, g_oo =  obs_oo(q_t[::2])
