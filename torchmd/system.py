@@ -22,7 +22,6 @@ def generate_pair_index(N, idx1, idx2):
 
     pair_mask = torch.LongTensor( [list(items) for items in itertools.product(idx1, 
                                                                               idx2)]) 
-    print(pair_mask)
 
     mask_sel[pair_mask[:, 0], pair_mask[:, 1]] = 1
     
