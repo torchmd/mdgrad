@@ -16,6 +16,7 @@ class Simulations():
                  system,
                   diffeq,
                   adjoint=True,
+                  wrap=True,
                   method="NH_verlet"):
         self.system = system 
         self.device = system.device
@@ -24,10 +25,11 @@ class Simulations():
         self.solvemethod = method
         # flat for printing out simulation status
         self.verbose = True
+        self.wrap = wrap
         
     def simulate(self, steps=1, dt=1.0 * units.fs, frequency=1):
 
-        states = self.intergrator._get_inital_states(all(self.system.pbc))
+        states = self.intergrator._get_inital_states(self.wrap)
 
         sim_epochs = int(steps//frequency)
         t = torch.Tensor([dt * i for i in range(frequency)]).to(self.device)
@@ -39,9 +41,10 @@ class Simulations():
             else:
                 trajs = odeint(self.intergrator, states, t, method=self.solvemethod)
 
+                # check for NaN
             self.intergrator.update_traj(tuple([var[-1] for var in trajs]))
 
-            states = self.intergrator._get_checkpoints(all(self.system.pbc))
+            states = self.intergrator._get_checkpoints(self.wrap)
 
         return trajs
 
@@ -90,6 +93,7 @@ class NoseHooverChain(torch.nn.Module):
         self.Q = torch.Tensor(self.Q).to(self.device)
         self.dim = system.dim
         self.adjoint = adjoint
+        self.num_vars = 3 
 
         # check temperature
         _check_T(T)
@@ -126,24 +130,28 @@ class NoseHooverChain(torch.nn.Module):
         return (dvdt, v, torch.cat((dpvdt_0[None], dpvdt_mid, dpvdt_last[None])))
 
     def _get_inital_states(self, wrap=True):
-        if wrap:
-            states = [
-                    self.system.get_velocities(),
-                    wrap_positions(self.system.get_positions(), 
-                                self.system.get_cell()), 
-                    [0.0] * self.num_chains
-                    ]
+        if hasattr(self, 'traj'):
+            return self._get_checkpoints(wrap)
+
         else:
-            states = [
-                    self.system.get_velocities(), 
-                    self.system.get_positions(), 
-                    [0.0] * self.num_chains]
+            if wrap:
+                states = [
+                        self.system.get_velocities(),
+                        wrap_positions(self.system.get_positions(), 
+                                    self.system.get_cell()), 
+                        [0.0] * self.num_chains
+                        ]
+            else:
+                states = [
+                        self.system.get_velocities(), 
+                        self.system.get_positions(), 
+                        [0.0] * self.num_chains]
 
-        states = [torch.Tensor(var).to(self.system.device) for var in states]
+            states = [torch.Tensor(var).to(self.system.device) for var in states]
 
-        self.traj = []
+            self.traj = []
 
-        return states
+            return states
 
     def _get_checkpoints(self, wrap=True):
 
@@ -158,12 +166,15 @@ class NoseHooverChain(torch.nn.Module):
 
     def update_traj(self, states):
         # should there be a Trajectory objects?
-        assert len(states) == 3
+        assert len(states) == self.num_vars
         assert all([type(state) == torch.Tensor for state in states])        
         if states[0].device != 'cpu':
             self.traj.append([var.detach().cpu().numpy() for var in states])
         else:
             self.traj.append([var.detach().numpy() for var in states])
+
+
+        print(len(self.traj))
 
 
 class NeuralNVT(torch.nn.Module):
