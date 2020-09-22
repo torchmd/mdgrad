@@ -27,7 +27,7 @@ def generate_pair_index(N, idx1, idx2, ex_pairs=None):
     mask_sel[pair_mask[:, 0], pair_mask[:, 1]] = 1
     mask_sel[pair_mask[:, 1], pair_mask[:, 0]] = 1
 
-    if ex_pairs:
+    if ex_pairs is not None:
         mask_sel[ex_pairs[:, 0], ex_pairs[:, 1]] = 0
         mask_sel[ex_pairs[:, 1], ex_pairs[:, 0]] = 0
     
