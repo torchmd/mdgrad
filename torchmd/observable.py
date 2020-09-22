@@ -50,7 +50,7 @@ class rdf(Observable):
         # pair_dis = dis_sq[mask].sqrt()
 
         nbr_list, pair_dis = generate_nbr_list(xyz, 
-                                               self.cutoff, 
+                                               self.cutoff_boundary, 
                                                self.cell, 
                                                index_tuple=self.index_tuple, 
                                                get_dis=True)
@@ -62,7 +62,7 @@ class rdf(Observable):
                          
         V = (4/3)* np.pi * (self.cutoff) ** 3
         rdf =  count / (self.vol_bins / V )  
-        
+
         return count, self.bins, rdf 
 
 
