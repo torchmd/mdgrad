@@ -14,18 +14,19 @@ def check_system(object):
         raise TypeError("input should be a torchmd.system.System")
 
 
-def generate_pair_index(N, idx1, idx2, ex_pairs=None):
+def generate_pair_index(N, index_tuple, ex_pairs=None):
 
     import itertools
 
     mask_sel = torch.zeros(N, N)
 
-    pair_mask = torch.LongTensor( [list(items) for items in itertools.product(idx1, 
-                                                                              idx2)]) 
+    if index_tuple is not None:
+        pair_mask = torch.LongTensor( [list(items) for items in itertools.product(index_tuple[0], 
+                                                                                  index_tuple[1])]) 
 
-    #todo: imporse index convention
-    mask_sel[pair_mask[:, 0], pair_mask[:, 1]] = 1
-    mask_sel[pair_mask[:, 1], pair_mask[:, 0]] = 1
+        #todo: imporse index convention
+        mask_sel[pair_mask[:, 0], pair_mask[:, 1]] = 1
+        mask_sel[pair_mask[:, 1], pair_mask[:, 0]] = 1
 
     if ex_pairs is not None:
         mask_sel[ex_pairs[:, 0], ex_pairs[:, 1]] = 0
@@ -42,10 +43,10 @@ def generate_nbr_list(xyz, cutoff, cell, index_tuple=None, ex_pairs=None, get_di
 
     dis_mat = (xyz[..., None, :, :] - xyz[..., :, None, :])
 
-    if index_tuple is not None:
+    if index_tuple is not None or ex_pairs is not None:
         N = xyz.shape[-2] # the 2nd dim is the atoms dim
 
-        mask_sel = generate_pair_index(N, index_tuple[0], index_tuple[1], ex_pairs).to(device)
+        mask_sel = generate_pair_index(N, index_tuple, ex_pairs).to(device)
         # todo handle this calculation like a sparse tensor 
         dis_mat =  dis_mat * mask_sel[..., None]
 
@@ -179,9 +180,11 @@ class Electrostatics(torch.nn.Module):
         
         q1 = self.charges[nbr_list[:,0]]
         q1 = self.charges[nbr_list[:,1]]
-        U = -self.conversion * (q1 * q1 /pair_dis).sum()
-        
-        return U
+        U = -self.conversion * (q1 * q1 /pair_dis)#.sum()
+
+        #print(U.shape)
+
+        return U.sum()
    
 
 class Stack(torch.nn.Module):
