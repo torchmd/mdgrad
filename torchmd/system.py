@@ -152,6 +152,36 @@ class PairPotentials(torch.nn.Module):
         energy = self.model(pair_dis[..., None]).sum()
 
         return energy
+
+
+class Electrostatics(torch.nn.Module):
+    def __init__(self, charges, cell, device=0, cutoff=2.5, index_tuple=None, ex_pairs=None):
+        super(Electrostatics, self).__init__()
+        self.charges = charges.to(device)
+        from ase import units 
+        k_e = 8.987551787e9
+        EV_TO_J = 1.60210e-19
+        self.conversion = k_e * units.C**-2 * (1/EV_TO_J)  * (units.m) 
+        
+        self.cell = torch.Tensor(cell).to(device)
+        self.device = device
+        self.cutoff = cutoff
+        self.index_tuple = index_tuple
+        self.ex_pairs = ex_pairs
+        
+    def forward(self, x):
+        nbr_list, pair_dis = generate_nbr_list(x, 
+                                               self.cutoff, 
+                                               self.cell, 
+                                               index_tuple=self.index_tuple, 
+                                               ex_pairs=self.ex_pairs, 
+                                               get_dis=True)
+        
+        q1 = self.charges[nbr_list[:,0]]
+        q1 = self.charges[nbr_list[:,1]]
+        U = -self.conversion * (q1 * q1 /pair_dis).sum()
+        
+        return U
    
 
 class Stack(torch.nn.Module):
