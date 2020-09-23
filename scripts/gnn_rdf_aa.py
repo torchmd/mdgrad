@@ -100,8 +100,13 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     cutoff = assignments['cutoff']
     nbins = assignments['nbins']
 
-    esp_scale = assignments['epsilon_scale']
-    sigma_scale = assignments['sigma_scale']
+
+    sigma_oo = assignments['sigma_oo']
+    epsilon_oo = assignments['epsilon_oo']
+    sigma_oh = assignments['sigma_oh']
+    epsilon_oh = assignments['epsilon_oh']
+    sigma_hh = assignments['sigma_hh']
+    epsilon_hh = assignments['epsilon_hh']
 
     oo_start = 2.25
     oo_end = 5.75
@@ -148,27 +153,27 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     }
 
     print(system.get_temperature())
-    pair_oo = PairPotentials(LennardJones, {'epsilon': esp_scale * 0.1521 * KCAL_TO_EV, 'sigma': 3.15 * sigma_scale},
+    pair_oo = PairPotentials(LennardJones, {'epsilon': epsilon_oo, 'sigma': sigma_oo},
                     cell=torch.Tensor(system.get_cell_len()), 
                     device=device,
                     index_tuple=(o_index, o_index),
-                    cutoff=5.5,
+                    cutoff=6.0,
                     ).to(device)
 
-    pair_oh = PairPotentials(LennardJones, {'epsilon': esp_scale * 0.086 * KCAL_TO_EV, 'sigma': 1.77 * sigma_scale},
+    pair_oh = PairPotentials(LennardJones, {'epsilon': epsilon_oh, 'sigma': sigma_oh},
                     cell=torch.Tensor(system.get_cell_len()), 
                     device=device,
                     index_tuple=(o_index, h_index),
                     ex_pairs=bond_top,
-                    cutoff=5.5,
+                    cutoff=6.0,
                     ).to(device)
 
-    pair_hh = PairPotentials(LennardJones, {'epsilon': esp_scale * 0.046 * KCAL_TO_EV, 'sigma': 0.4 * sigma_scale},
+    pair_hh = PairPotentials(LennardJones, {'epsilon': epsilon_hh, 'sigma': sigma_hh},
                     cell=torch.Tensor(system.get_cell_len()), 
                     device=device,
                     index_tuple=(h_index, h_index),
                     ex_pairs=hh_tuple,
-                    cutoff=5.5,
+                    cutoff=6.0,
                     ).to(device)
 
     # define classical potentials 
@@ -238,9 +243,9 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         _, bins, g_oh =  obs_oh(q_t[::2])
         _, bins, g_hh =  obs_hh(q_t[::2])
         
-        loss_oo = JS_rdf(g_oo, g_oo_data) + MSE_rdf(g_oo, g_oo_data, assignments['oo_mse_weight'])
-        loss_oh = JS_rdf(g_oh, g_oh_data) + MSE_rdf(g_oh, g_oh_data, assignments['oh_mse_weight'])
-        loss_hh = JS_rdf(g_hh, g_hh_data) + MSE_rdf(g_hh, g_hh_data, assignments['hh_mse_weight'])
+        loss_oo = JS_rdf(g_oo, g_oo_data) + MSE_rdf(g_oo, g_oo_data, assignments['mse_weight_oo'])
+        loss_oh = JS_rdf(g_oh, g_oh_data) + MSE_rdf(g_oh, g_oh_data, assignments['mse_weight_oh'])
+        loss_hh = JS_rdf(g_hh, g_hh_data) + MSE_rdf(g_hh, g_hh_data, assignments['mse_weight_hh'])
         loss = loss_oo + loss_oh + loss_hh 
 
         print(loss_oo.item(), loss_oh.item(), loss_hh.item(), loss.item())

@@ -21,7 +21,7 @@ else:
     n_obs = 1000
     n_epochs = 1100
     n_sim = 50
-    max_n_epochs = 500
+    max_n_epochs = 100
 
 logdir = params['logdir']
 
@@ -36,17 +36,24 @@ if params['id'] == None:
         parameters=[
             dict(name='n_atom_basis', type='categorical',categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='n_filters', type='categorical', categorical_values=["tiny", "low", "mid", "high"]),
-            dict(name='gaussian_width', type='double', bounds=dict(min=0.05, max=0.25)),
+            dict(name='gaussian_width', type='double', bounds=dict(min=0.05, max=0.2)),
             dict(name='n_convolutions', type='int', bounds=dict(min=1, max=3)),
-            dict(name='sigma_scale', type='double', bounds=dict(min=0.75, max=1.25)),
-            dict(name='epsilon_scale', type='double', bounds=dict(min=0.1, max=2.5)),
+
+            dict(name='sigma_oo', type='double', bounds=dict(min=2.0, max=4.0)),
+            dict(name='epsilon_oo', type='double', bounds=dict(min=0.0005, max=0.01)),
+            dict(name='sigma_oh', type='double', bounds=dict(min=1.0, max=2.0)),
+            dict(name='epsilon_oh', type='double', bounds=dict(min=0.0005, max=0.01)),
+            dict(name='sigma_hh', type='double', bounds=dict(min=0.2, max=1.5)),
+            dict(name='epsilon_hh', type='double', bounds=dict(min=0.0005, max=0.01)),
+
+            dict(name='charge_scale', type='double', bounds=dict(min=0.5, max=1.25)),
             dict(name='opt_freq', type='int', bounds=dict(min=10, max=max_n_epochs)),
-            dict(name='lr', type='double', bounds=dict(min=5e-7, max=1e-4)),
-            dict(name='cutoff', type='double', bounds=dict(min=4.0, max=8.0)),
-            dict(name='oo_mse_weight', type='double', bounds=dict(min=0.0, max=5.0)),
-            dict(name='oh_mse_weight', type='double', bounds=dict(min=0.0, max=5.0)),
-            dict(name='hh_mse_weight', type='double', bounds=dict(min=0.0, max=5.0)),
-            dict(name='nbins', type='int', bounds=dict(min=32, max=128))
+            dict(name='lr', type='double', bounds=dict(min=5e-7, max=3e-4)),
+            dict(name='cutoff', type='double', bounds=dict(min=2.0, max=6.0)),
+            dict(name='mse_weight_oo', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='mse_weight_oh', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='mse_weight_hh', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='nbins', type='int', bounds=dict(min=32, max=100))
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
