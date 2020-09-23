@@ -255,12 +255,11 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         optimizer.zero_grad()
 
         if i % 25 == 0:
-            xnew = np.linspace(oo_start, oo_end, nbins)
-            plot_rdfs(xnew, g_oo_data, g_oo, '{} O-O'.format(i), model_path)
-            xnew = np.linspace(oh_start, oh_end, nbins)
-            plot_rdfs(xnew, g_oh_data, g_oh, '{} O-H'.format(i), model_path)
-            xnew = np.linspace(hh_start, hh_end, nbins)
-            plot_rdfs(xnew, g_hh_data, g_hh, '{} H-H'.format(i), model_path)
+            plot_all(g_oo, g_oo_data, (oo_start, oo_end),
+                     g_oh, g_oh_data, (oh_start, oh_end),
+                     g_hh, g_hh_data, (hh_start, hh_end),
+                     nbins, 
+                     model_path, fname="{}".format(i))
 
         if torch.isnan(loss):
             plt.plot(loss_log)
@@ -321,12 +320,11 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
 
     save_traj(system, sim_trajs.detach().cpu().numpy(),  model_path + '/sim.xyz', skip=1)
 
-    xnew = np.linspace(oo_start, oo_end, test_nbins)
-    plot_rdfs(xnew, g_oo_data, g_oo, 'final O-O', model_path)
-    xnew = np.linspace(oh_start, oh_end, test_nbins)
-    plot_rdfs(xnew, g_oh_data, g_oh, 'final O-H', model_path)
-    xnew = np.linspace(hh_start, hh_end, test_nbins)
-    plot_rdfs(xnew, g_hh_data, g_hh, 'final H-H', model_path)
+    plot_all(g_oo, g_oo_data, (oo_start, oo_end),
+             g_oh, g_oh_data, (oh_start, oh_end),
+             g_hh, g_hh_data, (hh_start, hh_end),
+             test_nbins, 
+             model_path, fname="final" )
 
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
