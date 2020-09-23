@@ -13,15 +13,13 @@ params = vars(parser.parse_args())
 if params['dry_run']:
     token = 'FSDXBSGDUZUQEDGDCYPCXFTRXFNYBVXVACKZQUWNSOKGKGFN'
     n_obs = 2
-    tmax = 200
     n_epochs = 4
     n_sim = 2
     max_n_epochs = 30
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 1000
-    tmax = 25000
-    n_epochs = 1000
+    n_epochs = 1100
     n_sim = 50
     max_n_epochs = 500
 
@@ -43,11 +41,11 @@ if params['id'] == None:
             dict(name='sigma_scale', type='double', bounds=dict(min=0.75, max=1.25)),
             dict(name='epsilon_scale', type='double', bounds=dict(min=0.1, max=2.5)),
             dict(name='opt_freq', type='int', bounds=dict(min=10, max=max_n_epochs)),
-            dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-4)),
+            dict(name='lr', type='double', bounds=dict(min=5e-7, max=1e-4)),
             dict(name='cutoff', type='double', bounds=dict(min=4.0, max=8.0)),
-            dict(name='oo_mse_weight', type='double', bounds=dict(min=0.0, max=10.0)),
-            dict(name='oh_mse_weight', type='double', bounds=dict(min=0.0, max=10.0)),
-            dict(name='hh_mse_weight', type='double', bounds=dict(min=0.0, max=10.0)),
+            dict(name='oo_mse_weight', type='double', bounds=dict(min=0.0, max=5.0)),
+            dict(name='oh_mse_weight', type='double', bounds=dict(min=0.0, max=5.0)),
+            dict(name='hh_mse_weight', type='double', bounds=dict(min=0.0, max=5.0)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128))
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization

@@ -65,7 +65,6 @@ def plot_rdfs(bins, target_g, simulated_g, fname, path):
 def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     # parse params 
 
-    tmax = sys_params['tmax']
     dt = sys_params['dt']
     n_epochs = sys_params['n_epochs'] 
     n_sim = sys_params['n_sim'] 
@@ -81,7 +80,6 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     oh_end = 5.75
     hh_start = 1.0
     hh_end = 5.75
-
     size = 3
 
     print(assignments)
@@ -124,25 +122,15 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
 
     print(system.get_temperature())
 
-    params = {
-        'n_atom_basis': 128,
-        'n_filters': 128,
-        'n_gaussians': 25,
-        'n_convolutions': 2,
-        'cutoff': 4.5,
-        'trainable_gauss': False
-    }
 
-    epsilon_scale = 1.0
-
-    pair_oo = PairPotentials(LennardJones, {'epsilon': epsilon_scale * 0.1521 * KCAL_TO_EV, 'sigma': 3.15 * sigma_scale},
+    pair_oo = PairPotentials(LennardJones, {'epsilon': esp_scale * 0.1521 * KCAL_TO_EV, 'sigma': 3.15 * sigma_scale},
                     cell=torch.Tensor(system.get_cell_len()), 
                     device=device,
                     index_tuple=(o_index, o_index),
                     cutoff=5.5,
                     ).to(device)
 
-    pair_oh = PairPotentials(LennardJones, {'epsilon': epsilon_scale * 0.086 * KCAL_TO_EV, 'sigma': 1.77 * sigma_scale},
+    pair_oh = PairPotentials(LennardJones, {'epsilon': esp_scale * 0.086 * KCAL_TO_EV, 'sigma': 1.77 * sigma_scale},
                     cell=torch.Tensor(system.get_cell_len()), 
                     device=device,
                     index_tuple=(o_index, h_index),
@@ -150,7 +138,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
                     cutoff=5.5,
                     ).to(device)
 
-    pair_hh = PairPotentials(LennardJones, {'epsilon': epsilon_scale * 0.046 * KCAL_TO_EV, 'sigma': 0.4 * sigma_scale},
+    pair_hh = PairPotentials(LennardJones, {'epsilon': esp_scale * 0.046 * KCAL_TO_EV, 'sigma': 0.4 * sigma_scale},
                     cell=torch.Tensor(system.get_cell_len()), 
                     device=device,
                     index_tuple=(h_index, h_index),
@@ -165,7 +153,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     bondenergy = BondPotentials(system, bond_top, k_bond, rOH)
     angleenergy = AnglePotentials(system, angle_top, k_angle, angleHOH * np.pi / 180 )
 
-    model = get_model(params)
+    model = get_model(gnn_params)
     GNN = GNNPotentials(model, system.get_batch(), system.get_cell_len(), cutoff=5.5, device=system.device)
     model = Stack({'gnn': GNN, 
                    'pair_oo': pair_oo,
