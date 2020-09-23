@@ -62,8 +62,7 @@ while experiment.progress.observation_count < experiment.observation_budget:
     suggestion = conn.experiments(experiment.id).suggestions().create()
 
     sys_params = {
-    'tmax': tmax,
-    'dt': 1.0,
+    'dt': 0.5,
     'n_epochs': n_epochs,
     'n_sim': n_sim
     }
