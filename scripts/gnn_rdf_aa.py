@@ -4,7 +4,7 @@ import sys
 import torchmd
 from scripts import * 
 from nff.train import get_model
-from torchmd.system import GNNPotentials, PairPotentials, System, Stack, AnglePotentials, BondPotentials
+from torchmd.system import GNNPotentials, PairPotentials, System, Stack, AnglePotentials, BondPotentials, Electrostatics
 from torchmd.md import Simulations
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from torchmd.potentials import ExcludedVolume, LennardJones
@@ -62,6 +62,35 @@ def plot_rdfs(bins, target_g, simulated_g, fname, path):
     plt.show()
     plt.close()
 
+def plot_all(g_oo, g_oo_data, oo_range, g_oh, g_oh_data, oh_range, g_hh, g_hh_data, hh_range, nbins, path, fname):
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    fig.set_size_inches(15,4)
+
+    xnew = np.linspace(oo_range[0], oo_range[1], nbins)
+    ax1.set_title('O-O')
+    ax1.plot(xnew, g_oo.detach().cpu().numpy() , linewidth=4, alpha=0.6, label='sim.' )
+    ax1.plot(xnew, g_oo_data.detach().cpu().numpy(), linewidth=2,linestyle='--', c='black', label='exp.')
+    ax1.set_ylabel("g(r)")
+    ax1.set_xlabel("$\AA$")
+
+    ax2.set_title("O-H")
+    xnew = np.linspace(oh_range[0], oh_range[1], nbins)
+    ax2.plot(xnew, g_oh.detach().cpu().numpy() , linewidth=4, alpha=0.6, label='sim.' )
+    ax2.plot(xnew, g_oh_data.detach().cpu().numpy(), linewidth=2,linestyle='--', c='black', label='exp.')
+    ax2.set_xlabel("$\AA$")
+
+    ax3.set_title('H-H')
+    xnew = np.linspace(hh_range[0], hh_range[1], nbins)
+    ax3.plot(xnew, g_hh.detach().cpu().numpy() , linewidth=4, alpha=0.6, label='sim.' )
+    ax3.plot(xnew, g_hh_data.detach().cpu().numpy(), linewidth=2,linestyle='--', c='black', label='exp.')
+    ax3.set_xlabel("$\AA$")
+    ax3.legend()
+
+    plt.savefig(path + '/{}.jpg'.format(fname), bbox_inches='tight')
+    plt.show()
+    plt.close()
+
 def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     # parse params 
 
@@ -109,7 +138,6 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     o_index = [i * 3 for i in range(size ** 3)]
     h_index = [i * 3 + j + 1 for i in range(size ** 3) for j in range(2)]
 
-
     gnn_params = {
         'n_atom_basis': width_dict[assignments['n_atom_basis']],
         'n_filters': width_dict[assignments['n_filters']],
@@ -119,10 +147,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         'trainable_gauss': False
     }
 
-
     print(system.get_temperature())
-
-
     pair_oo = PairPotentials(LennardJones, {'epsilon': esp_scale * 0.1521 * KCAL_TO_EV, 'sigma': 3.15 * sigma_scale},
                     cell=torch.Tensor(system.get_cell_len()), 
                     device=device,
@@ -153,14 +178,20 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     bondenergy = BondPotentials(system, bond_top, k_bond, rOH)
     angleenergy = AnglePotentials(system, angle_top, k_angle, angleHOH * np.pi / 180 )
 
+    # initialize coulomb charges 
+    charges = torch.Tensor( [-0.834, 0.417, 0.417] * (size ** 3) ) * assignments['charge_scale']
+    coulomb = Electrostatics(charges, system.get_cell_len(), device=device,
+                                cutoff=6, index_tuple=None, ex_pairs=torch.cat((hh_tuple, bond_top), dim=0))
     model = get_model(gnn_params)
-    GNN = GNNPotentials(model, system.get_batch(), system.get_cell_len(), cutoff=5.5, device=system.device)
+    GNN = GNNPotentials(model, system.get_batch(), system.get_cell_len(), cutoff=cutoff, device=system.device)
     model = Stack({'gnn': GNN, 
                    'pair_oo': pair_oo,
                    'pair_oh': pair_oh, 
                    'pair_hh': pair_hh, 
                    'angle': angleenergy, 
-                   'bond': bondenergy})
+                   'bond': bondenergy,
+                   'coulomb': coulomb
+                })
 
     # define the equation of motion to propagate 
     diffeq = NoseHooverChain(model, 
@@ -172,6 +203,9 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
 
     # define simulator with 
     sim = Simulations(system, diffeq)
+
+    # equilibrate 
+    v_t, q_t, pv_t = sim.simulate(steps=100, frequency=25, dt=0.5 *units.fs)
 
     # Set up observable 
     obs_oo = rdf(system, nbins=nbins, r_range=(oo_start, oo_end), index_tuple=(o_index, o_index))
@@ -204,9 +238,9 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         _, bins, g_oh =  obs_oh(q_t[::2])
         _, bins, g_hh =  obs_hh(q_t[::2])
         
-        loss_oo = JS_rdf(g_oo, g_oo_data) + MSE_rdf(g_oo, g_oo_data, 1.0)
-        loss_oh = JS_rdf(g_oh, g_oh_data) + MSE_rdf(g_oh, g_oh_data, 1.0)
-        loss_hh = JS_rdf(g_hh, g_hh_data) + MSE_rdf(g_hh, g_hh_data, 1.0)
+        loss_oo = JS_rdf(g_oo, g_oo_data) + MSE_rdf(g_oo, g_oo_data, assignments['oo_mse_weight'])
+        loss_oh = JS_rdf(g_oh, g_oh_data) + MSE_rdf(g_oh, g_oh_data, assignments['oh_mse_weight'])
+        loss_hh = JS_rdf(g_hh, g_hh_data) + MSE_rdf(g_hh, g_hh_data, assignments['hh_mse_weight'])
         loss = loss_oo + loss_oh + loss_hh 
 
         print(loss_oo.item(), loss_oh.item(), loss_hh.item(), loss.item())
@@ -253,7 +287,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     sim_trajs = []
     del diffeq.traj
     for i in range(n_sim):
-        _, q_t, _ = sim.simulate(steps=100, frequency=25)
+        _, q_t, _ = sim.simulate(steps=100, frequency=25, dt=dt * units.fs)
         sim_trajs.append(q_t[-1].detach().cpu().numpy())
 
     sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device)
