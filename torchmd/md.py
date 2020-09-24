@@ -15,13 +15,12 @@ class Simulations():
     def __init__(self,
                  system,
                   diffeq,
-                  adjoint=True,
                   wrap=True,
                   method="NH_verlet"):
         self.system = system 
         self.device = system.device
         self.intergrator = diffeq
-        self.adjoint = adjoint
+        self.adjoint = diffeq.adjoint
         self.solvemethod = method
         # flat for printing out simulation status
         self.verbose = True
@@ -39,7 +38,10 @@ class Simulations():
             if self.adjoint:
                 trajs = odeint_adjoint(self.intergrator, states, t, method=self.solvemethod)
             else:
-                trajs = odeint(self.intergrator, states, t, method=self.solvemethod)
+
+                for var in states:
+                    var.requires_grad = True 
+                trajs = odeint(self.intergrator, tuple(states), t, method=self.solvemethod)
 
                 # check for NaN
             self.intergrator.update_traj(tuple([var[-1] for var in trajs]))
@@ -111,8 +113,8 @@ class NoseHooverChain(torch.nn.Module):
             
             N = self.N_dof
             
-            p = v.reshape(-1, self.dim) * self.mass[:, None]
-            q = q.reshape(-1, self.dim)
+            p = v * self.mass[:, None]
+            #q = q.reshape(-1, self.dim)
 
             sys_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum() 
             
