@@ -44,13 +44,13 @@ def get_exp_rdf(data, nbins, r_range, obs):
 def JS_rdf(g_obs, g):
     e0 = 1e-4
     g_m = 0.5 * (g_obs + g)
-    loss_js =  ( -(g_obs + e0 ) * (torch.log(g_m + e0 ) - torch.log(g_obs +  e0)) ).sum()
-    loss_js += ( -(g + e0 ) * (torch.log(g_m + e0 ) - torch.log(g + e0) ) ).sum()
+    loss_js =  ( -(g_obs + e0 ) * (torch.log(g_m + e0 ) - torch.log(g_obs +  e0)) ).mean()
+    loss_js += ( -(g + e0 ) * (torch.log(g_m + e0 ) - torch.log(g + e0) ) ).mean()
 
     return loss_js
 
 def MSE_rdf(target, simulated, weight):
-    return weight * (target - simulated).pow(2).sum()
+    return weight * (target - simulated).pow(2).mean()
 
 def plot_rdfs(bins, target_g, simulated_g, fname, path):
     plt.title("epoch {}".format(fname))
@@ -226,10 +226,39 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     count_obs, g_oh_data = get_exp_rdf(data_oh, nbins, (oh_start, oh_end), obs_oh)
     count_obs, g_hh_data = get_exp_rdf(data_hh, nbins, (hh_start, hh_end), obs_hh)
 
+
+    # Set up test functions 
+    test_nbins = 128
+
+    test_obs_oo = rdf(system, nbins=test_nbins, r_range=(oo_start, oo_end), index_tuple=(o_index, o_index))
+    test_obs_oh = rdf(system, nbins=test_nbins, r_range=(oh_start, oh_end), index_tuple=(o_index, h_index))
+    test_obs_hh = rdf(system, nbins=test_nbins, r_range=(hh_start, hh_end), index_tuple=(h_index, h_index))
+
+    count_obs, test_g_oo_data = get_exp_rdf(data_oo, test_nbins, (oo_start, oo_end), test_obs_oo)
+    count_obs, test_g_oh_data = get_exp_rdf(data_oh, test_nbins, (oh_start, oh_end), test_obs_oh)
+    count_obs, test_g_hh_data = get_exp_rdf(data_hh, test_nbins, (hh_start, hh_end), test_obs_hh)
+
+
+    def get_test_loss(traj):
+
+        traj = traj.detach()
+
+        _, bins, test_g_oo =  test_obs_oo(traj[::2])
+        _, bins, test_g_oh =  test_obs_oh(traj[::2])
+        _, bins, test_g_hh =  test_obs_hh(traj[::2])
+
+        # compute equilibrated rdf         
+        loss_oo = JS_rdf(test_g_oo, test_g_oo_data).item()
+        loss_oh = JS_rdf(test_g_oh, test_g_oh_data).item()
+        loss_hh = JS_rdf(test_g_hh, test_g_hh_data).item()
+
+        return loss_oo + loss_oh + loss_hh
+
     # define optimizer 
     optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=assignments['lr'])
 
     loss_log = []
+    test_loss_log = []
     loss_js_log = []
     traj = []
 
@@ -261,16 +290,18 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
                      nbins, 
                      model_path, fname="{}".format(i))
 
+            test_loss = get_test_loss(q_t)
+
+            test_loss_log.append(test_loss)
+
         if torch.isnan(loss):
-            plt.plot(loss_log)
+            plt.plot(test_loss_log)
             plt.yscale("log")
             plt.savefig(model_path + '/loss.jpg')
             plt.close()
-            return np.array(loss_log[-16:-2]).mean()
+            return np.array(test_loss_log[-16:-1]).mean() + (1 - (i / n_epochs))
         else:
             loss_log.append(loss.item())
-
-        loss_log.append(loss.item())
 
         # check for loss convergence
         min_idx = np.array(loss_log).argmin()
@@ -279,9 +310,14 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
             print("converged")
             break
 
+    plt.plot(test_loss_log)
+    plt.yscale("log")
+    plt.savefig(model_path + '/test_loss.jpg', bbox_inches='tight')
+    plt.close()
+
     plt.plot(loss_log)
     plt.yscale("log")
-    plt.savefig(model_path + '/loss.jpg', bbox_inches='tight')
+    plt.savefig(model_path + '/train_loss.jpg', bbox_inches='tight')
     plt.close()
 
     train_traj = [var[1] for var in diffeq.traj]
@@ -295,43 +331,28 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         sim_trajs.append(q_t[-1].detach().cpu().numpy())
 
     sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device)
-    sim_trajs.requires_grad = False # no gradient required 
-
-    # compute equilibrate rdf with finer bins 
-    test_nbins = 128
-
-    obs_oo = rdf(system, nbins=test_nbins, r_range=(oo_start, oo_end), index_tuple=(o_index, o_index))
-    obs_oh = rdf(system, nbins=test_nbins, r_range=(oh_start, oh_end), index_tuple=(o_index, h_index))
-    obs_hh = rdf(system, nbins=test_nbins, r_range=(hh_start, hh_end), index_tuple=(h_index, h_index))
-
-    count_obs, g_oo_data = get_exp_rdf(data_oo, test_nbins, (oo_start, oo_end), obs_oo)
-    count_obs, g_oh_data = get_exp_rdf(data_oh, test_nbins, (oh_start, oh_end), obs_oh)
-    count_obs, g_hh_data = get_exp_rdf(data_hh, test_nbins, (hh_start, hh_end), obs_hh)
-
-    _, bins, g_oo =  obs_oo(q_t[::2])
-    _, bins, g_oh =  obs_oh(q_t[::2])
-    _, bins, g_hh =  obs_hh(q_t[::2])
-
-    # compute equilibrated rdf         
-    loss_oo = JS_rdf(g_oo, g_oo_data) 
-    loss_oh = JS_rdf(g_oh, g_oh_data)
-    loss_hh = JS_rdf(g_hh, g_hh_data)
-    loss = loss_oo + loss_oh + loss_hh 
+    test_loss = get_test_loss(sim_trajs)
 
     save_traj(system, sim_trajs.detach().cpu().numpy(),  model_path + '/sim.xyz', skip=1)
 
-    plot_all(g_oo, g_oo_data, (oo_start, oo_end),
-             g_oh, g_oh_data, (oh_start, oh_end),
-             g_hh, g_hh_data, (hh_start, hh_end),
+    # save final plots 
+    _, _, test_g_oo =  test_obs_oo(sim_trajs[::2])
+    _, _, test_g_oh =  test_obs_oh(sim_trajs[::2])
+    _, _, test_g_hh =  test_obs_hh(sim_trajs[::2])
+
+    plot_all(test_g_oo, test_g_oo_data, (oo_start, oo_end),
+             test_g_oh, test_g_oh_data, (oh_start, oh_end),
+             test_g_hh, test_g_hh_data, (hh_start, hh_end),
              test_nbins, 
-             model_path, fname="final" )
+             model_path, 
+             fname="final" )
 
-    np.savetxt(model_path + '/loss.csv', np.array(loss_log))
+    np.savetxt(model_path + '/loss.csv', np.array(test_loss_log))
 
-    if torch.isnan(loss):
-        return np.array(loss_log[-16:-2]).mean()
+    if torch.isnan(torch.Tensor([test_loss])):
+        return np.array(test_loss_log[-5:-1]).mean() + 0.25
     else:
-        return loss.item()
+        return test_loss
 
 def save_traj(system, traj, fname, skip=10):
     atoms_list = []
