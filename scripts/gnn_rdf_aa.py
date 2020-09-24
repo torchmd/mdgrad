@@ -290,16 +290,20 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
                      nbins, 
                      model_path, fname="{}".format(i))
 
-            test_loss = get_test_loss(q_t)
+            test_loss = get_test_loss(q_t.detach())
+
 
             test_loss_log.append(test_loss)
+
+            print("getting test loss", np.array(test_loss_log).mean())
 
         if torch.isnan(loss):
             plt.plot(test_loss_log)
             plt.yscale("log")
             plt.savefig(model_path + '/loss.jpg')
             plt.close()
-            return np.array(test_loss_log[-16:-1]).mean() + (1 - (i / n_epochs))
+
+            return np.array(test_loss_log).mean() + (1 - (i / n_epochs)) * 5
         else:
             loss_log.append(loss.item())
 
