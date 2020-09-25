@@ -16,7 +16,7 @@ class Observable(torch.nn.Module):
         self.natoms = system.get_number_of_atoms()
 
 class rdf(Observable):
-    def __init__(self, system, nbins, r_range, index_tuple=None):
+    def __init__(self, system, nbins, r_range, index_tuple=None, width=None):
         super(rdf, self).__init__(system)
         PI = np.pi
 
@@ -29,6 +29,7 @@ class rdf(Observable):
             start=start,
             stop=self.bins[-1],
             n_gaussians=nbins,
+            width=width,
             trainable=False
         ).to(self.device)
         self.cutoff = end
@@ -39,15 +40,6 @@ class rdf(Observable):
         self.index_tuple = index_tuple
         
     def forward(self, xyz):
-        
-        # Compute RDF         
-        # dis_mat = xyz[:, None, :, :] - xyz[:, :, None, :]
-        # offsets = -dis_mat.ge(0.5 * self.cell).to(torch.float).to(self.device) + \
-        #                 dis_mat.lt(-0.5 * self.cell).to(torch.float).to(self.device)
-        # dis_mat = dis_mat + offsets * self.cell
-        # dis_sq = dis_mat.pow(2).sum(-1)
-        # mask = (dis_sq < (self.cutoff_boundary) ** 2) & (dis_sq != 0)
-        # pair_dis = dis_sq[mask].sqrt()
 
         nbr_list, pair_dis = generate_nbr_list(xyz, 
                                                self.cutoff_boundary, 

@@ -51,10 +51,13 @@ class GaussianSmearing(nn.Module):
               is False.
     """
 
-    def __init__(self, start, stop, n_gaussians, centered=False, trainable=False):
+    def __init__(self, start, stop, n_gaussians, width=None, centered=False, trainable=False):
         super().__init__()
         offset = torch.linspace(start, stop, n_gaussians)
-        widths = torch.FloatTensor((offset[1] - offset[0]) * torch.ones_like(offset))
+        if width is None:
+            widths = torch.FloatTensor((offset[1] - offset[0]) * torch.ones_like(offset))
+        else:
+            widths = torch.FloatTensor(width * torch.ones_like(offset))
         if trainable:
             self.width = nn.Parameter(widths)
             self.offsets = nn.Parameter(offset)
