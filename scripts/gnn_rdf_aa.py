@@ -114,6 +114,15 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     oh_end = 5.75
     hh_start = 1.0
     hh_end = 5.75
+
+    # make the starting position of rdf as a param
+    oo_start_train = assignments['rdf_start_oo']
+    oh_start_train = assignments['rdf_start_oh']
+    hh_start_train = assignments['rdf_start_hh']
+
+    skip = assignments['frameskip']
+    rdf_smear_width = assignments['rdf_smear_width']
+
     size = 3
 
     print(assignments)
@@ -209,22 +218,19 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     # define simulator with 
     sim = Simulations(system, diffeq)
 
-    # equilibrate 
-    v_t, q_t, pv_t = sim.simulate(steps=100, frequency=25, dt=0.5 *units.fs)
-
     # Set up observable 
-    obs_oo = rdf(system, nbins=nbins, r_range=(oo_start, oo_end), index_tuple=(o_index, o_index))
-    obs_oh = rdf(system, nbins=nbins, r_range=(oh_start, oh_end), index_tuple=(o_index, h_index))
-    obs_hh = rdf(system, nbins=nbins, r_range=(hh_start, hh_end), index_tuple=(h_index, h_index))
+    obs_oo = rdf(system, nbins=nbins, r_range=(oo_start_train, oo_end), index_tuple=(o_index, o_index), width=rdf_smear_width)
+    obs_oh = rdf(system, nbins=nbins, r_range=(oh_start_train, oh_end), index_tuple=(o_index, h_index), width=rdf_smear_width)
+    obs_hh = rdf(system, nbins=nbins, r_range=(hh_start_train, hh_end), index_tuple=(h_index, h_index), width=rdf_smear_width)
 
     # initialize observable function 
     data_oo = np.load("../data/water_exp_pccp.npy")
     data_oh = np.load("../data/water_exp_jcp_oh.npy")
     data_hh = np.load("../data/water_exp_jcp_hh.npy")
 
-    count_obs, g_oo_data = get_exp_rdf(data_oo, nbins, (oo_start, oo_end), obs_oo)
-    count_obs, g_oh_data = get_exp_rdf(data_oh, nbins, (oh_start, oh_end), obs_oh)
-    count_obs, g_hh_data = get_exp_rdf(data_hh, nbins, (hh_start, hh_end), obs_hh)
+    count_obs, g_oo_data = get_exp_rdf(data_oo, nbins, (oo_start_train, oo_end), obs_oo)
+    count_obs, g_oh_data = get_exp_rdf(data_oh, nbins, (oh_start_train, oh_end), obs_oh)
+    count_obs, g_hh_data = get_exp_rdf(data_hh, nbins, (hh_start_train, hh_end), obs_hh)
 
 
     # Set up test functions 
@@ -268,9 +274,9 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         trajs = sim.simulate(steps=tau, frequency=int(tau), dt=dt * units.fs)
         v_t, q_t, pv_t = trajs 
 
-        _, bins, g_oo =  obs_oo(q_t[::2])
-        _, bins, g_oh =  obs_oh(q_t[::2])
-        _, bins, g_hh =  obs_hh(q_t[::2])
+        _, bins, g_oo =  obs_oo(q_t[::skip])
+        _, bins, g_oh =  obs_oh(q_t[::skip])
+        _, bins, g_hh =  obs_hh(q_t[::skip])
         
         loss_oo = JS_rdf(g_oo, g_oo_data) + MSE_rdf(g_oo, g_oo_data, assignments['mse_weight_oo'])
         loss_oh = JS_rdf(g_oh, g_oh_data) + MSE_rdf(g_oh, g_oh_data, assignments['mse_weight_oh'])
@@ -284,15 +290,13 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         optimizer.zero_grad()
 
         if i % 25 == 0:
-            plot_all(g_oo, g_oo_data, (oo_start, oo_end),
-                     g_oh, g_oh_data, (oh_start, oh_end),
-                     g_hh, g_hh_data, (hh_start, hh_end),
+            plot_all(g_oo, g_oo_data, (oo_start_train, oo_end),
+                     g_oh, g_oh_data, (oh_start_train, oh_end),
+                     g_hh, g_hh_data, (hh_start_train, hh_end),
                      nbins, 
                      model_path, fname="{}".format(i))
 
             test_loss = get_test_loss(q_t.detach())
-
-
             test_loss_log.append(test_loss)
 
             print("getting test loss", np.array(test_loss_log).mean())
@@ -310,7 +314,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         # check for loss convergence
         min_idx = np.array(loss_log).argmin()
 
-        if i - min_idx >= 125:
+        if i - min_idx >= 100:
             print("converged")
             break
 
