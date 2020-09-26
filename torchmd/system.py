@@ -123,17 +123,19 @@ class System(Atoms):
         
         
 class GNNPotentials(torch.nn.Module):
-    def __init__(self, module, inputs, cell, cutoff, device):
+    def __init__(self, module, inputs, cell, cutoff, device, ex_pairs=None):
         super().__init__()
         self.module = module
         self.cutoff = cutoff
         # initialize the dictionary for model inputs 
         self.inputs = batch_to(inputs, device)
         self.cell = torch.Tensor(cell).to(device)
+        self.ex_pairs = ex_pairs
         self.to(device)
 
+
     def forward(self, xyz): 
-        self.inputs['nbr_list'] = generate_nbr_list(xyz, self.cutoff, self.cell)
+        self.inputs['nbr_list'] = generate_nbr_list(xyz, self.cutoff, self.cell, ex_pairs=self.ex_pairs)
         results = self.module(self.inputs, xyz)
         return results['energy']
 
@@ -203,7 +205,6 @@ class Stack(torch.nn.Module):
         
     def forward(self, x):
         for i, key in enumerate(self.models.keys()):
-            print(key)
             if i == 0:
                 result = self.models[key](x).sum().reshape(-1)
             else:
