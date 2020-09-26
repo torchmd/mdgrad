@@ -14,7 +14,7 @@ def check_system(object):
         raise TypeError("input should be a torchmd.system.System")
 
 
-def generate_pair_index(N, index_tuple, ex_pairs=None):
+def generate_pair_index(N, index_tuple):
 
     import itertools
 
@@ -27,10 +27,6 @@ def generate_pair_index(N, index_tuple, ex_pairs=None):
         #todo: imporse index convention
         mask_sel[pair_mask[:, 0], pair_mask[:, 1]] = 1
         mask_sel[pair_mask[:, 1], pair_mask[:, 0]] = 1
-
-    if ex_pairs is not None:
-        mask_sel[ex_pairs[:, 0], ex_pairs[:, 1]] = 0
-        mask_sel[ex_pairs[:, 1], ex_pairs[:, 0]] = 0
     
     return mask_sel
 
@@ -43,12 +39,23 @@ def generate_nbr_list(xyz, cutoff, cell, index_tuple=None, ex_pairs=None, get_di
 
     dis_mat = (xyz[..., None, :, :] - xyz[..., :, None, :])
 
-    if index_tuple is not None or ex_pairs is not None:
+    if index_tuple is not None:
         N = xyz.shape[-2] # the 2nd dim is the atoms dim
 
-        mask_sel = generate_pair_index(N, index_tuple, ex_pairs).to(device)
+        mask_sel = generate_pair_index(N, index_tuple).to(device)
         # todo handle this calculation like a sparse tensor 
         dis_mat =  dis_mat * mask_sel[..., None]
+
+    if ex_pairs is not None:
+
+        N = xyz.shape[-2] # the 2nd dim is the atoms dim
+
+        mask = torch.ones(N, N)
+        mask[ex_pairs[:,0], ex_pairs[:, 1]] = 0
+        mask[ex_pairs[:,1], ex_pairs[:, 0]] = 0
+
+        # todo handle this calculation like a sparse tensor 
+        dis_mat = dis_mat * mask[..., None].to(device)
 
     offsets = -dis_mat.ge(0.5 *  cell).to(torch.float).to(device) + \
                     dis_mat.lt(-0.5 *  cell).to(torch.float).to(device)
@@ -56,6 +63,8 @@ def generate_nbr_list(xyz, cutoff, cell, index_tuple=None, ex_pairs=None, get_di
     dis_sq = torch.triu( dis_mat.pow(2).sum(-1) )
     mask = (dis_sq < cutoff ** 2) & (dis_sq != 0)
     nbr_list = torch.triu(mask.to(torch.long)).nonzero()
+
+    #print(nbr_list.shape)
 
     if get_dis:
         return nbr_list, dis_sq[mask].sqrt() 
@@ -194,6 +203,7 @@ class Stack(torch.nn.Module):
         
     def forward(self, x):
         for i, key in enumerate(self.models.keys()):
+            print(key)
             if i == 0:
                 result = self.models[key](x).sum().reshape(-1)
             else:
