@@ -48,8 +48,8 @@ if params['id'] == None:
 
             dict(name='charge_scale', type='double', bounds=dict(min=0.25, max=2)),
             dict(name='opt_freq', type='int', bounds=dict(min=5, max=max_n_epochs)),
-            dict(name='lr', type='double', bounds=dict(min=5e-7, max=2e-5)),
-            dict(name='cutoff', type='double', bounds=dict(min=2.0, max=6.0)),
+            dict(name='lr', type='double', bounds=dict(min=5e-7, max=5e-4)),
+            dict(name='cutoff', type='double', bounds=dict(min=3.0, max=6.0)),
             dict(name='mse_weight_oo', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='mse_weight_oh', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='mse_weight_hh', type='double', bounds=dict(min=0.0, max=1.0)),
@@ -61,6 +61,10 @@ if params['id'] == None:
 
             dict(name='frameskip', type='int', bounds=dict(min=1, max=5)),
             dict(name='rdf_smear_width', type='double', bounds=dict(min=0.01, max=0.15)),
+
+            dict(name='intra_interaction_flag', type='categorical', categorical_values=["True", "False"]),
+            dict(name='warmup_flag', type='categorical', categorical_values=["True", "False"]),
+
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,

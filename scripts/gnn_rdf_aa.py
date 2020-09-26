@@ -91,6 +91,29 @@ def plot_all(g_oo, g_oo_data, oo_range, g_oh, g_oh_data, oh_range, g_hh, g_hh_da
     plt.show()
     plt.close()
 
+def warmup(system, diffeq, GCN):
+
+    print("Warming up ")    
+     
+    sim = Simulations(system, diffeq, wrap=True)
+
+    v_t, q_t, pv_t = sim.simulate(steps=50, frequency=25, dt=0.1 *units.fs)
+    optimizer = torch.optim.Adam(list(GCN.parameters() ), lr=0.0005)
+    
+    for epoch in range(10):
+        for frames in diffeq.traj:
+            q = torch.Tensor(frames[1]).to(diffeq.device)
+            q.requires_grad = True
+            u = GCN(q)
+
+            f = compute_grad(q, u)
+            loss = f.pow(2).mean()
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            print("average forces", f.abs().mean().item())
+        
+
 def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     # parse params 
 
@@ -123,7 +146,12 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     skip = assignments['frameskip']
     rdf_smear_width = assignments['rdf_smear_width']
 
-    size = 3
+    if assignments['intra_interaction_flag'] == "True":
+        intra_interaction_flag = True
+    else:
+        intra_interaction_flag = False
+
+    size = 4
 
     print(assignments)
 
@@ -151,6 +179,8 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     # get atom type index
     o_index = [i * 3 for i in range(size ** 3)]
     h_index = [i * 3 + j + 1 for i in range(size ** 3) for j in range(2)]
+
+    intra_pairs = torch.cat((hh_tuple, bond_top), dim=0)
 
     gnn_params = {
         'n_atom_basis': width_dict[assignments['n_atom_basis']],
@@ -192,31 +222,69 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     bondenergy = BondPotentials(system, bond_top, k_bond, rOH)
     angleenergy = AnglePotentials(system, angle_top, k_angle, angleHOH * np.pi / 180 )
 
+    #print(torch.cat((hh_tuple, bond_top)))
+
     # initialize coulomb charges 
     charges = torch.Tensor( [-0.834, 0.417, 0.417] * (size ** 3) ) * assignments['charge_scale']
     coulomb = Electrostatics(charges, system.get_cell_len(), device=device,
-                                cutoff=6, index_tuple=None, ex_pairs=torch.cat((hh_tuple, bond_top), dim=0))
+                                cutoff=6, index_tuple=None, ex_pairs=intra_pairs)
     model = get_model(gnn_params)
-    GNN = GNNPotentials(model, system.get_batch(), system.get_cell_len(), cutoff=cutoff, device=system.device)
-    model = Stack({'gnn': GNN, 
-                   'pair_oo': pair_oo,
-                   'pair_oh': pair_oh, 
-                   'pair_hh': pair_hh, 
-                   'angle': angleenergy, 
-                   'bond': bondenergy,
-                   'coulomb': coulomb
-                })
 
-    # define the equation of motion to propagate 
-    diffeq = NoseHooverChain(model, 
+    if intra_interaction_flag:
+        ex_pairs = intra_pairs
+    else:
+        ex_pairs = None
+
+    GNN = GNNPotentials(model, 
+                        system.get_batch(), 
+                        system.get_cell_len(),
+                         cutoff=cutoff, 
+                         device=system.device,
+                         ex_pairs=ex_pairs
+                         )
+
+    # Warm up with classical water potentials 
+
+    # zero out forces 
+
+    if assignments['warmup_flag'] == 'True':
+        FF = Stack({
+           'pair_oo': pair_oo,
+           'pair_oh': pair_oh, 
+           'pair_hh': pair_hh, 
+           'angle': angleenergy, 
+           'bond': bondenergy,
+           'coulomb': coulomb
+        })
+
+        # define the equation of motion to propagate 
+        diffeq = NoseHooverChain(FF, 
+                            system,
+                            Q=50.0, 
+                            T=298.0 * units.kB,
+                            num_chains=5, 
+                            adjoint=True).to(device)
+        warmup(system, diffeq, GNN)
+
+    # define simulator with 
+    FF = Stack({
+            'gnn': GNN,
+           'pair_oo': pair_oo,
+           'pair_oh': pair_oh, 
+           'pair_hh': pair_hh, 
+           'angle': angleenergy, 
+           'bond': bondenergy,
+           'coulomb': coulomb
+        })
+
+    diffeq = NoseHooverChain(FF, 
             system,
             Q=50.0, 
             T=298.0 * units.kB,
             num_chains=5, 
             adjoint=True).to(device)
 
-    # define simulator with 
-    sim = Simulations(system, diffeq)
+    sim = Simulations(system, diffeq, wrap=True)
 
     # Set up observable 
     obs_oo = rdf(system, nbins=nbins, r_range=(oo_start_train, oo_end), index_tuple=(o_index, o_index), width=rdf_smear_width)
@@ -234,7 +302,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
 
 
     # Set up test functions 
-    test_nbins = 128
+    test_nbins = 64
 
     test_obs_oo = rdf(system, nbins=test_nbins, r_range=(oo_start, oo_end), index_tuple=(o_index, o_index))
     test_obs_oh = rdf(system, nbins=test_nbins, r_range=(oh_start, oh_end), index_tuple=(o_index, h_index))
@@ -260,8 +328,8 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
 
         return loss_oo + loss_oh + loss_hh
 
-    # define optimizer 
-    optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=assignments['lr'])
+    # define optimizer, only optimize GNN params 
+    optimizer = torch.optim.Adam(list(diffeq.model.models['gnn'].parameters() ), lr=assignments['lr'])
 
     loss_log = []
     test_loss_log = []
