@@ -1,39 +1,52 @@
-from gnn_rdf import *
+from gnn_rdf_cg_water_angle import *
 
-data = np.load("../experiments/water_exp_pccp.npy")
+data = np.load("../data/water_exp_pccp.npy")
 size = 4
 L = 19.73 / size
-r_range = 7.5
+end = 7.5
 nbins = 100
-tmax = 45000 #100000
-
+n_obs = 1000
+tmax = 25000
+n_epochs = 1000
+n_sim = 50
 
 sys_params = {
-'data': data, 
-'size': size,
-'L': L, 
-'r_range': r_range,
-'nbins': nbins, 
-'tmax': tmax
-}
+    'data': data, 
+    'size': size,
+    'L': L, 
+    'end': end,
+    'tmax': tmax,
+    'dt': 1.0,
+    'n_epochs': n_epochs,
+    'n_sim': n_sim
+    }
 
 assignments = {
-  "cutoff": 6.012129873307664,
-  "epsilon": 0.021137576470382537,
-  "lr": 1e-5,
-  "mse_weight": 4.2908588596170585,
-  "n_atom_basis": "high",
-  "n_convolutions": 2,
-  "n_filters": "high",
-  "n_gaussians": "low",
-  "opt_freq": 30,
-  "sigma": 2.5232758974537326,
+  "cutoff": 7.153,
+  "epsilon": 0.0133,
+  "gaussian_width": 0.196,
+  "lr": 0.000082,
+  "mse_weight": 6.7,
+  "n_atom_basis": "tiny",
+  "n_convolutions": 3,
+  "n_filters": "mid",
+  "nbins": 115,
+  "opt_freq": 63,
+  "sigma": 2.68
 }
 
+# get time 
+from datetime import datetime
+now = datetime.now()
+current_time = now.strftime("%H:%M:%S")
+print("Current Time =", current_time)
 
-logdir = 'water_rdf_298k'
-suggestion_id = 1
+
+logdir = 'junk'
+suggestion_id = 'test_{}'.format(current_time)
 device = 3
-i = 0 
+i = 0
 
-evaluate_model(assignments, i, suggestion_id, device, sys_params, logdir)
+print(suggestion_id)
+
+fit_rdf(assignments, i, suggestion_id, device, sys_params, logdir)
