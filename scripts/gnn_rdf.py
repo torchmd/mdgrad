@@ -174,7 +174,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             plt.yscale("log")
             plt.savefig(model_path + '/loss.jpg')
             plt.close()
-            return np.array(loss_log[-16:-2]).mean()
+            return np.array(loss_log[-16:-1]).mean()
         else:
             loss_log.append(loss_js.item())
 
@@ -189,7 +189,9 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     plt.yscale("log")
     plt.savefig(model_path + '/loss.jpg', bbox_inches='tight')
     plt.close()
-    save_traj(system, model_path + '/train.xyz', skip=10)
+
+    train_traj = [var[1] for var in diffeq.traj]
+    save_traj(system, train_traj, model_path + '/train.xyz', skip=10)
 
     # Inference 
     sim_trajs = []
@@ -210,23 +212,22 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     # compute equilibrated rdf 
     loss_js = JS_rdf(g_obs, g)
 
-    save_traj(system, model_path + '/sim.xyz', 
-                        skip=1)
+    save_traj(system, sim_trajs.detach().cpu().numpy(),  
+        model_path + '/sim.xyz', skip=1)
 
     plot_rdfs(xnew, g_obs, g, "final", model_path)
 
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
     if torch.isnan(loss_js):
-        return np.array(loss_log[-16:-2]).mean()
+        return np.array(loss_log[-16:-1]).mean()
     else:
         return loss_js.item()
 
-def save_traj(system, fname, skip=10):
+def save_traj(system, traj, fname, skip=10):
     atoms_list = []
-    for i, states in enumerate(system.traj):
+    for i, frame in enumerate(traj):
         if i % skip == 0: 
-            frame = Atoms(positions=states[1], numbers=system.get_atomic_numbers())
+            frame = Atoms(positions=frame, numbers=system.get_atomic_numbers())
             atoms_list.append(frame)
     ase.io.write(fname, atoms_list) 
-
