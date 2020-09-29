@@ -36,20 +36,20 @@ if params['id'] == None:
         parameters=[
             dict(name='n_atom_basis', type='categorical',categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='n_filters', type='categorical', categorical_values=["tiny", "low", "mid", "high"]),
-            dict(name='gaussian_width', type='double', bounds=dict(min=0.05, max=0.2)),
+            dict(name='gaussian_width', type='double', bounds=dict(min=0.025, max=0.25)),
             dict(name='n_convolutions', type='int', bounds=dict(min=1, max=3)),
 
-            dict(name='sigma_oo', type='double', bounds=dict(min=2.0, max=3.75)),
-            dict(name='epsilon_oo', type='double', bounds=dict(min=0.0005, max=0.02)),
+            dict(name='sigma_oo', type='double', bounds=dict(min=2.2, max=3.75)),
+            dict(name='epsilon_oo', type='double', bounds=dict(min=0.00, max=0.025)),
             dict(name='sigma_oh', type='double', bounds=dict(min=0.8, max=2.0)),
-            dict(name='epsilon_oh', type='double', bounds=dict(min=0.00, max=0.01)),
+            dict(name='epsilon_oh', type='double', bounds=dict(min=0.00, max=0.005)),
             dict(name='sigma_hh', type='double', bounds=dict(min=0.3, max=1.5)),
-            dict(name='epsilon_hh', type='double', bounds=dict(min=0.00, max=0.02)),
+            dict(name='epsilon_hh', type='double', bounds=dict(min=0.00, max=0.005)),
 
-            dict(name='charge_scale', type='double', bounds=dict(min=0.25, max=2)),
+            dict(name='charge_scale', type='double', bounds=dict(min=0.25, max=0.5)),
             dict(name='opt_freq', type='int', bounds=dict(min=5, max=max_n_epochs)),
-            dict(name='lr', type='double', bounds=dict(min=5e-7, max=5e-4)),
-            dict(name='cutoff', type='double', bounds=dict(min=3.0, max=6.0)),
+            dict(name='lr', type='double', bounds=dict(min=2.5e-7, max=2e-4)),
+            dict(name='cutoff', type='double', bounds=dict(min=3.0, max=5.0)),
             dict(name='mse_weight_oo', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='mse_weight_oh', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='mse_weight_hh', type='double', bounds=dict(min=0.0, max=1.0)),
@@ -60,7 +60,7 @@ if params['id'] == None:
             dict(name='rdf_start_hh', type='double', bounds=dict(min=0.2, max=1.25)),
 
             dict(name='frameskip', type='int', bounds=dict(min=1, max=5)),
-            dict(name='rdf_smear_width', type='double', bounds=dict(min=0.01, max=0.15)),
+            dict(name='rdf_smear_width', type='double', bounds=dict(min=0.01, max=0.2)),
 
             dict(name='intra_interaction_flag', type='categorical', categorical_values=["True", "False"]),
             dict(name='warmup_flag', type='categorical', categorical_values=["True", "False"]),
