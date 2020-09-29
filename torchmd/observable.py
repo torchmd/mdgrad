@@ -72,6 +72,7 @@ class angle_distribution(Observable):
             width=width,
             trainable=False
         ).to(self.device)
+        self.width = (self.smear.width[0]).item()
         self.cutoff = cutoff
         self.index_tuple = index_tuple
         
@@ -90,7 +91,7 @@ class angle_distribution(Observable):
         count = self.smear(cos_angles.reshape(-1).squeeze()[..., None]).sum(0) 
 
         norm = count.sum()   # normalization factor for histogram 
-        count = count / norm   # normalize 
+        count = count / (norm)  # normalize 
         
         return self.bins, count, cos_angles
 
