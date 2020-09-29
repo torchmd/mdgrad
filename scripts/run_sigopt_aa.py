@@ -19,9 +19,9 @@ if params['dry_run']:
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 1000
-    n_epochs = 1000
+    n_epochs = 1500
     n_sim = 50
-    max_n_epochs = 150
+    max_n_epochs = 80
 
 logdir = params['logdir']
 
