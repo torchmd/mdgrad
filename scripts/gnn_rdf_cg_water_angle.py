@@ -151,8 +151,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     cos_end = 0.95
     nbins_angle_test = 64
     nbins_angle_train = assignments['nbins_angle_train']
-    angle_obs_train = angle_distribution(system, nbins_angle_train, (cos_start, cos_end), cutoff=6.0)
-    angle_obs_test = angle_distribution(system, nbins_angle_test, (cos_start, cos_end), cutoff=6.0)
+    angle_obs_train = angle_distribution(system, nbins_angle_train, (cos_start, cos_end), cutoff=3.5) # 3.25 is from the PCCP paper
+    angle_obs_test = angle_distribution(system, nbins_angle_test, (cos_start, cos_end), cutoff=3.5) 
 
     # get experimental angle distribution 
     cos_exp_train = exp_angle_data(nbins_angle_train, (cos_start, cos_end))
