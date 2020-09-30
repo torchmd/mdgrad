@@ -230,7 +230,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             plt.yscale("log")
             plt.savefig(model_path + '/loss.jpg')
             plt.close()
-            return np.array(loss_test_log[-5:-1]).mean()
+            return np.array(test_loss_log[-5:-1]).mean()
         else:
             loss_log.append(loss_js.item())
 
@@ -289,7 +289,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
     if torch.isnan(loss_js):
-        return np.array(loss_test_log[-5:-1]).mean()
+        return np.array(test_loss_log[-5:-1]).mean()
     else:
         print(loss_js.item(), loss_angle.item())
         return loss_js.item() + loss_angle.item()
