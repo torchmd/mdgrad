@@ -363,9 +363,9 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
                      g_hh, g_hh_data, (hh_start_train, hh_end),
                      nbins, 
                      model_path, fname="{}".format(i))
-
-            test_loss = get_test_loss(q_t.detach())
-            test_loss_log.append(test_loss)
+            if not torch.isnan(loss):
+                test_loss = get_test_loss(q_t.detach())
+                test_loss_log.append(test_loss)
 
             print("getting test loss", np.array(test_loss_log).mean())
 
