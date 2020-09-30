@@ -176,7 +176,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     for i in range(0, n_epochs):
         
         current_time = datetime.now() 
-        trajs = sim.simulate(steps=tau, frequency=int(tau//2))
+        trajs = sim.simulate(steps=tau, frequency=int(tau))
         v_t, q_t, pv_t = trajs 
         #import ipdb; ipdb.set_trace()
         # vacf_sim = vacf_obs(v_t.detach())
@@ -186,7 +186,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         # plt.close()
 
         if i >= assignments['angle_train_start']:
-            bins, sim_angle_density, cos = angle_obs_train(q_t[::2])
+            bins, sim_angle_density, cos = angle_obs_train(q_t[-5:-1])
             loss_angle = JS_rdf(sim_angle_density, cos_exp_train)  * assignments['angle_JS_weight'] + \
                          (sim_angle_density - cos_exp_train).pow(2).sum() * assignments['angle_MSE_weight']
         else:
@@ -273,10 +273,18 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     plot_rdfs(xnew, g_obs, g, "final", model_path)
 
-    bins, sim_angle_density, cos_sim = angle_obs_test(sim_trajs)
-    plot_angle(sim_angle_density, cos_exp_test, cos_start, cos_end, "angle_final", path=model_path, nbins_angle=nbins_angle_test)
+    for i, traj in enumerate(sim_trajs):
+        bins, sim_angle_density, cos_sim = angle_obs_test(traj)
+        if i == 0:
+            all_angle_desnity = sim_angle_density
+        else:
+            all_angle_desnity += sim_angle_density
 
-    loss_angle = (sim_angle_density - cos_exp_test).abs().sum()
+    all_angle_desnity /= sim_trajs.shape[0]
+
+    plot_angle(all_angle_desnity, cos_exp_test, cos_start, cos_end, "angle_final", path=model_path, nbins_angle=nbins_angle_test)
+
+    loss_angle = (all_angle_desnity - cos_exp_test).abs().sum()
 
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
