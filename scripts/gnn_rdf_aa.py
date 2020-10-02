@@ -379,16 +379,25 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         else:
             loss_log.append(loss.item())
 
+        # if i >= 60:
+        #     # check for loss convergence
+        #     min_idx = np.array(loss_log).argmin()
+        #     mean1 = np.array(loss_log)[-25:-1].mean()
+        #     mean2 = np.array(loss_log)[-50:-25].mean()
+
+        #     #error_ratio = np.array(loss_log)[-20:-1].std() / mean1 # compute the 
+        #     conv_ratio = abs(mean1 - mean2)/mean1
+        #     # print("convergence estimate:", conv_ratio, error_ratio)
+        #     if i - min_idx >= 200 or conv_ratio <= 0.001:
+        #     #if conv_ratio <= 0.001 and error_ratio <= conv_ratio:
+        #         print("converged")
+        #         break
+
         if i >= 60:
             # check for loss convergence
             min_idx = np.array(loss_log).argmin()
-            mean1 = np.array(loss_log)[-25:-1].mean()
-            mean2 = np.array(loss_log)[-50:-25].mean()
-
-            #error_ratio = np.array(loss_log)[-20:-1].std() / mean1 # compute the 
-            conv_ratio = abs(mean1 - mean2)/mean1
             # print("convergence estimate:", conv_ratio, error_ratio)
-            if i - min_idx >= 200 or conv_ratio <= 0.001:
+            if i - min_idx >= 200:
             #if conv_ratio <= 0.001 and error_ratio <= conv_ratio:
                 print("converged")
                 break
