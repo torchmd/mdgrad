@@ -393,7 +393,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         #         print("converged")
         #         break
 
-        if i >= 60:
+        if i >= 1:
             # check for loss convergence
             min_idx = np.array(loss_log).argmin()
             # print("convergence estimate:", conv_ratio, error_ratio)
