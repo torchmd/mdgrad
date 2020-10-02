@@ -239,9 +239,10 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         # check for loss convergence
         min_idx = np.array(loss_log).argmin()
 
-        if i - min_idx >= 150:
-            print("converged")
-            break
+        if i >= assignments['angle_train_start'] + 151:
+            if i - min_idx >= 150:
+                print("converged")
+                break
 
     plt.plot(loss_log)
     plt.yscale("log")
