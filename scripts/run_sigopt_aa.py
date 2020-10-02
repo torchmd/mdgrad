@@ -49,7 +49,7 @@ if params['id'] == None:
             dict(name='charge_scale', type='double', bounds=dict(min=0.25, max=0.5)),
             dict(name='opt_freq', type='int', bounds=dict(min=5, max=max_n_epochs)),
             dict(name='lr', type='double', bounds=dict(min=2.5e-7, max=2e-4)),
-            dict(name='cutoff', type='double', bounds=dict(min=3.0, max=5.0)),
+            dict(name='cutoff', type='double', bounds=dict(min=3.0, max=7.0)),
             dict(name='mse_weight_oo', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='mse_weight_oh', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='mse_weight_hh', type='double', bounds=dict(min=0.0, max=1.0)),
