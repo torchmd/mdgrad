@@ -64,12 +64,10 @@ def generate_nbr_list(xyz, cutoff, cell, index_tuple=None, ex_pairs=None, get_di
     mask = (dis_sq < cutoff ** 2) & (dis_sq != 0)
     nbr_list = torch.triu(mask.to(torch.long)).nonzero()
 
-    #print(nbr_list.shape)
-
     if get_dis:
-        return nbr_list, dis_sq[mask].sqrt() 
+        return nbr_list, dis_sq[mask].sqrt(), offsets 
     else:
-        return nbr_list
+        return nbr_list, offsets
 
 def get_offsets(vecs, cell, device):
     
@@ -135,7 +133,7 @@ class GNNPotentials(torch.nn.Module):
 
 
     def forward(self, xyz): 
-        self.inputs['nbr_list'] = generate_nbr_list(xyz, self.cutoff, self.cell, ex_pairs=self.ex_pairs)
+        self.inputs['nbr_list'], _ = generate_nbr_list(xyz, self.cutoff, self.cell, ex_pairs=self.ex_pairs)
         results = self.module(self.inputs, xyz)
         return results['energy']
 
@@ -153,7 +151,7 @@ class PairPotentials(torch.nn.Module):
 
     def forward(self, xyz):
 
-        nbr_list, pair_dis = generate_nbr_list(xyz, 
+        nbr_list, pair_dis, _ = generate_nbr_list(xyz, 
                                                self.cutoff, 
                                                self.cell, 
                                                index_tuple=self.index_tuple, 
@@ -182,7 +180,7 @@ class Electrostatics(torch.nn.Module):
         self.ex_pairs = ex_pairs
         
     def forward(self, x):
-        nbr_list, pair_dis = generate_nbr_list(x, 
+        nbr_list, pair_dis, _ = generate_nbr_list(x, 
                                                self.cutoff, 
                                                self.cell, 
                                                index_tuple=self.index_tuple, 
