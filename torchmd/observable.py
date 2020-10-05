@@ -87,13 +87,15 @@ class angle_distribution(Observable):
         
         angle_list = generate_angle_list(nbr_list).to(self.device)
         cos_angles = compute_angle(xyz, angle_list, self.cell, N=self.natoms)
-    
-        count = self.smear(cos_angles.reshape(-1).squeeze()[..., None]).sum(0) 
+        
+        angles = cos_angles.acos()
+
+        count = self.smear(angles.reshape(-1).squeeze()[..., None]).sum(0) 
 
         norm = count.sum()   # normalization factor for histogram 
         count = count / (norm)  # normalize 
         
-        return self.bins, count, cos_angles
+        return self.bins, count, angles
 
 class vacf(Observable):
     def __init__(self, system, t_range):
