@@ -97,7 +97,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     dt = sys_params['dt']
     n_epochs = sys_params['n_epochs'] 
     n_sim = sys_params['n_sim'] 
-    n_train = sys_params['n_train']
+    n_train = assignments['n_train']
     cutoff = assignments['cutoff']
     nbins = assignments['nbins']
 
@@ -154,6 +154,8 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     from torchmd.system import System
     system = System(atoms, device=device)
     system.set_temperature(298.0)
+
+    print("device: ", device)
 
     # Initialize topologies 
     bond_top = [ [ i,  i + 64 * j] for i in range(64) for j in range(1, 3)]
