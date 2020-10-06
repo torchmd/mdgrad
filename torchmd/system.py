@@ -180,7 +180,7 @@ class PairPotentials(torch.nn.Module):
         super().__init__()
         self.model = pair_model(**model_arg)
         print(cell)
-        self.cell = torch.Tensor(cell).to(device)
+        self.cell = cell.to(device)
         self.device = device
         self.cutoff = cutoff
         self.index_tuple = index_tuple
