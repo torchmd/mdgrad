@@ -4,7 +4,7 @@ import sys
 import torchmd
 from scripts import * 
 from nff.train import get_model
-from torchmd.system import GNNPotentials, PairPotentials, System, Stack, AnglePotentials, BondPotentials, Electrostatics
+from torchmd.system import GNNPotentials, GNNPotentialsTrain, PairPotentials, System, Stack, AnglePotentials, BondPotentials, Electrostatics
 from torchmd.md import Simulations
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from torchmd.potentials import ExcludedVolume, LennardJones
@@ -218,13 +218,29 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     charges = torch.Tensor( [-0.834, 0.417, 0.417] * (size ** 3) ) * assignments['charge_scale']
     coulomb = Electrostatics(charges, system.get_cell_len(), device=device,
                                 cutoff=6, index_tuple=None, ex_pairs=intra_pairs)
-    model = get_model(gnn_params)
+    schnet = get_model(gnn_params)
 
     # pre-training with aimd data 
 
+    # build model wrapper 
+    prior = Stack({
+                   'pair_oo': pair_oo,
+                   'pair_oh': pair_oh, 
+                   'pair_hh': pair_hh, 
+                   'angle': angleenergy, 
+                   'bond': bondenergy,
+                   'coulomb': coulomb
+                    })
+
+    model = GNNPotentialsTrain(schnet, prior,
+                             system.get_batch(), system.get_cell_len(), 
+                             device=system.device)
+
+    # Train a NN 
     model = pretrain_aimd(model, system, device, gnn_params['cutoff'], model_path, n_train)
 
-    GNN = GNNPotentials(model, 
+    # Build GNN for simulation 
+    GNN = GNNPotentials(model.gnn_module, 
                         system.get_batch(), 
                         system.get_cell_len(),
                          cutoff=cutoff, 

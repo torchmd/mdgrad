@@ -9,7 +9,7 @@ import torch
 from ase.geometry import wrap_positions
 
 
-def pretrain_aimd(model, atoms, device, cutoff, path, n_epochs):
+def pretrain_aimd(model, atoms, device, cutoff, path, n_epochs, n_batch=1):
 
     size = 4 
     n_mols = size ** 3
@@ -54,8 +54,8 @@ def pretrain_aimd(model, atoms, device, cutoff, path, n_epochs):
     
     train, val, test = split_train_validation_test(dataset, val_size=0.05, test_size=0.05)
     
-    train_loader = DataLoader(train, batch_size=4, collate_fn=collate_dicts)
-    val_loader = DataLoader(val, batch_size=4, collate_fn=collate_dicts)
+    train_loader = DataLoader(train, batch_size=n_batch, collate_fn=collate_dicts)
+    val_loader = DataLoader(val, batch_size=n_batch, collate_fn=collate_dicts)
     
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     
