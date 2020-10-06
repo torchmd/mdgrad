@@ -179,8 +179,8 @@ class PairPotentials(torch.nn.Module):
     def __init__(self, pair_model, model_arg, cell, device=0, cutoff=2.5, index_tuple=None, ex_pairs=None):
         super().__init__()
         self.model = pair_model(**model_arg)
-        self.cell = torch.Tensor(cell).to(device)
         print(cell)
+        self.cell = torch.Tensor(cell).to(device)
         self.device = device
         self.cutoff = cutoff
         self.index_tuple = index_tuple
