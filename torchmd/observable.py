@@ -41,7 +41,7 @@ class rdf(Observable):
         
     def forward(self, xyz):
 
-        nbr_list, pair_dis = generate_nbr_list(xyz, 
+        nbr_list, pair_dis, _ = generate_nbr_list(xyz, 
                                                self.cutoff_boundary, 
                                                self.cell, 
                                                index_tuple=self.index_tuple, 
@@ -80,7 +80,7 @@ class angle_distribution(Observable):
         
         xyz = xyz.reshape(-1, self.natoms, 3)
 
-        nbr_list = generate_nbr_list(xyz[0], self.cutoff,
+        nbr_list, _ = generate_nbr_list(xyz[0], self.cutoff,
                                            self.cell, 
                                            index_tuple=self.index_tuple, 
                                            get_dis=False).to("cpu")

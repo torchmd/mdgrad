@@ -133,7 +133,12 @@ class GNNPotentials(torch.nn.Module):
 
 
     def forward(self, xyz): 
-        self.inputs['nbr_list'], _ = generate_nbr_list(xyz, self.cutoff, self.cell, ex_pairs=self.ex_pairs)
+        self.inputs['nbr_list'], offsets = generate_nbr_list(xyz, self.cutoff, self.cell, ex_pairs=self.ex_pairs)
+
+        # update offsets 
+        offsets = offsets[self.inputs['nbr_list'][:,0], self.inputs['nbr_list'][:,1], :]
+        self.inputs['offsets'] = offsets
+
         results = self.module(self.inputs, xyz)
         return results['energy']
 
