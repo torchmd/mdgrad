@@ -142,6 +142,37 @@ class GNNPotentials(torch.nn.Module):
         results = self.module(self.inputs, xyz)
         return results['energy']
 
+from nff.utils.scatter import compute_grad
+
+class GNNPotentialsTrain(torch.nn.Module):
+    def __init__(self, gnn_module, prior_module, inputs, cell, device):
+        '''
+            A hacky tool, only works for batch size 1 
+        '''
+        super().__init__()
+        self.gnn_module = gnn_module
+        self.prior = prior_module
+        # initialize the dictionary for model inputs 
+        self.inputs = batch_to(inputs, device)
+        self.cell = torch.Tensor(cell).to(device)
+        self.to(device)
+
+    def forward(self, batch): 
+
+        #import ipdb;ipdb.set_trace()
+        
+        xyz = batch['nxyz'][:, 1:]
+        xyz.requires_grad = True
+        
+        results = self.gnn_module(batch, xyz)
+
+        prior_energy = self.prior(xyz)
+        prior_grad = compute_grad(xyz, prior_energy)
+        
+        results['energy'] += prior_energy
+        results['energy_grad'] += prior_grad
+        
+        return results
 
 class PairPotentials(torch.nn.Module):
 
