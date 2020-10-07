@@ -80,7 +80,7 @@ class angle_distribution(Observable):
         
         xyz = xyz.reshape(-1, self.natoms, 3)
 
-        nbr_list, _ = generate_nbr_list(xyz[0], self.cutoff,
+        nbr_list, _ = generate_nbr_list(xyz, self.cutoff,
                                            self.cell, 
                                            index_tuple=self.index_tuple, 
                                            get_dis=False)
