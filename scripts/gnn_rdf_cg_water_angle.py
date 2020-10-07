@@ -176,6 +176,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     solver_method = 'NH_verlet'
 
+    cos_exp_train = cos_exp_train / ANGLE_FACTOR
+
     for i in range(0, n_epochs):
         
         current_time = datetime.now() 
@@ -190,7 +192,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             bins, sim_angle_density, cos = angle_obs_train(q_t[::frameskip])
 
             sim_angle_density =  sim_angle_density / ANGLE_FACTOR
-            cos_exp_train = cos_exp_train / ANGLE_FACTOR
 
             loss_angle = JS_rdf(sim_angle_density, cos_exp_train)  * assignments['angle_JS_weight'] + \
                          (sim_angle_density - cos_exp_train).pow(2).mean() * assignments['angle_MSE_weight']
