@@ -1,6 +1,5 @@
 #from settings import *
 import sys
-
 import torchmd
 from scripts import * 
 from nff.train import get_model
@@ -217,7 +216,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     #print(torch.cat((hh_tuple, bond_top)))
 
     # initialize coulomb charges 
-    charges = torch.Tensor( [-0.834, 0.417, 0.417] * (size ** 3) ) * assignments['charge_scale']
+    charges = torch.Tensor( [-0.834] * (size ** 3) + [0.417] * 2 * (size ** 3) ) * assignments['charge_scale']
     coulomb = Electrostatics(charges, system.get_cell_len(), device=device,
                                 cutoff=6, index_tuple=None, ex_pairs=intra_pairs)
     schnet = get_model(gnn_params)
