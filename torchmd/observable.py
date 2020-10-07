@@ -83,7 +83,8 @@ class angle_distribution(Observable):
         nbr_list, _ = generate_nbr_list(xyz[0], self.cutoff,
                                            self.cell, 
                                            index_tuple=self.index_tuple, 
-                                           get_dis=False).to("cpu")
+                                           get_dis=False)
+        nbr_list = nbr_list.to("cpu")
         
         angle_list = generate_angle_list(nbr_list).to(self.device)
         cos_angles = compute_angle(xyz, angle_list, self.cell, N=self.natoms)
@@ -121,16 +122,10 @@ def make_directed(nbr_list):
         directed (bool): whether the old one was directed
             or not  
     """
-
-    gtr_ij = (nbr_list[:, 0] > nbr_list[:, 1]).any().item()
-    gtr_ji = (nbr_list[:, 1] > nbr_list[:, 0]).any().item()
-    directed = gtr_ij and gtr_ji
-
-    if directed:
-        return nbr_list, directed
-
-    new_nbrs = torch.cat([nbr_list, nbr_list.flip(1)], dim=0)
-    return new_nbrs, directed
+    nbr_list_reverse = torch.stack([nbr_list[:,0], nbr_list[:, 2], nbr_list[:,1]], dim=-1)
+    new_nbrs = torch.cat([nbr_list, nbr_list_reverse], dim=0)
+    
+    return new_nbrs
 
 def compute_virial(q, model):
     u = model(q)
@@ -143,13 +138,16 @@ def generate_angle_list(nbr_list):
     '''
         Contributed by saxelrod
     '''
-    
-    nbr_list, _ = make_directed(nbr_list)
 
-    mask = (nbr_list[:, 1, None] == nbr_list[:, 0]) * (
-        nbr_list[:, 0, None] != nbr_list[:, 1])
+    assert nbr_list.shape[1] == 3 
 
-    third_atoms = nbr_list[:, 1].repeat(nbr_list.shape[0], 1)[mask]
+    nbr_list = make_directed(nbr_list)
+
+    mask = (nbr_list[:, 2, None] == nbr_list[:, 1]) * (
+            nbr_list[:, 1, None] != nbr_list[:, 2]) * ( 
+            nbr_list[:, None, 0] == nbr_list[:, 0]) # select the same frame 
+
+    third_atoms = nbr_list[:, 2].repeat(nbr_list.shape[0], 1)[mask]
     num_angles = mask.sum(-1)
 
     nbr_repeats = torch.LongTensor(
@@ -164,8 +162,8 @@ def compute_angle(xyz, angle_list, cell, N):
     
     device = xyz.device
     xyz = xyz.reshape(-1, N, 3)
-    bond_vec1 = xyz[:, angle_list[:,0]] - xyz[:, angle_list[:, 1]]
-    bond_vec2 = xyz[:, angle_list[:,2]] - xyz[:, angle_list[:, 1]]
+    bond_vec1 = xyz[angle_list[:,0], angle_list[:,1]] - xyz[angle_list[:,0], angle_list[:, 2]]
+    bond_vec2 = xyz[angle_list[:,0], angle_list[:,3]] - xyz[angle_list[:,0], angle_list[:, 2]]
     bond_vec1 = bond_vec1 + get_offsets(bond_vec1, cell, device) * cell
     bond_vec2 = bond_vec2 + get_offsets(bond_vec2, cell, device) * cell  
     
