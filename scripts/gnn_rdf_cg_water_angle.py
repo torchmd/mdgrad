@@ -293,7 +293,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     for i, traj in enumerate(sim_trajs):
         print(traj.shape)
-        bins, sim_angle_density, cos_sim = angle_obs_test(traj)
+        bins, sim_angle_density, cos_sim = angle_obs_test(traj[::5])
 
         sim_angle_density =  sim_angle_density / ANGLE_FACTOR
         #cos_exp_test = cos_exp_test / ANGLE_FACTOR
