@@ -249,9 +249,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         min_idx = np.array(loss_log).argmin()
 
         if i >= assignments['angle_train_start'] + 151:
-            loss_log = np.array(loss_log)
-            std = loss_log[min_idx:-1].std()
-            diff = abs( loss_log[min_idx:-1].max() - loss_log[min_idx]) 
+            std = np.array(loss_log)[min_idx:-1].std()
+            diff = abs( np.array(loss_log)[min_idx:-1].max() - np.array(loss_log)[min_idx]) 
 
             if i - min_idx >= 25 and diff < std:
                 print("converged")
