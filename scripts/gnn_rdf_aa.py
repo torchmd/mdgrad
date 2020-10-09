@@ -132,8 +132,8 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     epsilon_hh = assignments['epsilon_hh']
 
 
-    oh_start = 2.0
-    oh_end = 5.75
+    oo_start = 2.0
+    oo_end = 5.75
     oh_start = 1.25
     oh_end = 5.75
     hh_start = 1.0
