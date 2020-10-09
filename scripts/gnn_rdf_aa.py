@@ -162,24 +162,41 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     tau = assignments['opt_freq'] 
     print("Training for {} epochs".format(n_epochs))
 
-    # initialize systems 
-    atoms = ase.io.read("../data/water_init_64.xyz")
+    size = 4
+    n_mols = 4 ** 3
+
+    from ase.geometry import wrap_positions
+
+    box = np.load('../data/water_aimd/box_0.npy').reshape(-1,  3, 3)
+    xyz = np.load('../data/water_aimd/coord_0.npy').reshape(-1, n_mols * 3, 3)
+
+    atoms = Atoms(positions=xyz[0], cell=box[0])
+    z =  [8] * 64 + [1] * 64 * 2 
+
+    positions = wrap_positions(xyz[0], box[0])
+    atoms.set_positions(positions)
+    atoms.set_atomic_numbers(z)
+
+    from torchmd.system import System
     system = System(atoms, device=device)
     system.set_temperature(298.0)
 
+    print("device: ", device)
+
     # Initialize topologies 
-    bond_top = [ [3 * i, 3 * i + j + 1] for i in range(size**3) for j in range(2)  ]
+    bond_top = [ [ i,  i + 64 * j] for i in range(64) for j in range(1, 3)]
     bond_top = torch.LongTensor(bond_top)
 
-    angle_top = [[ 3* i +1, 3 * i, 3 * i + 2] for i in range(size ** 3) ]
+    angle_top = [[i + 64, i,  i + 64 * 2] for i in range(64)]
     angle_top = torch.LongTensor(angle_top)
 
-    hh_tuple = [[ 3* i +1, 3 * i + 2] for i in range(size ** 3) ]
+    hh_tuple = [[i + 64,  i + 64 * 2] for i in range(64)]
     hh_tuple = torch.LongTensor(hh_tuple)
 
-    # get atom type index
-    o_index = [i * 3 for i in range(size ** 3)]
-    h_index = [i * 3 + j + 1 for i in range(size ** 3) for j in range(2)]
+        # get atom type index
+    o_index = [i for i in range(size ** 3)]
+    h_index = [i + size ** 3 for i in range(size ** 3 * 2)]
+
 
     intra_pairs = torch.cat((hh_tuple, bond_top), dim=0)
 
