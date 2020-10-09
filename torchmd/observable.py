@@ -4,7 +4,8 @@ import torch
 import torchmd
 from nff.nn.layers import GaussianSmearing
 import numpy as np
-from torchmd.system import generate_nbr_list, check_system, get_offsets
+from torchmd.system import check_system
+from torchmd.topology import generate_nbr_list, get_offsets, generate_angle_list
 
 class Observable(torch.nn.Module):
     def __init__(self, system):
@@ -110,53 +111,12 @@ class vacf(Observable):
 
         return torch.stack(vacf).reshape(-1)
 
-def make_directed(nbr_list):
-    """
-    Check if a neighbor list is directed, and make it
-    directed if it isn't. Contributed by saxelrod
-    Args:
-        nbr_list (torch.LongTensor): neighbor list
-    Returns:
-        new_nbrs (torch.LongTensor): directed neighbor
-            list
-        directed (bool): whether the old one was directed
-            or not  
-    """
-    nbr_list_reverse = torch.stack([nbr_list[:,0], nbr_list[:, 2], nbr_list[:,1]], dim=-1)
-    new_nbrs = torch.cat([nbr_list, nbr_list_reverse], dim=0)
-    
-    return new_nbrs
-
 def compute_virial(q, model):
     u = model(q)
     f = -compute_grad(inputs=q, output=u)
     virial = (f * q).sum(-1).sum(-1)
     
     return virial 
-
-def generate_angle_list(nbr_list):
-    '''
-        Contributed by saxelrod
-    '''
-
-    assert nbr_list.shape[1] == 3 
-
-    nbr_list = make_directed(nbr_list)
-
-    mask = (nbr_list[:, 2, None] == nbr_list[:, 1]) * (
-            nbr_list[:, 1, None] != nbr_list[:, 2]) * ( 
-            nbr_list[:, None, 0] == nbr_list[:, 0]) # select the same frame 
-
-    third_atoms = nbr_list[:, 2].repeat(nbr_list.shape[0], 1)[mask]
-    num_angles = mask.sum(-1)
-
-    nbr_repeats = torch.LongTensor(
-                np.repeat(nbr_list.numpy(), num_angles.tolist(), axis=0))
-
-    angle_list = torch.cat(
-        (nbr_repeats, third_atoms.reshape(-1, 1)), dim=1)
-    
-    return angle_list 
 
 def compute_angle(xyz, angle_list, cell, N):
     
