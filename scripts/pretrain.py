@@ -9,8 +9,7 @@ import torch
 from ase.geometry import wrap_positions
 
 
-def pretrain_aimd(model, atoms, device, cutoff, path, n_epochs, n_batch=1):
-
+def build_data(atoms, n_batch, cutoff, device):
     size = 4 
     n_mols = size ** 3
     z = atoms.get_atomic_numbers()
@@ -51,13 +50,20 @@ def pretrain_aimd(model, atoms, device, cutoff, path, n_epochs, n_batch=1):
                     for i, offset in enumerate(props['offsets'])]
         
     dataset = d.Dataset(props.copy(), units='kcal/mol')
+
+    return dataset
+
+def pretrain_aimd(model, atoms, device, cutoff, path, n_epochs, n_batch=1):
+
     
+    dataset = build_data(atoms, n_batch, cutoff, device)
+
     train, val, test = split_train_validation_test(dataset, val_size=0.05, test_size=0.05)
     
     train_loader = DataLoader(train, batch_size=n_batch, collate_fn=collate_dicts)
     val_loader = DataLoader(val, batch_size=n_batch, collate_fn=collate_dicts)
     
-    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+    trainable_params = filter(lambda p: p.requires_grad, model.gnn_module.parameters())
     
     
     optimizer = torch.optim.Adam(trainable_params, lr=5e-4)
