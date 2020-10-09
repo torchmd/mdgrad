@@ -21,7 +21,7 @@ else:
     n_obs = 1000
     tmax = 25000
     n_epochs = 1000
-    n_sim = 50
+    n_sim = 100
 
 logdir = params['logdir']
 
@@ -48,8 +48,9 @@ if params['id'] == None:
             dict(name='angle_train_start', type='int', bounds=dict(min=5, max=10)),
             dict(name='angle_MSE_weight', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='angle_JS_weight', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='nbins_angle_train', type='int', bounds=dict(min=10, max=100)),
-            dict(name='frameskip_ratio', type='double', bounds=dict(min=0.05, max=0.5))
+            dict(name='nbins_angle_train', type='int', bounds=dict(min=10, max=128)),
+            dict(name='frameskip_ratio', type='double', bounds=dict(min=0.05, max=0.5)),
+            dict(name='angle_cutoff', type='double', bounds=dict(min=2.7, max=4.7))
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,

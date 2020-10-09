@@ -148,20 +148,20 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     vacf_obs = vacf(system, t_range=int(tau//2))
 
     # angle observation function 
-    cos_start = 0.45
-    cos_end = 3.1
+    angle_start = 0.45
+    angle_end = 3.1
     nbins_angle_test = 64
     nbins_angle_train = assignments['nbins_angle_train']
-    angle_obs_train = angle_distribution(system, nbins_angle_train, (cos_start, cos_end), cutoff=3.75) # 3.25 is from the PCCP paper
-    angle_obs_test = angle_distribution(system, nbins_angle_test, (cos_start, cos_end), cutoff=3.75) 
+    angle_obs_train = angle_distribution(system, nbins_angle_train, (angle_start, angle_end), cutoff=assignments['angle_cutoff']) # 3.25 is from the PCCP paper
+    angle_obs_test = angle_distribution(system, nbins_angle_test, (angle_start, angle_end), cutoff=assignments['angle_cutoff']) 
 
     # get experimental angle distribution 
-    cos_exp_train = exp_angle_data(nbins_angle_train, (cos_start, cos_end), fn='../data/water_angle_deepcg_3.7.csv')
-    cos_exp_train = torch.Tensor(cos_exp_train).to(device)
-    cos_exp_test = exp_angle_data(nbins_angle_test, (cos_start, cos_end), fn='../data/water_angle_deepcg_3.7.csv')
-    cos_exp_test = torch.Tensor(cos_exp_test).to(device)
+    angle_exp_train = exp_angle_data(nbins_angle_train, (angle_start, angle_end), fn='../data/water_angle_pccp.csv')
+    angle_exp_train = torch.Tensor(angle_exp_train).to(device)
+    angle_exp_test = exp_angle_data(nbins_angle_test, (angle_start, angle_end), fn='../data/water_angle_pccp.csv')
+    angle_exp_test = torch.Tensor(angle_exp_test).to(device)
 
-    ANGLE_FACTOR = (cos_end - cos_start)/nbins_angle_train
+    ANGLE_FACTOR = (angle_end - angle_start)/nbins_angle_train
 
     xnew = np.linspace(start, end, nbins)
     # get experimental rdf 
@@ -176,7 +176,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     solver_method = 'NH_verlet'
 
-    cos_exp_train = cos_exp_train / ANGLE_FACTOR
+    angle_exp_train = angle_exp_train / ANGLE_FACTOR
 
     for i in range(0, n_epochs):
         
@@ -185,7 +185,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         v_t, q_t, pv_t = trajs 
 
         if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
-            return 100.0
+            return 5 - (i / n_epochs) * 5
 
         if i >= assignments['angle_train_start']:
 
@@ -193,8 +193,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
             sim_angle_density =  sim_angle_density / ANGLE_FACTOR
 
-            loss_angle = JS_rdf(sim_angle_density, cos_exp_train)  * assignments['angle_JS_weight'] + \
-                         (sim_angle_density - cos_exp_train).pow(2).mean() * assignments['angle_MSE_weight']
+            loss_angle = JS_rdf(sim_angle_density, angle_exp_train)  * assignments['angle_JS_weight'] + \
+                         (sim_angle_density - angle_exp_train).pow(2).mean() * assignments['angle_MSE_weight']
 
         else:
             loss_angle = torch.Tensor([0.0]).to(device)
@@ -217,20 +217,20 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
            plot_rdfs(xnew, g_obs, g, i, model_path)
 
            # plotting angles 
-           def plot_angle(sim_angle, exp_angle, cos_start, cos_angle, fname, path, nbins_angle):
-                bins = np.linspace(cos_start, cos_end, nbins_angle)
+           def plot_angle(sim_angle, exp_angle, angle_start, angle_angle, fname, path, nbins_angle):
+                bins = np.linspace(angle_start, angle_end, nbins_angle)
                 plt.plot(bins * 180/np.pi, sim_angle.detach().cpu(), linewidth=4, alpha=0.6, label='sim.' )
                 plt.plot(bins * 180/np.pi, exp_angle.detach().cpu(), linewidth=2,linestyle='--', c='black', label='exp.')
                 plt.show()
                 plt.savefig(path + '/angle_{}.jpg'.format(fname), bbox_inches='tight')
                 plt.close()
            # measure angle distirbutions 
-           bins, sim_angle_density, cos_sim = angle_obs_test(q_t[::5].detach())
-           test_angle_loss = (sim_angle_density - cos_exp_test).abs().mean() 
+           bins, sim_angle_density, angle_sim = angle_obs_test(q_t[::5].detach())
+           test_angle_loss = JS_rdf(sim_angle_density, angle_exp_test)
 
            # This is computed incorrectly, the loss_js should be computed on a test calculations. 
            test_loss_log.append(test_angle_loss.item() + loss_js.item())
-           plot_angle(sim_angle_density, cos_exp_test, cos_start, cos_end, i, path=model_path, nbins_angle=nbins_angle_test)
+           plot_angle(sim_angle_density, angle_exp_test, angle_start, angle_end, i, path=model_path, nbins_angle=nbins_angle_test)
 
         if torch.isnan(loss):
             plt.plot(loss_log)
@@ -240,7 +240,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             if len(test_loss_log) != 0:   
                 return np.array(test_loss_log[-5:-1]).mean()
             else:
-                return 100.0
+                return 5 - (i / n_epochs) * 5
 
         else:
             loss_log.append(loss_js.item() + loss_angle.item())
@@ -267,7 +267,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         _, q_t, _ = sim.simulate(steps=100, frequency=25)
 
         if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
-            return 100.0
+            return 5.0
 
         sim_trajs.append(q_t[-1].detach().cpu().numpy())
 
@@ -289,14 +289,14 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     plot_rdfs(xnew, g_obs, g, "final", model_path)
 
-    ANGLE_FACTOR = (cos_end - cos_start)/nbins_angle_test
+    ANGLE_FACTOR = (angle_end - angle_start)/nbins_angle_test
 
     for i, traj in enumerate(sim_trajs):
         print(traj.shape)
-        bins, sim_angle_density, cos_sim = angle_obs_test(traj)
+        bins, sim_angle_density, angle_sim = angle_obs_test(traj)
 
         sim_angle_density =  sim_angle_density / ANGLE_FACTOR
-        #cos_exp_test = cos_exp_test / ANGLE_FACTOR
+        #angle_exp_test = angle_exp_test / ANGLE_FACTOR
 
         if i == 0:
             all_angle_desnity = sim_angle_density
@@ -304,11 +304,11 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             all_angle_desnity += sim_angle_density
 
     all_angle_desnity /= sim_trajs.shape[0]
-    cos_exp_test = cos_exp_test/ANGLE_FACTOR
+    angle_exp_test = angle_exp_test/ANGLE_FACTOR
 
-    plot_angle(all_angle_desnity, cos_exp_test, cos_start, cos_end, "angle_final", path=model_path, nbins_angle=nbins_angle_test)
+    plot_angle(all_angle_desnity, angle_exp_test, angle_start, angle_end, "angle_final", path=model_path, nbins_angle=nbins_angle_test)
 
-    loss_angle = (all_angle_desnity - cos_exp_test).abs().mean()
+    loss_angle = JS_rdf(all_angle_desnity,  angle_exp_test)
 
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
