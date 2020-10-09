@@ -237,8 +237,9 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
                              system.get_batch(), system.get_cell_len(), 
                              device=system.device)
 
-    # Train a NN 
-    model = pretrain_aimd(model, system, device, gnn_params['cutoff'], model_path, n_train)
+    if assignments['n_train'] > 0:
+        # Train a NN 
+        model = pretrain_aimd(model, system, device, gnn_params['cutoff'], model_path, n_train)
 
     # Build GNN for simulation 
     GNN = GNNPotentials(model.gnn_module, 

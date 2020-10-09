@@ -21,7 +21,7 @@ else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 1000
     n_epochs = 1500
-    n_sim = 50
+    n_sim = 120
     max_n_epochs = 80
     #n_train = 100
 
@@ -50,7 +50,7 @@ if params['id'] == None:
 
             dict(name='opt_freq', type='int', bounds=dict(min=5, max=max_n_epochs)),
             dict(name='lr', type='double', bounds=dict(min=2.5e-7, max=2e-4)),
-            dict(name='n_train', type='int', bounds=dict(min=1, max=30)),
+            dict(name='n_train', type='int', bounds=dict(min=0, max=30)),
 
             dict(name='cutoff', type='double', bounds=dict(min=3.0, max=7.0)),
             dict(name='mse_weight_oo', type='double', bounds=dict(min=0.0, max=1.0)),
@@ -64,7 +64,7 @@ if params['id'] == None:
 
             dict(name='frameskip', type='int', bounds=dict(min=1, max=5)),
             dict(name='rdf_smear_width', type='double', bounds=dict(min=0.01, max=0.2)),
-
+            dict(name='dt', type='double', bounds=dict(min=0.4, max=1.0)),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
@@ -80,7 +80,7 @@ while experiment.progress.observation_count < experiment.observation_budget:
     suggestion = conn.experiments(experiment.id).suggestions().create()
 
     sys_params = {
-    'dt': 0.5,
+    'dt': suggestion.assignments['dt'],
     'n_epochs': n_epochs,
     'n_sim': n_sim,
     }
