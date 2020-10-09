@@ -300,9 +300,9 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
 
         traj = traj.detach()
 
-        _, bins, test_g_oo =  test_obs_oo(traj[::2])
-        _, bins, test_g_oh =  test_obs_oh(traj[::2])
-        _, bins, test_g_hh =  test_obs_hh(traj[::2])
+        _, bins, test_g_oo =  test_obs_oo(traj[::5])
+        _, bins, test_g_oh =  test_obs_oh(traj[::5])
+        _, bins, test_g_hh =  test_obs_hh(traj[::5])
 
         # compute equilibrated rdf         
         loss_oo = JS_rdf(test_g_oo, test_g_oo_data).item()

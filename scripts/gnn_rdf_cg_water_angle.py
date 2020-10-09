@@ -279,7 +279,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     obs = rdf(system, test_nbins,  (start, end))
     xnew = np.linspace(start, end, test_nbins)
     count_obs, g_obs = get_exp_rdf(data, test_nbins, (start, end), obs) # recompute exp. rdf
-    _, bins, g = obs(sim_trajs) # compute simulated rdf
+    _, bins, g = obs(sim_trajs[::5]) # compute simulated rdf
 
     # compute equilibrated rdf 
     loss_js = JS_rdf(g_obs, g)
