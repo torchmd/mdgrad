@@ -8,6 +8,26 @@ import numpy as np
 from nff.utils.scatter import compute_grad
 from torchmd.topology import generate_nbr_list, get_offsets, generate_angle_list
 
+'''
+    basic ideas for parallelization 
+
+    tooplogy should keep system index, for example in nbr_list (it is true for angle_list now), it should look like:
+        [[0, 1, 2], 
+         [0, 2, 3],
+         [1, 1, 3],
+            ....  ]
+
+    A function that concatnates different systems and concatate all the toplogies 
+
+    A function should exist to aggregate interaction for each and return in the interface 
+    
+    The bath variable in md.py should also be able to initalize bath variables for each system copy 
+    
+    Topology should a indivudal class that handles indexing?
+
+    A Trajectory class to stores system information, interface with system 
+'''
+
 class GeneralInteraction(torch.nn.Module):
     def __init__(self, system):
         super(GeneralInteraction, self).__init__()
@@ -24,7 +44,6 @@ class GeneralInteraction(torch.nn.Module):
 
     def forward(self):
         pass
-
 
 class SpecificInteraction(torch.nn.Module):
     def __init__(self, system):
@@ -164,7 +183,7 @@ class Stack(torch.nn.Module):
 
 class BondPotentials(torch.nn.Module):
     def __init__(self, system, top, k, ro):
-        super().__init__(system)
+        super().__init__()
         self.device = system.device
         self.cell = torch.Tensor( system.get_cell() )
         # transform into a diagonal 
@@ -185,7 +204,7 @@ class BondPotentials(torch.nn.Module):
     
 class AnglePotentials(torch.nn.Module):
     def __init__(self, system, top, k, thetao):
-        super().__init__(system)
+        super().__init__()
         self.device = system.device
         self.cell = torch.Tensor( system.get_cell() )
         # transform into a diagonal 
