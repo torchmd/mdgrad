@@ -4,14 +4,13 @@ import sys
 import torchmd
 from scripts import * 
 from nff.train import get_model
-from torchmd.system import GNNPotentials, PairPotentials, System, Stack
+from torchmd.system import System
+from torchmd.interface import GNNPotentials, PairPotentials, Stack
 from torchmd.md import Simulations
 from torchmd.observable import angle_distribution
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase import units
 import math 
-
-
 
 width_dict = {'tiny': 64,
                'low': 128,
@@ -22,6 +21,12 @@ gaussian_dict = {'tiny': 16,
                'low': 32,
                'mid': 64, 
                'high': 128}
+
+
+angle_data_dict = {
+    2.7: '../data/water_angle_deepcg_2.7.csv',
+    3.7: '../data/water_angle_deepcg_3.7.csv', 
+}
 
 def get_exp_rdf(data, nbins, r_range, obs):
     # load RDF data 
@@ -122,10 +127,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     # Initialize potentials 
     model = get_model(gnn_params)
-    GNN = GNNPotentials(model, system.get_batch(), system.get_cell_len(), cutoff=cutoff, device=system.device)
-    pair = PairPotentials(ExcludedVolume, lj_params,
-                    cell=torch.Tensor(system.get_cell_len()), 
-                    device=device,
+    GNN = GNNPotentials(system, model, cutoff=cutoff, device=system.device)
+    pair = PairPotentials(system, ExcludedVolume, lj_params,
                     cutoff=8.0,
                     ).to(device)
 
@@ -151,12 +154,23 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     angle_start = 0.45
     angle_end = 3.1
     nbins_angle_test = 64
+
+    angle_start_train = assignments['angle_start_train']
+
+    # A function to generate list of data nd functions 
+    # angle_obs_train_list 
+    # angle_obs_test_list 
+    # angle_exp_train 
+    # angle_exp_list 
+
     nbins_angle_train = assignments['nbins_angle_train']
-    angle_obs_train = angle_distribution(system, nbins_angle_train, (angle_start, angle_end), cutoff=assignments['angle_cutoff']) # 3.25 is from the PCCP paper
+    angle_obs_train = angle_distribution(system, nbins_angle_train, (angle_start_train, angle_end), cutoff=assignments['angle_cutoff']) # 3.25 is from the PCCP paper
     angle_obs_test = angle_distribution(system, nbins_angle_test, (angle_start, angle_end), cutoff=assignments['angle_cutoff']) 
 
+    vacf_obs = vacf(system, t_range=tau)
+
     # get experimental angle distribution 
-    angle_exp_train = exp_angle_data(nbins_angle_train, (angle_start, angle_end), fn='../data/water_angle_pccp.csv')
+    angle_exp_train = exp_angle_data(nbins_angle_train, (angle_start_train, angle_end), fn='../data/water_angle_pccp.csv')
     angle_exp_train = torch.Tensor(angle_exp_train).to(device)
     angle_exp_test = exp_angle_data(nbins_angle_test, (angle_start, angle_end), fn='../data/water_angle_pccp.csv')
     angle_exp_test = torch.Tensor(angle_exp_test).to(device)
@@ -167,7 +181,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     # get experimental rdf 
     count_obs, g_obs = get_exp_rdf(data, nbins, (start, end), obs)
     # define optimizer 
-    optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=assignments['lr'])
+    optimizer = torch.optim.SGD(list(diffeq.parameters() ), lr=assignments['lr'])
 
     loss_log = []
     test_loss_log = []
@@ -178,11 +192,19 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     angle_exp_train = angle_exp_train / ANGLE_FACTOR
 
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                                  'min', 
+                                                  min_lr=1.0e-7, 
+                                                  verbose=True, factor = 0.5, patience= 30,
+                                                  threshold=5e-5)
+
     for i in range(0, n_epochs):
         
         current_time = datetime.now() 
         trajs = sim.simulate(steps=tau, frequency=int(tau))
         v_t, q_t, pv_t = trajs 
+
 
         if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
             return 5 - (i / n_epochs) * 5
@@ -213,24 +235,33 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         optimizer.step()
         optimizer.zero_grad()
 
-        if i % 20 == 0:
-           plot_rdfs(xnew, g_obs, g, i, model_path)
+        scheduler.step(loss)
 
-           # plotting angles 
-           def plot_angle(sim_angle, exp_angle, angle_start, angle_angle, fname, path, nbins_angle):
+        if i % 20 == 0:
+            plot_rdfs(xnew, g_obs, g, i, model_path)
+
+            # plotting angles 
+            def plot_angle(sim_angle, exp_angle, angle_start, angle_angle, fname, path, nbins_angle):
                 bins = np.linspace(angle_start, angle_end, nbins_angle)
                 plt.plot(bins * 180/np.pi, sim_angle.detach().cpu(), linewidth=4, alpha=0.6, label='sim.' )
                 plt.plot(bins * 180/np.pi, exp_angle.detach().cpu(), linewidth=2,linestyle='--', c='black', label='exp.')
                 plt.show()
                 plt.savefig(path + '/angle_{}.jpg'.format(fname), bbox_inches='tight')
                 plt.close()
-           # measure angle distirbutions 
-           bins, sim_angle_density, angle_sim = angle_obs_test(q_t[::5].detach())
-           test_angle_loss = JS_rdf(sim_angle_density, angle_exp_test)
+            # measure angle distirbutions 
+            bins, sim_angle_density, angle_sim = angle_obs_test(q_t[::5].detach())
+            test_angle_loss = JS_rdf(sim_angle_density, angle_exp_test)
 
-           # This is computed incorrectly, the loss_js should be computed on a test calculations. 
-           test_loss_log.append(test_angle_loss.item() + loss_js.item())
-           plot_angle(sim_angle_density, angle_exp_test, angle_start, angle_end, i, path=model_path, nbins_angle=nbins_angle_test)
+            # This is computed incorrectly, the loss_js should be computed on a test calculations. 
+            test_loss_log.append(test_angle_loss.item() + loss_js.item())
+            plot_angle(sim_angle_density, angle_exp_test, angle_start, angle_end, i, path=model_path, nbins_angle=nbins_angle_test)
+
+            # plot VACF 
+            vacf_sim = vacf_obs(v_t.detach())
+            plt.plot(vacf_sim.detach().cpu().numpy())
+            plt.savefig(model_path + '/{}_{}.jpg'.format("vacf", i), bbox_inches='tight')
+            plt.show()
+            plt.close()
 
         if torch.isnan(loss):
             plt.plot(loss_log)
@@ -238,20 +269,25 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             plt.savefig(model_path + '/loss.jpg')
             plt.close()
             if len(test_loss_log) != 0:   
-                return np.array(test_loss_log[-5:-1]).mean()
+                return np.array(test_loss_log[-5:-1]).mean() + 1.0
             else:
-                return 5 - (i / n_epochs) * 5
+                return 2 - (i / n_epochs) * 2
 
         else:
             loss_log.append(loss_js.item() + loss_angle.item())
 
-        # check for loss convergence
-        min_idx = np.array(loss_log).argmin()
+        # # check for loss convergence
+        # min_idx = np.array(loss_log).argmin()
 
-        if i >= assignments['angle_train_start'] + 101:
-            if i - min_idx >= 100:
-                print("converged")
-                break
+        # if i >= assignments['angle_train_start'] + 101:
+        #     if i - min_idx >= 100:
+        #         print("converged")
+        #        break
+        current_lr = optimizer.param_groups[0]["lr"]
+
+        if current_lr <= 1.0e-7:
+            print("training converged")
+            break
 
     plt.plot(loss_log)
     plt.yscale("log")
@@ -313,7 +349,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
     if torch.isnan(loss_js):
-        return np.array(test_loss_log[-2:-1]).mean()
+        return np.array(test_loss_log[-2:-1]).mean()+ 1.0
     else:
         print(loss_js.item(), loss_angle.item())
         return loss_js.item() + loss_angle.item()
