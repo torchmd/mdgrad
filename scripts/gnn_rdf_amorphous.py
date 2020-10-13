@@ -182,7 +182,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     # Initialize potentials 
     model = get_model(gnn_params)
-    GNN = GNNPotentials(system, model, cutoff=cutoff, device=system.device)
+    GNN = GNNPotentials(system, model, cutoff=cutoff)
     pair = PairPotentials(system, ExcludedVolume, lj_params,
                     cutoff=8.0,
                     ).to(device)
@@ -251,7 +251,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                   'min', 
-                                                  min_lr=1.0e-7, 
+                                                  min_lr=5.0e-8, 
                                                   verbose=True, factor = 0.5, patience= 30,
                                                   threshold=5e-5)
 
@@ -343,7 +343,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         #        break
         current_lr = optimizer.param_groups[0]["lr"]
 
-        if current_lr <= 1.0e-7:
+        if current_lr <= 5.0e-8:
             print("training converged")
             break
 
