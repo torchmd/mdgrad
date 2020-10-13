@@ -62,15 +62,15 @@ class SpecificInteraction(torch.nn.Module):
 
 
 class GNNPotentialsTrain(GeneralInteraction):
-    def __init__(self, system, gnn_module, prior_module, inputs, cell, device):
+    def __init__(self, system, gnn_module, prior_module):
         '''
             only works for batch size 1 
         '''
-        super().__init__()
+        super().__init__(system)
         self.gnn_module = gnn_module
         self.prior = prior_module
         # initialize the dictionary for model inputs 
-        self.to(device)
+        self.to(self.device)
 
     def forward(self, batch): 
         
@@ -88,14 +88,14 @@ class GNNPotentialsTrain(GeneralInteraction):
         return results
 
 class GNNPotentials(GeneralInteraction):
-    def __init__(self, system, gnn, cutoff, device, ex_pairs=None):
+    def __init__(self, system, gnn, cutoff, ex_pairs=None):
         super().__init__(system)
         self.gnn = gnn
         self.cutoff = cutoff
         # initialize the dictionary for model inputs 
-        self.inputs = batch_to(self.system.get_batch(), device)
+        self.inputs = batch_to(self.system.get_batch(), self.device)
         self.ex_pairs = ex_pairs
-        self.to(device)
+        self.to(self.device)
 
     def _reset_topology(self, xyz):
         self.inputs['nbr_list'], offsets = generate_nbr_list(xyz, self.cutoff, self.cell_diag, ex_pairs=self.ex_pairs)
@@ -137,7 +137,7 @@ class PairPotentials(GeneralInteraction):
 
 class Electrostatics(torch.nn.Module):
     def __init__(self, charges, cell, device=0, cutoff=2.5, index_tuple=None, ex_pairs=None):
-        super(Electrostatics, self).__init__(system)
+        super(Electrostatics, self).__init__()
         self.charges = charges.to(device)
         from ase import units 
         k_e = 8.987551787e9
