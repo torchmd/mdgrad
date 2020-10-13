@@ -39,20 +39,18 @@ rdf_data_dict = {
                         'end': 7.9,
                         'element': "H",
                         'mass': 28.0855
-                        }
+                        },
 
-    'H20_0.997_298K': 
-                    { 'fn': "../data/water_exp/water_exp_pccp.csv",
+    'H20_0.997_298K': { 'fn': "../data/water_exp/water_exp_pccp.csv",
                        'rho': 0.997,
                         'T': 298.0, 
                         'start': 1.8, 
                         'end': 7.5,
                         'element': "H" ,
                         'mass': 18.01528
-                        }
+                        },
 
-    'Argon_1.417_298k': 
-                     { 'fn': "../data/argon_exp/argon_exp.csv",
+    'Argon_1.417_298k': { 'fn': "../data/argon_exp/argon_exp.csv",
                        'rho': 1.417,
                         'T': 298.0, 
                         'start': 2.0, 
