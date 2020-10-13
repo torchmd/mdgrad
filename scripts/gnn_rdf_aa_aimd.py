@@ -3,7 +3,8 @@ import sys
 import torchmd
 from scripts import * 
 from nff.train import get_model
-from torchmd.system import GNNPotentials, GNNPotentialsTrain, PairPotentials, System, Stack, AnglePotentials, BondPotentials, Electrostatics
+from torchmd.system import System
+from torchmd.interface import GNNPotentials, GNNPotentialsTrain, PairPotentials, Stack, AnglePotentials, BondPotentials, Electrostatics
 from torchmd.md import Simulations
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from torchmd.potentials import ExcludedVolume, LennardJones
@@ -183,24 +184,18 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     }
 
     print(system.get_temperature())
-    pair_oo = PairPotentials(LennardJones, {'epsilon': epsilon_oo, 'sigma': sigma_oo},
-                    cell=torch.Tensor(system.get_cell_len()), 
-                    device=device,
+    pair_oo = PairPotentials(system, LennardJones, {'epsilon': epsilon_oo, 'sigma': sigma_oo},
                     index_tuple=(o_index, o_index),
                     cutoff=6.0,
                     ).to(device)
 
-    pair_oh = PairPotentials(LennardJones, {'epsilon': epsilon_oh, 'sigma': sigma_oh},
-                    cell=torch.Tensor(system.get_cell_len()), 
-                    device=device,
+    pair_oh = PairPotentials(system, LennardJones, {'epsilon': epsilon_oh, 'sigma': sigma_oh},
                     index_tuple=(o_index, h_index),
                     ex_pairs=bond_top,
                     cutoff=6.0,
                     ).to(device)
 
-    pair_hh = PairPotentials(LennardJones, {'epsilon': epsilon_hh, 'sigma': sigma_hh},
-                    cell=torch.Tensor(system.get_cell_len()), 
-                    device=device,
+    pair_hh = PairPotentials(system, LennardJones, {'epsilon': epsilon_hh, 'sigma': sigma_hh},
                     index_tuple=(h_index, h_index),
                     ex_pairs=hh_tuple,
                     cutoff=6.0,
@@ -233,20 +228,16 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
                    'coulomb': coulomb
                     })
 
-    model = GNNPotentialsTrain(schnet, prior,
-                             system.get_batch(), system.get_cell_len(), 
-                             device=system.device)
+    model = GNNPotentialsTrain(system, schnet, prior)
 
     if assignments['n_train'] > 0:
         # Train a NN 
         model = pretrain_aimd(model, system, device, gnn_params['cutoff'], model_path, n_train)
 
     # Build GNN for simulation 
-    GNN = GNNPotentials(model.gnn_module, 
-                        system.get_batch(), 
-                        system.get_cell_len(),
+    GNN = GNNPotentials(system, 
+        model.gnn_module, 
                          cutoff=cutoff, 
-                         device=system.device,
                          )
 
     # define simulator with 
@@ -314,6 +305,13 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
     # define optimizer, only optimize GNN params 
     optimizer = torch.optim.Adam(list(diffeq.model.models['gnn'].parameters() ), lr=assignments['lr'])
 
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                                  'min', 
+                                                  min_lr=5.0e-8, 
+                                                  verbose=True, factor = 0.5, patience= 30,
+                                                  threshold=5e-5)
+
     loss_log = []
     test_loss_log = []
     loss_js_log = []
@@ -340,6 +338,8 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         optimizer.step()
         optimizer.zero_grad()
 
+        scheduler.step(loss)
+
         if i % 25 == 0:
             plot_all(g_oo, g_oo_data, (oo_start_train, oo_end),
                      g_oh, g_oh_data, (oh_start_train, oh_end),
@@ -362,14 +362,11 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         else:
             loss_log.append(loss.item())
 
-        if i >= 1:
-            # check for loss convergence
-            min_idx = np.array(loss_log).argmin()
-            # print("convergence estimate:", conv_ratio, error_ratio)
-            if i - min_idx >= 200:
-            #if conv_ratio <= 0.001 and error_ratio <= conv_ratio:
-                print("converged")
-                break
+        current_lr = optimizer.param_groups[0]["lr"]
+
+        if current_lr <= 1.0e-7:
+            print("training converged")
+            break
 
     plt.plot(test_loss_log)
     plt.yscale("log")

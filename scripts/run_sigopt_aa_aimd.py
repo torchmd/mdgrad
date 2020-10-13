@@ -16,14 +16,14 @@ if params['dry_run']:
     n_epochs = 21
     n_sim = 5
     max_n_epochs = 10
-   #n_train = 1
+    n_train = 1
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 1000
     n_epochs = 1500
     n_sim = 120
     max_n_epochs = 80
-    #n_train = 100
+    n_train = 100
 
 logdir = params['logdir']
 
@@ -50,7 +50,7 @@ if params['id'] == None:
 
             dict(name='opt_freq', type='int', bounds=dict(min=5, max=max_n_epochs)),
             dict(name='lr', type='double', bounds=dict(min=2.5e-7, max=2e-4)),
-            dict(name='n_train', type='int', bounds=dict(min=0, max=30)),
+            dict(name='n_train', type='int', bounds=dict(min=0, max=n_train)),
 
             dict(name='cutoff', type='double', bounds=dict(min=3.0, max=7.0)),
             dict(name='mse_weight_oo', type='double', bounds=dict(min=0.0, max=1.0)),
