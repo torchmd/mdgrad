@@ -38,10 +38,10 @@ if params['id'] == None:
             #dict(name='n_gaussians', type='categorical', categorical_values= ["tiny", "low", "mid"]),
             dict(name='gaussian_width', type='double', bounds=dict(min=0.05, max=0.25)),
             dict(name='n_convolutions', type='int', bounds=dict(min=1, max=5)),
-            dict(name='sigma', type='double', bounds=dict(min=2.15, max=3.0)),
+            dict(name='sigma', type='double', bounds=dict(min=1.25, max=2.25)),
             dict(name='epsilon', type='double', bounds=dict(min=0.0025, max=0.025)),
             dict(name='opt_freq', type='int', bounds=dict(min=10, max=150)),
-            dict(name='lr', type='double', bounds=dict(min=1e-7, max=5e-5)),
+            dict(name='lr', type='double', bounds=dict(min=1.1e-7, max=5e-5)),
             dict(name='cutoff', type='double', bounds=dict(min=3.0, max=6.0)),
             dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
@@ -51,7 +51,11 @@ if params['id'] == None:
             dict(name='nbins_angle_train', type='int', bounds=dict(min=10, max=128)),
             dict(name='angle_start_train', type='double', bounds=dict(min=0.3, max=0.8)),
             dict(name='frameskip_ratio', type='double', bounds=dict(min=0.05, max=0.5)),
-            dict(name='angle_cutoff', type='double', bounds=dict(min=3.15, max=3.35))
+            dict(name='angle_cutoff', type='double', bounds=dict(min=3.15, max=3.35)),
+            dict(name='anneal_rate', type='double', bounds=dict(min=3, max=10)),
+            dict(name='start_T', type='double', bounds=dict(min=500, max=1000)),
+            dict(name='anneal_freq', type='int', bounds=dict(min=1, max=20)),
+            dict(name='structure', type='categorical',categorical_values=["fcc","diamond"]),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
@@ -78,7 +82,8 @@ while experiment.progress.observation_count < experiment.observation_budget:
     'tmax': tmax,
     'dt': 1.0,
     'n_epochs': n_epochs,
-    'n_sim': n_sim
+    'n_sim': n_sim,
+    'anneal_flag': "True"
     }
 
     value = fit_rdf(assignments=suggestion.assignments, 

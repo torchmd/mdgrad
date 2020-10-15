@@ -7,10 +7,11 @@ from nff.train import get_model
 from torchmd.system import System
 from torchmd.interface import GNNPotentials, PairPotentials, Stack
 from torchmd.md import Simulations
-from torchmd.observable import angle_distribution
+from torchmd.observable import angle_distribution, Angles
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase import units
 import math 
+from ase.lattice.cubic import FaceCenteredCubic, Diamond
 
 width_dict = {'tiny': 64,
                'low': 128,
@@ -115,11 +116,23 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     }
 
     # initialize states with ASE 
-    atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                              symbol='H',
-                              size=(size, size, size),
-                              latticeconstant= L,
-                              pbc=True)
+    if assignments['structure'] == 'fcc':
+        L = 4.9325
+        size = 4
+        atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                                  symbol='H',
+                                  size=(size, size, size),
+                                  latticeconstant= L,
+                                  pbc=True)
+    elif assignments['structure'] == 'diamond':
+        L = 6.2148165251414
+        size = 3
+        atoms = Diamond(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                          symbol='H',
+                          size=(size, size, size),
+                          latticeconstant= L,
+                          pbc=True)
+
     system = System(atoms, device=device)
     system.set_temperature(298.0)
 
@@ -127,7 +140,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     # Initialize potentials 
     model = get_model(gnn_params)
-    GNN = GNNPotentials(system, model, cutoff=cutoff, device=system.device)
+    GNN = GNNPotentials(system, model, cutoff=cutoff)
     pair = PairPotentials(system, ExcludedVolume, lj_params,
                     cutoff=8.0,
                     ).to(device)
@@ -158,14 +171,12 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     angle_start_train = assignments['angle_start_train']
 
     # A function to generate list of data nd functions 
-    # angle_obs_train_list 
-    # angle_obs_test_list 
-    # angle_exp_train 
-    # angle_exp_list 
 
     nbins_angle_train = assignments['nbins_angle_train']
     angle_obs_train = angle_distribution(system, nbins_angle_train, (angle_start_train, angle_end), cutoff=assignments['angle_cutoff']) # 3.25 is from the PCCP paper
     angle_obs_test = angle_distribution(system, nbins_angle_test, (angle_start, angle_end), cutoff=assignments['angle_cutoff']) 
+
+    #angle_obs_test = angle_distribution(system, nbins_angle_test, (angle_start, angle_end), cutoff=assignments['angle_cutoff']) 
 
     vacf_obs = vacf(system, t_range=tau)
 
@@ -205,6 +216,20 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         trajs = sim.simulate(steps=tau, frequency=int(tau))
         v_t, q_t, pv_t = trajs 
 
+        # anneal 
+        if sys_params['anneal_flag'] == 'True':
+            if i % assignments['anneal_freq'] == 0:
+                def get_temp(T_start, T_equil, n_epochs, i, anneal_rate):
+                    return (T_start - T_equil) * np.exp( - i * (1/n_epochs) * anneal_rate) + T_equil
+
+                anneal_rate = assignments['anneal_rate']
+
+                T_equil = 298.0
+                T_start = assignments['start_T']
+                new_T  = get_temp(T_start, T_equil, n_epochs, i, anneal_rate)
+                sim.intergrator.update_T(new_T * units.kB)
+
+                print("update T:", new_T)
 
         if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
             return 5 - (i / n_epochs) * 5
@@ -218,6 +243,15 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             loss_angle = JS_rdf(sim_angle_density, angle_exp_train)  * assignments['angle_JS_weight'] + \
                          (sim_angle_density - angle_exp_train).pow(2).mean() * assignments['angle_MSE_weight']
 
+            # cos = angle_obs_train(q_t[::frameskip])
+
+            # loss_angle
+
+            # tetra_order  = 1-  (3/8) * (cos + 1/3).pow(2).mean()
+
+            # print(tetra_order.item())
+
+            #loss_angle = (tetra_order - 0.57).pow(2)
         else:
             loss_angle = torch.Tensor([0.0]).to(device)
 
@@ -298,6 +332,9 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     save_traj(system, train_traj, model_path + '/train.xyz', skip=10)
 
     # Inference 
+
+    angle_obs_test = angle_distribution(system, nbins_angle_test, (angle_start, angle_end), cutoff=assignments['angle_cutoff']) 
+
     sim_trajs = []
     for i in range(n_sim):
         _, q_t, _ = sim.simulate(steps=100, frequency=25)
@@ -332,7 +369,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         bins, sim_angle_density, angle_sim = angle_obs_test(traj)
 
         sim_angle_density =  sim_angle_density / ANGLE_FACTOR
-        #angle_exp_test = angle_exp_test / ANGLE_FACTOR
 
         if i == 0:
             all_angle_desnity = sim_angle_density
