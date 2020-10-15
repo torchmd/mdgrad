@@ -58,6 +58,40 @@ class rdf(Observable):
 
         return count, self.bins, rdf 
 
+class Angles(Observable):
+    def __init__(self, system, nbins, angle_range, cutoff=3.0,index_tuple=None, width=None):
+        super(Angles, self).__init__(system)
+        PI = np.pi
+        start = angle_range[0]
+        end = angle_range[1]
+        self.device = system.device
+        self.bins = torch.linspace(start, end, nbins + 1).to(self.device)
+        self.smear = GaussianSmearing(
+            start=start,
+            stop=self.bins[-1],
+            n_gaussians=nbins,
+            width=width,
+            trainable=False
+        ).to(self.device)
+        self.width = (self.smear.width[0]).item()
+        self.cutoff = cutoff
+        self.index_tuple = index_tuple
+        
+    def forward(self, xyz):
+        
+        xyz = xyz.reshape(-1, self.natoms, 3)
+
+        nbr_list, _ = generate_nbr_list(xyz, self.cutoff,
+                                           self.cell, 
+                                           index_tuple=self.index_tuple, 
+                                           get_dis=False)
+        nbr_list = nbr_list.to("cpu")
+        
+        angle_list = generate_angle_list(nbr_list).to(self.device)
+        cos_angles = compute_angle(xyz, angle_list, self.cell, N=self.natoms)
+
+        return cos_angles
+
 class angle_distribution(Observable):
     def __init__(self, system, nbins, angle_range, cutoff=3.0,index_tuple=None, width=None):
         super(angle_distribution, self).__init__(system)
