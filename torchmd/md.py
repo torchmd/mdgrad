@@ -99,6 +99,9 @@ class NoseHooverChain(torch.nn.Module):
 
         # check temperature
         _check_T(T)
+
+    def update_T(self, T):
+        self.T = T 
         
     def forward(self, t, state):
         # pq are the canonical momentum and position variables
