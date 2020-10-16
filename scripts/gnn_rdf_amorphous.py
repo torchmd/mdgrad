@@ -56,6 +56,18 @@ rdf_data_dict = {
                         "cell": Diamond
                         },
 
+    'Si_2.327_102K_cry': { 'fn': '../data/a-Si/102K_2.327_exp.csv' ,
+                       'rho': 2.3267,
+                        'T': 102.0, 
+                        'start': 1.8, 
+                        'end': 8.0,
+                        'element': "H",
+                        'mass': 28.0855,
+                        "N_unitcell": 8,
+                        "cell": Diamond,
+                        'anneal_flag': True
+                        },
+
     'H20_0.997_298K': { 'fn': "../data/water_exp/water_exp_pccp.csv",
                        'rho': 0.997,
                         'T': 298.0, 
@@ -168,7 +180,7 @@ def get_system(data_str, device, size):
     print("lattice param:", L)
 
     atoms = cell_module(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                              symbol='H',
+                              symbol=rdf_data_dict[data_str]['element'],
                               size=(size, size, size),
                               latticeconstant= L,
                               pbc=True)
