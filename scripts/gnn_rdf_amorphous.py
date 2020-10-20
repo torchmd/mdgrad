@@ -9,6 +9,7 @@ from torchmd.interface import GNNPotentials, PairPotentials, Stack
 from torchmd.md import Simulations
 from torchmd.observable import angle_distribution
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from ase.lattice.cubic import FaceCenteredCubic, Diamond
 from ase import units
 
 import math 
@@ -32,8 +33,6 @@ angle_data_dict = {
         }
 }
 
-from ase.lattice.cubic import FaceCenteredCubic, Diamond
-
 rdf_data_dict = {
     'Si_2.293_100K': { 'fn': '../data/a-Si/100K_2.293.csv' ,
                        'rho': 2.293,
@@ -45,6 +44,7 @@ rdf_data_dict = {
                         "N_unitcell": 8,
                         "cell": Diamond
                         },
+                        
     'Si_2.287_83K': { 'fn': '../data/a-Si/83K_2.287_exp.csv' ,
                        'rho': 2.287,
                         'T': 83.0, 
@@ -69,14 +69,15 @@ rdf_data_dict = {
                         },
 
     'H20_0.997_298K': { 'fn': "../data/water_exp/water_exp_pccp.csv",
-                       'rho': 0.997,
+                        'rho': 0.997,
                         'T': 298.0, 
                         'start': 1.8, 
                         'end': 7.5,
                         'element': "H" ,
                         'mass': 18.01528,
                         "N_unitcell": 8,
-                        "cell": Diamond #FaceCenteredCubic
+                        "cell": Diamond, #FaceCenteredCubic
+                        "pressure": 1.0 # MPa
                         },
 
     'H20_0.978_342K': { 'fn': "../data/water_exp/water_exp_skinner_342K_0.978.csv",
@@ -88,8 +89,95 @@ rdf_data_dict = {
                         'mass': 18.01528,
                         "N_unitcell": 8,
                         "cell": Diamond,
+                        "pressure": 1,  #MPa
                         "ref": "https://doi.org/10.1063/1.4902412"
                         },
+
+    'H20_0.921_423K_soper': { 'fn': "../data/water_exp/water_exp_Soper_423K_0.9213.csv",
+                       'rho': 0.9213,
+                        'T': 423.0, 
+                        'start': 1.8, 
+                        'end': 7.5,
+                        'element': "H" ,
+                        'mass': 18.01528,
+                        "N_unitcell": 8,
+                        "cell": Diamond,
+                        "pressure": 10.0, # MPa
+                        "ref": "https://doi.org/10.1016/S0301-0104(00)00179-8"
+                        },
+
+    'H20_0.999_423K_soper': { 'fn': "../data/water_exp/water_exp_Soper_423K_0.999.csv",
+                       'rho': 0.999,
+                        'T': 423.0, 
+                        'start': 1.8, 
+                        'end': 7.5,
+                        'element': "H" ,
+                        'mass': 18.01528,
+                        "N_unitcell": 8,
+                        "cell": Diamond,
+                        "pressure": 190, 
+                        "ref": "https://doi.org/10.1016/S0301-0104(00)00179-8"
+                        },
+
+    'H20_298K_redd': { 'fn': "../data/water_exp/water_exp_298K_redd.csv",
+                       'rho': 0.99749,
+                        'T': 298.0, 
+                        'start': 1.8, 
+                        'end': 7.5,
+                        'element': "H" ,
+                        'mass': 18.01528,
+                        "N_unitcell": 8,
+                        "cell": Diamond,
+                        "pressure": 1, 
+                        "ref": "https://aip.scitation.org/doi/pdf/10.1063/1.4967719"
+                        },
+
+    'H20_308K_redd': { 'fn': "../data/water_exp/water_exp_308K_redd.csv",
+                       'rho': 0.99448,
+                        'T': 308.0, 
+                        'start': 1.8, 
+                        'end': 7.5,
+                        'element': "H" ,
+                        'mass': 18.01528,
+                        "N_unitcell": 8,
+                        "cell": Diamond,
+                        "pressure": 1, 
+                        "ref": "https://aip.scitation.org/doi/pdf/10.1063/1.4967719"
+                        },
+
+    'H20_338K_redd': { 'fn': "../data/water_exp/water_exp_338K_redd.csv",
+                       'rho': 0.98103,
+                        'T': 338.0, 
+                        'start': 1.8, 
+                        'end': 7.5,
+                        'element': "H" ,
+                        'mass': 18.01528,
+                        "N_unitcell": 8,
+                        "cell": Diamond,
+                        "pressure": 1, 
+                        "ref": "https://aip.scitation.org/doi/pdf/10.1063/1.4967719"
+                        },
+
+    'H20_368K_redd': { 'fn': "../data/water_exp/water_exp_368K_redd.csv",
+                       'rho': 0.96241,
+                        'T': 368.0, 
+                        'start': 1.8, 
+                        'end': 7.5,
+                        'element': "H" ,
+                        'mass': 18.01528,
+                        "N_unitcell": 8,
+                        "cell": Diamond,
+                        "pressure": 1, 
+                        "ref": "https://aip.scitation.org/doi/pdf/10.1063/1.4967719"
+                        },
+
+    'H2O_long_correlation' : {
+                        'ref': 'https://aip.scitation.org/doi/pdf/10.1063/1.4961404'
+    },
+
+    'H2O_soper': {
+                        'ref': 'https://doi.org/10.1016/S0301-0104(00)00179-8'
+    },
 
     'Argon_1.417_298k': { 'fn': "../data/argon_exp/argon_exp.csv",
                        'rho': 1.417,
@@ -259,12 +347,16 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         'trainable_gauss': False
     }
 
-
     # get cell parameter and data 
     data_str_list = sys_params['data']
 
+    if 'validate' in sys_params.keys():
+        val_str_list = sys_params['validate']
+    else:
+        val_str_list = []
+
     system_list = []
-    for data_str in data_str_list:
+    for data_str in data_str_list + val_str_list:
         system = get_system(data_str, device, size) 
         if sys_params['anneal_flag'] == 'True':
             system.set_temperature(assignments['start_T'] * units.kB)
@@ -275,7 +367,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     # build GNN_list 
     model_list = []
-    for i, data_str in enumerate(data_str_list):
+    for i, data_str in enumerate(data_str_list + val_str_list):
         GNN = GNNPotentials(system_list[i], schnet, cutoff=cutoff)
         pair = PairPotentials(system_list[i], ExcludedVolume, lj_params,
                         cutoff=8.0,
@@ -284,20 +376,22 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         model = Stack({'gnn': GNN, 'pair': pair})
         model_list.append(model)
 
-    sim_list = [get_sim(system_list[i], model_list[i], data_str)  for i, data_str in enumerate(data_str_list)]
+    sim_list = [get_sim(system_list[i], 
+                        model_list[i], 
+                        data_str) for i, data_str in enumerate(data_str_list + val_str_list)]
 
     g_obs_list = []
     obs_list = []
     bins_list = []
 
-    for i, data_str in enumerate(data_str_list):
+    for i, data_str in enumerate(data_str_list + val_str_list):
         x, g_obs, obs = get_observer(system_list[i], data_str, nbins)
         bins_list.append(x)
         g_obs_list.append(g_obs)
         obs_list.append(obs)
 
     # define optimizer 
-    optimizer = torch.optim.Adam(list(schnet.parameters() ), lr=assignments['lr'])
+    optimizer = torch.optim.Adam(list(schnet.parameters()), lr=assignments['lr'])
 
     loss_log = []
     test_loss_log = []
@@ -306,11 +400,10 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     solver_method = 'NH_verlet'
 
-
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                   'min', 
-                                                  min_lr=5.0e-8, 
-                                                  verbose=True, factor = 0.5, patience= 40,
+                                                  min_lr=0.9e-7, 
+                                                  verbose=True, factor = 0.5, patience= 15,
                                                   threshold=5e-5)
 
     for i in range(0, n_epochs):
@@ -319,8 +412,10 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         loss_mse = torch.Tensor([0.0]).to(device)
 
         # temperature annealing 
-
         for j, sim in enumerate(sim_list):
+
+            
+            data_str = (data_str_list + val_str_list)[j]
 
             if sys_params['anneal_flag'] == 'True':
 
@@ -330,7 +425,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
                     anneal_rate = assignments['anneal_rate']
 
-                    T_equil = rdf_data_dict[data_str_list[j]]['T']
+                    T_equil = rdf_data_dict[data_str]['T']
                     T_start = assignments['start_T']
                     new_T  = get_temp(T_start, T_equil, n_epochs, i, anneal_rate)
                     sim.intergrator.update_T(new_T * units.kB)
@@ -346,12 +441,14 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
             _, bins, g = obs_list[j](q_t[::frameskip])
             
-            # this shoud be wrapped in some way 
-            loss_js += JS_rdf(g_obs_list[j], g)
-            loss_mse += assignments['mse_weight'] * (g- g_obs_list[j]).pow(2).mean() 
+            # only optimize on data that needs training 
+            if data_str in data_str_list:
+                # this shoud be wrapped in some way 
+                loss_js += JS_rdf(g_obs_list[j], g)
+                loss_mse += assignments['mse_weight'] * (g- g_obs_list[j]).pow(2).mean() 
 
             if i % 20 == 0:
-                plot_rdfs(bins_list[j], g_obs_list[j], g, "{}_{}".format(data_str_list[j], i),
+                plot_rdfs(bins_list[j], g_obs_list[j], g, "{}_{}".format(data_str, i),
                              model_path, pname=i)
 
         loss = loss_js + loss_mse 
@@ -404,14 +501,18 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     plt.savefig(model_path + '/loss.jpg', bbox_inches='tight')
     plt.close()
 
-
-    for j, sim in enumerate(sim_list):    
-        train_traj = [var[1] for var in sim.intergrator.traj]
-        save_traj(system_list[j], train_traj, model_path + '/{}_train.xyz'.format(data_str_list[j]), skip=10)
-
     total_loss = 0.0
+    for j, sim in enumerate(sim_list):    
 
-    for j, sim in enumerate(sim_list):
+        data_str = (data_str_list + val_str_list)[j]
+
+        train_traj = [var[1] for var in sim.intergrator.traj]
+
+        if (data_str_list + val_str_list)[j] in data_str_list:
+            save_traj(system_list[j], train_traj, model_path + '/{}_train.xyz'.format(data_str), skip=10)
+        else:
+            save_traj(system_list[j], train_traj, model_path + '/{}_val.xyz'.format(data_str), skip=10)
+
         # Inference 
         sim_trajs = []
 
@@ -429,7 +530,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         # compute equilibrate rdf with finer bins 
         test_nbins = 128
 
-        x, g_obs, obs = get_observer(system_list[j], data_str_list[j], test_nbins)
+        x, g_obs, obs = get_observer(system_list[j], data_str, test_nbins)
 
         _, bins, g = obs(sim_trajs[::5]) # compute simulated rdf
 
@@ -437,9 +538,9 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         loss_js = JS_rdf(g_obs, g)
 
         save_traj(system_list[j], sim_trajs.detach().cpu().numpy(),  
-            model_path + '/{}_sim.xyz'.format(data_str_list[j]), skip=1)
+            model_path + '/{}_sim.xyz'.format(data_str), skip=1)
 
-        plot_rdfs(x, g_obs, g, "{}_final".format(data_str_list[j]), model_path, pname='final')
+        plot_rdfs(x, g_obs, g, "{}_final".format(data_str), model_path, pname='final')
 
         total_loss += loss_js.item()
 
