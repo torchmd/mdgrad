@@ -236,7 +236,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
 
     # Build GNN for simulation 
     GNN = GNNPotentials(system, 
-        model.gnn_module, 
+                        model.gnn_module, 
                          cutoff=cutoff, 
                          )
 
@@ -303,8 +303,8 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
         return loss_oo + loss_oh + loss_hh
 
     # define optimizer, only optimize GNN params 
-    optimizer = torch.optim.Adam(list(diffeq.model.models['gnn'].parameters() ), lr=assignments['lr'])
-
+    #optimizer = torch.optim.Adam(list(diffeq.model.models['gnn'].parameters() ), lr=assignments['lr'])
+    optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=assignments['lr'])
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                   'min', 
