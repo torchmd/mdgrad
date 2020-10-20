@@ -34,7 +34,6 @@ def display_traj(system, traj):
     
     return show_mdtraj(to_mdtraj(system, traj))
 
-    io.write(fname, atoms_list)
 
 def plot_lesp(model, traj=None, res=50, start=[3.5, 0.8], end=[0.8, 3.5], fname=None):
     xlist = np.linspace(0.5, 5.0, res)
