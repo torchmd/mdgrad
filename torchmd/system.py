@@ -1,81 +1,17 @@
 import torch
-import torchmd
 from nff.utils.scatter import compute_grad
 from nff.utils import batch_to
 from torch.nn import ModuleDict
 from ase import Atoms 
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution 
-from ase.geometry import wrap_positions
 from ase import units
 import numpy as np 
 
+from torchmd.topology import generate_nbr_list, get_offsets, generate_angle_list
+
 def check_system(object):
+    import torchmd
     if object.__class__ != torchmd.system.System:
         raise TypeError("input should be a torchmd.system.System")
-
-
-def generate_pair_index(N, index_tuple):
-
-    import itertools
-
-    mask_sel = torch.zeros(N, N)
-
-    if index_tuple is not None:
-        pair_mask = torch.LongTensor( [list(items) for items in itertools.product(index_tuple[0], 
-                                                                                  index_tuple[1])]) 
-
-        #todo: imporse index convention
-        mask_sel[pair_mask[:, 0], pair_mask[:, 1]] = 1
-        mask_sel[pair_mask[:, 1], pair_mask[:, 0]] = 1
-    
-    return mask_sel
-
-
-def generate_nbr_list(xyz, cutoff, cell, index_tuple=None, ex_pairs=None, get_dis=False):
-    
-    # todo: make it compatible for non-cubic cells
-    # todo: topology should be a class to handle some initialization 
-    device = xyz.device
-
-    dis_mat = (xyz[..., None, :, :] - xyz[..., :, None, :])
-
-    if index_tuple is not None:
-        N = xyz.shape[-2] # the 2nd dim is the atoms dim
-
-        mask_sel = generate_pair_index(N, index_tuple).to(device)
-        # todo handle this calculation like a sparse tensor 
-        dis_mat =  dis_mat * mask_sel[..., None]
-
-    if ex_pairs is not None:
-
-        N = xyz.shape[-2] # the 2nd dim is the atoms dim
-
-        mask = torch.ones(N, N)
-        mask[ex_pairs[:,0], ex_pairs[:, 1]] = 0
-        mask[ex_pairs[:,1], ex_pairs[:, 0]] = 0
-
-        # todo handle this calculation like a sparse tensor 
-        dis_mat = dis_mat * mask[..., None].to(device)
-
-    offsets = -dis_mat.ge(0.5 *  cell).to(torch.float).to(device) + \
-                    dis_mat.lt(-0.5 *  cell).to(torch.float).to(device)
-    dis_mat = dis_mat + offsets * cell
-    dis_sq = torch.triu( dis_mat.pow(2).sum(-1) )
-    mask = (dis_sq < cutoff ** 2) & (dis_sq != 0)
-    nbr_list = torch.triu(mask.to(torch.long)).nonzero()
-
-    if get_dis:
-        return nbr_list, dis_sq[mask].sqrt(), offsets 
-    else:
-        return nbr_list, offsets
-
-def get_offsets(vecs, cell, device):
-    
-    offsets = -vecs.ge(0.5 *  cell).to(torch.float).to(device) + \
-                vecs.lt(-0.5 *  cell).to(torch.float).to(device)
-    
-    return offsets
-
 
 class System(Atoms):
     def __init__(
@@ -116,189 +52,9 @@ class System(Atoms):
         return batch
         
     def set_temperature(self, T):
+        from ase.md.velocitydistribution import MaxwellBoltzmannDistribution 
         MaxwellBoltzmannDistribution(self, T * units.kB )
     
-        
-        
-class GNNPotentials(torch.nn.Module):
-    def __init__(self, module, inputs, cell, cutoff, device, ex_pairs=None):
-        super().__init__()
-        self.module = module
-        self.cutoff = cutoff
-        # initialize the dictionary for model inputs 
-        self.inputs = batch_to(inputs, device)
-        self.cell = torch.Tensor(cell).to(device)
-        self.ex_pairs = ex_pairs
-        self.to(device)
-
-
-    def forward(self, xyz): 
-        self.inputs['nbr_list'], offsets = generate_nbr_list(xyz, self.cutoff, self.cell, ex_pairs=self.ex_pairs)
-
-        # update offsets 
-        offsets = offsets[self.inputs['nbr_list'][:,0], self.inputs['nbr_list'][:,1], :]
-        self.inputs['offsets'] = offsets
-
-        results = self.module(self.inputs, xyz)
-        return results['energy']
-
-from nff.utils.scatter import compute_grad
-
-class GNNPotentialsTrain(torch.nn.Module):
-    def __init__(self, gnn_module, prior_module, inputs, cell, device):
-        '''
-            A hacky tool, only works for batch size 1 
-        '''
-        super().__init__()
-        self.gnn_module = gnn_module
-        self.prior = prior_module
-        # initialize the dictionary for model inputs 
-        self.inputs = batch_to(inputs, device)
-        self.cell = torch.Tensor(cell).to(device)
-        self.to(device)
-
-    def forward(self, batch): 
-
-        #import ipdb;ipdb.set_trace()
-        
-        xyz = batch['nxyz'][:, 1:]
-        xyz.requires_grad = True
-        
-        results = self.gnn_module(batch, xyz)
-
-        prior_energy = self.prior(xyz)
-        prior_grad = compute_grad(xyz, prior_energy)
-        
-        results['energy'] += prior_energy
-        results['energy_grad'] += prior_grad
-        
-        return results
-
-class PairPotentials(torch.nn.Module):
-
-    def __init__(self, pair_model, model_arg, cell, device=0, cutoff=2.5, index_tuple=None, ex_pairs=None):
-        super().__init__()
-        self.model = pair_model(**model_arg)
-        print(cell)
-        self.cell = cell.to(device)
-        self.device = device
-        self.cutoff = cutoff
-        self.index_tuple = index_tuple
-        self.ex_pairs = ex_pairs
-
-    def forward(self, xyz):
-
-        nbr_list, pair_dis, _ = generate_nbr_list(xyz, 
-                                               self.cutoff, 
-                                               self.cell, 
-                                               index_tuple=self.index_tuple, 
-                                               ex_pairs=self.ex_pairs, 
-                                               get_dis=True)
-
-        # compute pair energy 
-        energy = self.model(pair_dis[..., None]).sum()
-
-        return energy
-
-
-class Electrostatics(torch.nn.Module):
-    def __init__(self, charges, cell, device=0, cutoff=2.5, index_tuple=None, ex_pairs=None):
-        super(Electrostatics, self).__init__()
-        self.charges = charges.to(device)
-        from ase import units 
-        k_e = 8.987551787e9
-        EV_TO_J = 1.60210e-19
-        self.conversion = k_e * units.C**-2 * (1/EV_TO_J)  * (units.m) 
-        
-        self.cell = torch.Tensor(cell).to(device)
-        self.device = device
-        self.cutoff = cutoff
-        self.index_tuple = index_tuple
-        self.ex_pairs = ex_pairs
-        
-    def forward(self, x):
-        nbr_list, pair_dis, _ = generate_nbr_list(x, 
-                                               self.cutoff, 
-                                               self.cell, 
-                                               index_tuple=self.index_tuple, 
-                                               ex_pairs=self.ex_pairs, 
-                                               get_dis=True)
-        
-        q1 = self.charges[nbr_list[:,0]]
-        q1 = self.charges[nbr_list[:,1]]
-        U = -self.conversion * (q1 * q1 /pair_dis)#.sum()
-
-        #print(U.shape)
-
-        return U.sum()
-   
-
-class Stack(torch.nn.Module):
-    def __init__(self, model_dict, mode='sum'):
-        super().__init__()
-        self.models = ModuleDict(model_dict)
-        
-    def forward(self, x):
-        for i, key in enumerate(self.models.keys()):
-            if i == 0:
-                result = self.models[key](x).sum().reshape(-1)
-            else:
-                new_result = self.models[key](x).sum().reshape(-1)
-                result += new_result
-        
-        return result
-
-
-class BondPotentials(torch.nn.Module):
-    def __init__(self, system, top, k, ro):
-        super().__init__()
-        self.device = system.device
-        self.cell = torch.Tensor( system.get_cell() )
-        # transform into a diagonal 
-        self.cell = self.cell.diag().to(self.device)
-        self.k = k 
-        self.ro = ro 
-        self.top = top.to(self.device)
-        
-    def forward(self, xyz):
-        bond_vec = xyz[self.top[:,0]] - xyz[self.top[:, 1]]
-        offsets = get_offsets(bond_vec, self.cell, self.device)
-        bond_vec = bond_vec + offsets * self.cell
-        bond = bond_vec.pow(2).sum(-1)
-        
-        energy = 0.5 * self.k * (bond - self.ro).pow(2).sum(-1)
-        
-        return energy
-    
-class AnglePotentials(torch.nn.Module):
-    def __init__(self, system, top, k, thetao):
-        super().__init__()
-        self.device = system.device
-        self.cell = torch.Tensor( system.get_cell() )
-        # transform into a diagonal 
-        self.cell = self.cell.diag().to(self.device)
-        self.k = k 
-        self.thetao = thetao 
-        self.top = top.to(self.device)
-        
-    def forward(self, xyz):
-        
-        bond_vec1 = xyz[self.top[:,0]] - xyz[self.top[:, 1]]
-        bond_vec2 = xyz[self.top[:,2]] - xyz[self.top[:, 1]]
-        bond_vec1 = bond_vec1 + get_offsets(bond_vec1, self.cell, self.device) * self.cell
-        bond_vec2 = bond_vec2 + get_offsets(bond_vec2, self.cell, self.device) * self.cell
-        
-        angle_dot = (bond_vec1 * bond_vec2).sum(-1)
-        norm = ( bond_vec1.pow(2).sum(-1) * bond_vec2.pow(2).sum(-1) ).sqrt()
-
-        cos = angle_dot / norm
-        
-        angle = torch.acos(cos)
-
-        energy = 0.5 * self.k * (angle - self.thetao).pow(2).sum(-1)
-
-        return energy
-
 
 if __name__ == "__main__":
     from ase.lattice.cubic import FaceCenteredCubic
