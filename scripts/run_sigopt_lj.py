@@ -6,6 +6,8 @@ from gnn_fit_lj import *
 parser = argparse.ArgumentParser()
 parser.add_argument("-logdir", type=str)
 parser.add_argument("-device", type=int, default=0)
+parser.add_argument("-data", type=str, nargs='+')
+parser.add_argument("-val", type=str, nargs='+')
 parser.add_argument("-id", type=int, default=None)
 parser.add_argument("--dry_run", action='store_true', default=False)
 params = vars(parser.parse_args())
@@ -31,18 +33,19 @@ if params['id'] == None:
         name=logdir,
         metrics=[dict(name='loss', objective='minimize')],
         parameters=[
-            dict(name='n_atom_basis', type='categorical',categorical_values=["tiny", "low", "mid", "high"]),
-            dict(name='n_filters', type='categorical', categorical_values=["tiny", "low", "mid", "high"]),
+            # dict(name='n_atom_basis', type='categorical',categorical_values=["tiny", "low", "mid", "high"]),
+            # dict(name='n_filters', type='categorical', categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='gaussian_width', type='double', bounds=dict(min=0.05, max=0.25)),
-            dict(name='n_convolutions', type='int', bounds=dict(min=1, max=3)),
-            # dict(name='sigma', type='double', bounds=dict(min=1.1, max=2.25)),
-            # dict(name='epsilon', type='double', bounds=dict(min=0.0025, max=0.025)),
-            dict(name='opt_freq', type='int', bounds=dict(min=40, max=70)),
-            dict(name='lr', type='double', bounds=dict(min=1.1e-5, max=5e-3)),
-            dict(name='cutoff', type='double', bounds=dict(min=1.1, max=2.0)),
+            #dict(name='n_convolutions', type='int', bounds=dict(min=1, max=3)),
+            dict(name='sigma', type='double', bounds=dict(min=0.8, max=1.1)),
+            dict(name='epsilon', type='double', bounds=dict(min=0.1, max=0.5)),
+            dict(name='power', type='int', bounds=dict(min=6, max=12)),
+            dict(name='opt_freq', type='int', bounds=dict(min=51, max=70)),
+            dict(name='lr', type='double', bounds=dict(min=1.0e-4, max=5e-3)),
+            #dict(name='cutoff', type='double', bounds=dict(min=1.1, max=2.0)),
             dict(name='rdf_weight', type='double', bounds=dict(min=0.1, max=1.0)),
             dict(name='vacf_weight', type='double', bounds=dict(min=0.1, max=1.0)),
-            dict(name='rdf_start', type='double', bounds=dict(min=0.1, max=0.8)),
+            #dict(name='rdf_start', type='double', bounds=dict(min=0.1, max=0.8)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
@@ -59,8 +62,12 @@ while experiment.progress.observation_count < experiment.observation_budget:
 
     sys_params = {
     'dt': 0.01,
+    'size': 4,
     'n_epochs': n_epochs,
     'n_sim': n_sim,
+    'data': params['data'],
+    'val': params['val'],
+    't_range': 50
     }
 
     value = fit_lj(assignments=suggestion.assignments, 

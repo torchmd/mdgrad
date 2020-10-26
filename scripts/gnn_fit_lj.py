@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import sys 
-import mdtraj
+#import mdtraj
 from nglview import show_ase, show_file, show_mdtraj
 import torch
 
@@ -20,6 +20,10 @@ from nff.train import get_model
 
 from torchmd.potentials import ExcludedVolume
 from nff.train import get_model
+
+from torchmd.md import NoseHooverChain 
+from torchmd.observable import rdf, vacf
+from torchmd.md import Simulations
 
 matplotlib.rcParams.update({'font.size': 25})
 matplotlib.rc('lines', linewidth=3, color='g')
@@ -41,6 +45,79 @@ gaussian_dict = {'tiny': 16,
                'low': 32,
                'mid': 64, 
                'high': 128}
+
+
+data_dict = {
+    'lj_0.845_1.5': { 
+                      'rdf_fn': '../data/LJ_data/rdf_rho0.845_T1.5_dt0.01.csv' ,
+                      'vacf_fn': '../data/LJ_data/vacf_rho0.845_T1.5_dt0.01.csv',
+                       'rho': 0.845,
+                        'T': 1.5, 
+                        'start': 0.75, 
+                        'end': 3.3,
+                        'element': "H",
+                        'mass': 1.0,
+                        "N_unitcell": 4,
+                        "cell": FaceCenteredCubic
+                        },
+
+    'lj_0.845_1.0': {
+                    'rdf_fn': '../data/LJ_data/rdf_rho0.845_T1.0_dt0.01.csv' ,
+                    'vacf_fn': '../data/LJ_data/vacf_rho0.845_T1.0_dt0.01.csv' ,
+                   'rho': 0.845,
+                    'T': 1.0, 
+                    'start': 0.75, 
+                    'end': 3.3,
+                    'element': "H",
+                    'mass': 1.0,
+                    "N_unitcell": 4,
+                    "cell": FaceCenteredCubic
+                    },
+
+    'lj_0.845_0.75': {
+                    'rdf_fn': '../data/LJ_data/rdf_rho0.845_T0.75_dt0.01.csv' ,
+                    'vacf_fn': '../data/LJ_data/vacf_rho0.845_T0.75_dt0.01.csv' ,
+                   'rho': 0.845,
+                    'T': 0.75, 
+                    'start': 0.75, 
+                    'end': 3.3,
+                    'element': "H",
+                    'mass': 1.0,
+                    "N_unitcell": 4,
+                    "cell": FaceCenteredCubic
+                    }
+                }
+
+from nff.nn.layers import GaussianSmearing
+from torch import nn
+
+nlr = nn.ReLU()
+
+class MLP(nn.Module):
+    def __init__(self, n_gauss, r_start, r_end):
+        super(MLP, self).__init__()
+        
+        self.smear = GaussianSmearing(
+            start=r_start,
+            stop=r_end,
+            n_gaussians=n_gauss,
+            trainable=False
+        )
+        
+        self.layers = nn.Sequential(
+            nn.Linear(n_gauss, n_gauss),
+            nlr,
+            nn.Linear(n_gauss, 64),
+            nlr,
+            nn.Linear(64, 32),
+            nlr,
+            nn.Linear(32, 1)
+        )
+        
+    def forward(self, r):
+        r = self.smear(r)
+        r = self.layers(r)
+        return r
 
 
 def plot_vacf(vacf_sim, vacf_target, fn, path, dt=0.01):
@@ -88,18 +165,97 @@ def JS_rdf(g_obs, g):
 
     return loss_js
 
+def get_unit_len(rho, N_unitcell):
+ 
+    L = (N_unitcell / rho) ** (1/3)
+    
+    return L 
 
+
+def get_system(data_str, device, size):
+
+    rho = data_dict[data_str]['rho']
+    T = data_dict[data_str]['T']
+
+    # initialize states with ASE 
+    cell_module = data_dict[data_str]['cell']
+    N_unitcell = data_dict[data_str]['N_unitcell']
+
+    L = get_unit_len(rho, N_unitcell)
+
+    print("lattice param:", L)
+
+    atoms = cell_module(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                              symbol=data_dict[data_str]['element'],
+                              size=(size, size, size),
+                              latticeconstant= L,
+                              pbc=True)
+    system = System(atoms, device=device)
+    system.set_temperature(T / units.kB)
+
+    return system 
+
+def get_observer(system, data_str, nbins, t_range):
+
+    rdf_data_path = data_dict[data_str]['rdf_fn']
+    rdf_data = np.loadtxt(rdf_data_path, delimiter=',')
+
+    vacf_data_path = data_dict[data_str]['vacf_fn']
+    vacf_target = np.loadtxt(vacf_data_path, delimiter=',')[:t_range]
+    vacf_target = torch.Tensor(vacf_target).to(system.device)
+
+    # define the equation of motion to propagate 
+    rdf_start = data_dict[data_str]['start']
+    rdf_end = data_dict[data_str]['end']
+
+    xnew = np.linspace(rdf_start , rdf_end, nbins)
+        # initialize observable function 
+    obs = rdf(system, nbins, (rdf_start , rdf_end) )
+
+    # get experimental rdf 
+    rdf_target = get_exp_rdf(rdf_data, nbins, (rdf_start, rdf_end), obs)
+
+    vacf_obs = vacf(system, t_range=t_range) 
+
+    return xnew, rdf_target, obs, vacf_target, vacf_obs
+
+def get_sim(system, model, data_str):
+
+    T = data_dict[data_str]['T']
+
+    diffeq = NoseHooverChain(model, 
+            system,
+            Q=50.0, 
+            T=T,
+            num_chains=5, 
+            adjoint=True).to(system.device)
+
+    # define simulator with 
+    sim = Simulations(system, diffeq)
+
+    return sim
 
 def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     n_epochs = sys_params['n_epochs'] 
     n_sim = sys_params['n_sim'] 
+    size = sys_params['size']
 
-    cutoff = assignments['cutoff']
+    #cutoff = assignments['cutoff']
     nbins = assignments['nbins']
     tau = assignments['opt_freq']
 
-    rdf_start = assignments['rdf_start']
+    cutoff = 2.5
+    t_range = sys_params['t_range']
+
+    rdf_start = 0.75#assignments['rdf_start']
+
+    data_str_list = sys_params['data']
+
+    if sys_params['val']:
+        val_str_list = sys_params['val']
+    else:
+        val_str_list = []
 
     print(assignments)
 
@@ -109,71 +265,65 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     print("Training for {} epochs".format(n_epochs))
 
 
-    gnn_params = {
-        'n_atom_basis': width_dict[assignments['n_atom_basis']],
-        'n_filters': width_dict[assignments['n_filters']],
-        'n_gaussians': int(assignments['cutoff']//assignments['gaussian_width']),
-        'n_convolutions': assignments['n_convolutions'],
-        'cutoff': assignments['cutoff'],
-        'trainable_gauss': False
-    }
+    system_list = []
+    for data_str in data_str_list + val_str_list:
+        system = get_system(data_str, device, size) 
+        system_list.append(system)
 
-    size = 3
-    L = 1.679 
+    # Define prior potential
 
-    atoms = FaceCenteredCubic(directions=[[1, 0, 0], 
-                                        [0, 1, 0], 
-                                        [0, 0, 1]],
-                              symbol='H',
-                              size=(size, size, size),
-                              latticeconstant=L,
-                              pbc=True)
+    mlp_parmas = {'n_gauss': int(cutoff//assignments['gaussian_width']), 
+              'r_start': 0.0,
+              'r_end': 2.5}
 
-    from torchmd.system import System
-    system = System(atoms, device=device)
-    system.set_temperature(1.0 /units.kB)
+    lj_params = {'epsilon': assignments['epsilon'], 
+         'sigma': assignments['sigma'],
+        "power": assignments['power']}
 
-    # Define prior potential 
-    lj_params = {'epsilon': 0.1, 
-                 'sigma': 0.9,
-                "power": 12}
+    NN = MLP(**mlp_parmas)
 
-    pair = PairPotentials(system, ExcludedVolume, lj_params,
-                    cutoff=cutoff,
+    pair = ExcludedVolume(**lj_params)
+
+    model_list = []
+    for i, data_str in enumerate(data_str_list + val_str_list):
+
+        pairNN = PairPotentials(system_list[i], NN,
+                    cutoff=2.5,
                     ).to(device)
+        prior = PairPotentials(system_list[i], pair,
+                        cutoff=2.5,
+                        ).to(device)
 
-    model = get_model(gnn_params)
-    GNN = GNNPotentials(system, model,  cutoff=cutoff)
-    model = Stack({
-                    'gnn': GNN, 
-                    'pair': pair
-    })
+        model = Stack({'pairnn': pairNN, 'pair': prior})
+        model_list.append(model)
 
-    from torchmd.md import NoseHooverChain 
-    diffeq =NoseHooverChain(model, 
-                system,
-                Q=50.0, 
-                T=1.0,
-                num_chains=5, 
-                adjoint=False).to(device)
+
+    sim_list = [get_sim(system_list[i], 
+                        model_list[i], 
+                        data_str) for i, data_str in enumerate(data_str_list + val_str_list)]
 
     from torchmd.observable import rdf, vacf
 
-    # Set up observable 
-    obs = rdf(system, nbins=nbins, r_range=(rdf_start, 2.5))
-    vacf_obs = vacf(system, t_range=40)
-
     nbins = assignments['nbins']
 
-    vacf_target = np.loadtxt('../data/LJ_data/vacf_rho0.884_T1.0_dt0.01.csv', delimiter=',')
-    rdf_target = np.loadtxt('../data/LJ_data/rdf_rho0.884_T1.0_dt0.01.csv', delimiter=',')
-    rdf_target = get_exp_rdf(rdf_target, nbins, (rdf_start, 2.5), obs)
+    rdf_obs_list = []
+    vacf_obs_list = []
 
-    vacf_target = torch.Tensor(vacf_target).to(device)
-    rdf_target = rdf_target#.to(device)
+    rdf_target_list = []
+    vacf_target_list = []
+    rdf_bins_list = []
+
+    for i, data_str in enumerate(data_str_list + val_str_list):
+        x, rdf_target, rdf_obs, vacf_target, vacf_obs = get_observer(system_list[i], data_str, nbins, t_range=t_range)
+        rdf_bins_list.append(x)
+
+        rdf_obs_list.append(rdf_obs)
+        rdf_target_list.append(rdf_target)
+        vacf_obs_list.append(vacf_obs)
+        vacf_target_list.append(vacf_target)
 
     from torchmd.md import Simulations
-    optimizer = torch.optim.Adam(list(GNN.parameters()), lr=assignments['lr'])
+    optimizer = torch.optim.Adam(list(NN.parameters()), lr=assignments['lr'])
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                   'min', 
@@ -182,27 +332,56 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                                                   threshold=5e-5)
 
     # Set up simulations 
-    sim = Simulations(system, diffeq)
-
     loss_log = []
 
     for i in range(sys_params['n_epochs']):
 
-        # Simulate 
-        v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=0.01)
+        loss_rdf = torch.Tensor([0.0]).to(device)
+        loss_vacf = torch.Tensor([0.0]).to(device)
 
-        if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
-            return 5 - (i / n_epochs) * 5
+        # temperature annealing 
+        for j, sim in enumerate(sim_list):
 
-        # compute observable 
-        _, _, g_sim = obs(q_t)
+            data_str = (data_str_list + val_str_list)[j]
 
-        vacf_sim = vacf_obs(v_t)
-        vacf_sim = vacf_sim # / vacf_sim[0]
+            # Simulate 
+            v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=0.01)
+
+            if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
+                return 5 - (i / n_epochs) * 5
+
+            _, _, g_sim = rdf_obs_list[j](q_t)
+
+            vacf_sim = vacf_obs_list[j](v_t)
+
+            loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
+            loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean() + JS_rdf(g_sim, rdf_target)
+
+            if i % 25 ==0 :
+                plot_vacf(vacf_sim, vacf_target_list[j][:t_range], 
+                    fn=data_str + "_{}".format(i), 
+                    path=model_path)
+                plot_rdf(g_sim, rdf_target_list[j], 
+                    fn=data_str + "_{}".format(i),
+                     path=model_path, 
+                     start=rdf_start, 
+                     nbins=nbins)
 
 
-        loss_vacf = (vacf_sim - vacf_target[:40]).pow(2).mean()
-        loss_rdf = (g_sim - rdf_target).pow(2).mean() + JS_rdf(g_sim, rdf_target)
+                def plot_pair(fn, path): 
+
+                    pair_true = LennardJones(1.0, 1.0).to(device)
+                    x = torch.linspace(0.95, 2.5, 50)[:, None].to(device)
+
+                    plt.plot( pairNN(x).detach().cpu().numpy() + pair(x).detach().cpu().numpy() + 0.3, 
+                              label='fit')
+                    plt.plot( pair_true(x).detach().cpu().numpy(), label='truth')
+                    plt.legend()      
+                    plt.show()
+                    plt.savefig(path + '/potential_{}.jpg'.format(fn), bbox_inches='tight')
+                    plt.close()
+
+                plot_pair( path=model_path, fn=i)
 
         loss = assignments['rdf_weight'] * loss_rdf + assignments['vacf_weight'] * loss_vacf
         
@@ -216,11 +395,6 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         scheduler.step(loss)
         
         loss_log.append([loss_vacf.item(), loss_rdf.item() ])
-        
-        if i % 5 ==0 :
-            plot_vacf(vacf_sim, vacf_target[:40], fn=i, path=model_path)
-
-            plot_rdf(g_sim, rdf_target, fn=i, path=model_path, start=rdf_start, nbins=nbins)
 
         current_lr = optimizer.param_groups[0]["lr"]
 
@@ -228,12 +402,11 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             print("training converged")
             break
 
-    
     # save loss curve 
     plt.plot(np.array( loss_log)[:, 0])
     plt.plot(np.array( loss_log)[:, 1])
     
-    plt.savefig(model_path + '/loss_{}.jpg'.format(i), bbox_inches='tight')
+    plt.savefig(model_path + '/loss.jpg', bbox_inches='tight')
     plt.show()
     plt.close()
 
