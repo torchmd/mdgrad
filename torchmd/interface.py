@@ -110,9 +110,9 @@ class GNNPotentials(GeneralInteraction):
 
 class PairPotentials(GeneralInteraction):
 
-    def __init__(self, system, pair_model, model_arg, cutoff=2.5, index_tuple=None, ex_pairs=None):
+    def __init__(self, system, pair_model, cutoff=2.5, index_tuple=None, ex_pairs=None):
         super().__init__(system)
-        self.model = pair_model(**model_arg)
+        self.model = pair_model
         self.cutoff = cutoff
         self.index_tuple = index_tuple
         self.ex_pairs = ex_pairs
