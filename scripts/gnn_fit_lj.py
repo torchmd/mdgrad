@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys 
 #import mdtraj
-from nglview import show_ase, show_file, show_mdtraj
+#from nglview import show_ase, show_file, show_mdtraj
 import torch
 
 import matplotlib
