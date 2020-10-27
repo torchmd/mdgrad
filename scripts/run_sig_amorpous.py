@@ -45,7 +45,7 @@ if params['id'] == None:
             dict(name='sigma', type='double', bounds=dict(min=1.0, max=1.5)),
             dict(name='epsilon', type='double', bounds=dict(min=0.0025, max=0.025)),
             dict(name='opt_freq', type='int', bounds=dict(min=10, max=80)),
-            dict(name='lr', type='double', bounds=dict(min=1.1e-7, max=5e-5)),
+            dict(name='lr', type='double', bounds=dict(min=1.1e-7, max=5e-4)),
             dict(name='cutoff', type='double', bounds=dict(min=3.0, max=4.0)),
             dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
