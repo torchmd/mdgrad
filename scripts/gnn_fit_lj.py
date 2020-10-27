@@ -91,12 +91,27 @@ data_dict = {
 from nff.nn.layers import GaussianSmearing
 from torch import nn
 
-nlr = nn.ReLU()
 
-class MLP(nn.Module):
-    def __init__(self, n_gauss, r_start, r_end):
-        super(MLP, self).__init__()
+
+nlr_dict =  {
+    'ReLU': nn.ReLU(), 
+    'ELU': nn.ELU(),
+    'Tanh': nn.Tanh(),
+    'LeakyReLU': nn.LeakyReLU(),
+    'ReLU6':nn.ReLU6(),
+    'SELU': nn.SELU(),
+    'CELU': nn.CELU(),
+    'Tanhshrink': nn.Tanhshrink()
+}
+
+
+class pairMLP(nn.Module):
+    def __init__(self, n_gauss, r_start, r_end, n_layers, n_width, nonlinear ):
+        super(pairMLP, self).__init__()
         
+
+        nlr = nlr_dict[nonlinear]
+
         self.smear = GaussianSmearing(
             start=r_start,
             stop=r_end,
@@ -104,19 +119,27 @@ class MLP(nn.Module):
             trainable=False
         )
         
-        self.layers = nn.Sequential(
+        self.layers = nn.ModuleList(
+            [
             nn.Linear(n_gauss, n_gauss),
             nlr,
-            nn.Linear(n_gauss, 64),
-            nlr,
-            nn.Linear(64, 32),
-            nlr,
-            nn.Linear(32, 1)
-        )
+            nn.Linear(n_gauss, n_width),
+            nlr]
+            )
+
+        for _ in range(n_layers):
+            self.layers.append(nn.Linear(n_width, n_width))
+            self.layers.append(nlr)
+
+        self.layers.append(nn.Linear(n_width, n_gauss))  
+        self.layers.append(nlr)  
+        self.layers.append(nn.Linear(n_gauss, 1)) 
+
         
     def forward(self, r):
         r = self.smear(r)
-        r = self.layers(r)
+        for i in range(len(self.layers)):
+            r = self.layers[i](r)
         return r
 
 
@@ -296,13 +319,16 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     mlp_parmas = {'n_gauss': int(cutoff//assignments['gaussian_width']), 
               'r_start': 0.0,
-              'r_end': 2.5}
+              'r_end': 2.5, 
+              'n_width': assignments['n_width'],
+              'n_layers': assignments['n_layers'],
+              'nonlinear': assignments['nonlinear']}
 
     lj_params = {'epsilon': assignments['epsilon'], 
          'sigma': assignments['sigma'],
         "power": assignments['power']}
 
-    NN = MLP(**mlp_parmas)
+    NN = pairMLP(**mlp_parmas)
     pair = ExcludedVolume(**lj_params)
 
     model_list = []

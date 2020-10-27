@@ -48,6 +48,9 @@ if params['id'] == None:
             #dict(name='rdf_start', type='double', bounds=dict(min=0.1, max=0.8)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
             dict(name='train_vacf', type='categorical', categorical_values=["True", "False"]),
+            dict(name='n_width', type='int', bounds=dict(min=32, max=128)),
+            dict(name='n_layers', type='int', bounds=dict(min=0, max=4)),
+            dict(name='nonlinear', type='categorical', categorical_values=['ReLU', 'ELU', 'Tanh', 'LeakyReLU', 'ReLU6', 'SELU', 'CELU', 'Tanhshrink']),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
