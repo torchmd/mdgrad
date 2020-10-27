@@ -192,6 +192,36 @@ rdf_data_dict = {
 }
 
 
+def warmup(net, pair, device, size, cutoff):
+
+    print("Warming up ")    
+     
+    system = get_system('Si_2.327_102K_cry', device, 4)
+
+    GNN = GNNPotentials(system , net, cutoff=cutoff)
+    pair = PairPotentials(system , pair,
+                    cutoff=8.0,
+                    )#.to(device)
+
+    model = Stack({'gnn': GNN, 'pair': pair})
+
+    #import ipdb; ipdb.set_trace()
+
+    optimizer = torch.optim.Adam(list(model.models['gnn'].parameters() ), lr=0.0005)
+    
+    for epoch in range(200):
+        q = torch.Tensor( system.get_positions() ).to(system.device)
+        q.requires_grad = True
+        u = model(q)
+
+        f = compute_grad(q, u)
+        loss = f.pow(2).mean()
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+        print("average forces", f.abs().mean().item())
+        
+
 def get_unit_len(rho, mass, N_unitcell):
     
     Na = 6.02214086 * 10**23 # avogadro number 
@@ -365,15 +395,16 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     # Initialize potentials, one model that simulate all 
     schnet = get_model(gnn_params)
 
+    pair = ExcludedVolume(**lj_params)
     # build GNN_list 
     model_list = []
     for i, data_str in enumerate(data_str_list + val_str_list):
         GNN = GNNPotentials(system_list[i], schnet, cutoff=cutoff)
-        pair = PairPotentials(system_list[i], ExcludedVolume, lj_params,
+        prior = PairPotentials(system_list[i], pair,
                         cutoff=8.0,
                         ).to(device)
 
-        model = Stack({'gnn': GNN, 'pair': pair})
+        model = Stack({'gnn': GNN, 'pair': prior})
         model_list.append(model)
 
     sim_list = [get_sim(system_list[i], 
@@ -389,6 +420,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         bins_list.append(x)
         g_obs_list.append(g_obs)
         obs_list.append(obs)
+
 
     # define optimizer 
     optimizer = torch.optim.Adam(list(schnet.parameters()), lr=assignments['lr'])
@@ -407,6 +439,10 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                                                   threshold=5e-5)
 
     for i in range(0, n_epochs):
+
+        if i % assignments['minimize_freq']:
+            warmup(schnet, pair, device, size, cutoff)
+
         
         loss_js = torch.Tensor([0.0]).to(device)
         loss_mse = torch.Tensor([0.0]).to(device)
@@ -492,7 +528,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         #        break
         current_lr = optimizer.param_groups[0]["lr"]
 
-        if current_lr <= 5.0e-8:
+        if current_lr <= 1.0e-7:
             print("training converged")
             break
 
