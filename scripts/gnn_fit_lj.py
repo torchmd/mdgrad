@@ -124,26 +124,26 @@ def plot_vacf(vacf_sim, vacf_target, fn, path, dt=0.01):
 
     t_range = np.linspace(0.0,  vacf_sim.shape[0], vacf_sim.shape[0]) * dt 
 
-    plt.plot(t_range, vacf_sim.detach().cpu().numpy(), label='simulation', linewidth=4, alpha=0.6, )
-    plt.plot(t_range, vacf_target.detach().cpu().numpy(), label='target', linewidth=2,linestyle='--', c='black' )
+    plt.plot(t_range, vacf_sim, label='simulation', linewidth=4, alpha=0.6, )
+    plt.plot(t_range, vacf_target, label='target', linewidth=2,linestyle='--', c='black' )
 
     plt.legend()
     plt.show()
-    plt.savefig(path + '/vacf_{}.jpg'.format(fn), bbox_inches='tight')
+    plt.savefig(path + '/vacf_{}.pdf'.format(fn), bbox_inches='tight')
     plt.close()
 
 def plot_rdf( g_sim, rdf_target, fn, path, start, nbins):
 
     bins = np.linspace(start, 2.5, nbins)
 
-    plt.plot(bins, g_sim.detach().cpu().numpy() , label='simulation', linewidth=4, alpha=0.6)
-    plt.plot(bins, rdf_target.detach().cpu().numpy() , label='target', linewidth=2,linestyle='--', c='black')
+    plt.plot(bins, g_sim , label='simulation', linewidth=4, alpha=0.6)
+    plt.plot(bins, rdf_target , label='target', linewidth=2,linestyle='--', c='black')
     
     plt.xlabel("$\AA$")
     plt.ylabel("g(r)")
 
     plt.show()
-    plt.savefig(path + '/rdf_{}.jpg'.format(fn), bbox_inches='tight')
+    plt.savefig(path + '/rdf_{}.pdf'.format(fn), bbox_inches='tight')
     plt.close()
 
 def get_exp_rdf(data, nbins, r_range, obs):
@@ -156,7 +156,6 @@ def get_exp_rdf(data, nbins, r_range, obs):
     
     return g_obs
     
-
 def JS_rdf(g_obs, g):
     e0 = 1e-5
     g_m = 0.5 * (g_obs + g)
@@ -248,7 +247,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     cutoff = 2.5
     t_range = sys_params['t_range']
 
-    rdf_start = 0.75#assignments['rdf_start']
+    rdf_start = 0.75 #assignments['rdf_start']
 
     data_str_list = sys_params['data']
 
@@ -334,6 +333,15 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     # Set up simulations 
     loss_log = []
 
+    # 
+    obs_log = dict()
+
+    for i, data_str in enumerate(data_str_list + val_str_list):
+        obs_log[data_str] = {}
+        obs_log[data_str]['rdf'] = []
+        obs_log[data_str]['vacf'] = []
+
+
     for i in range(sys_params['n_epochs']):
 
         loss_rdf = torch.Tensor([0.0]).to(device)
@@ -357,31 +365,44 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
             loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean() + JS_rdf(g_sim, rdf_target)
 
+            obs_log[data_str]['rdf'].append(g_sim.detach().cpu().numpy())
+            obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())
+
             if i % 25 ==0 :
-                plot_vacf(vacf_sim, vacf_target_list[j][:t_range], 
+                plot_vacf(vacf_sim.detach().cpu().numpy(), vacf_target_list[j][:t_range].detach().cpu().numpy(), 
                     fn=data_str + "_{}".format(i), 
                     path=model_path)
-                plot_rdf(g_sim, rdf_target_list[j], 
+                plot_rdf(g_sim.detach().cpu().numpy(), rdf_target_list[j].detach().cpu().numpy(), 
                     fn=data_str + "_{}".format(i),
                      path=model_path, 
                      start=rdf_start, 
                      nbins=nbins)
 
-
                 def plot_pair(fn, path): 
 
                     pair_true = LennardJones(1.0, 1.0).to(device)
                     x = torch.linspace(0.95, 2.5, 50)[:, None].to(device)
+                    
+                    u_fit = (pairNN(x) + pair(x)).detach().cpu().numpy()
+                    u_fit = u_fit = u_fit - u_fit[-1] 
 
-                    plt.plot( pairNN(x).detach().cpu().numpy() + pair(x).detach().cpu().numpy() + 0.3, 
-                              label='fit')
-                    plt.plot( pair_true(x).detach().cpu().numpy(), label='truth')
+                    plt.plot( x.detach().cpu().numpy(), 
+                              u_fit, 
+                              label='fit', linewidth=4, alpha=0.6)
+                    
+                    plt.plot( x.detach().cpu().numpy(), 
+                              pair_true(x).detach().cpu().numpy(),
+                               label='truth', 
+                               linewidth=2,linestyle='--', c='black')
+
+                    plt.ylabel("g(r)")
                     plt.legend()      
                     plt.show()
                     plt.savefig(path + '/potential_{}.jpg'.format(fn), bbox_inches='tight')
                     plt.close()
 
                 plot_pair( path=model_path, fn=i)
+
 
         loss = assignments['rdf_weight'] * loss_rdf + assignments['vacf_weight'] * loss_vacf
         
@@ -402,11 +423,25 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             print("training converged")
             break
 
+    for j, sim in enumerate(sim_list):
+
+        data_str = (data_str_list + val_str_list)[j]
+
+        plot_vacf(np.array(obs_log[data_str]['vacf'])[-10:].mean(0), vacf_target_list[j][:t_range].detach().cpu().numpy(), 
+            fn=data_str + "_{}".format("final"), 
+            path=model_path)
+
+        plot_rdf(np.array(obs_log[data_str]['rdf'])[-10:].mean(0), rdf_target_list[j].detach().cpu().numpy(), 
+            fn=data_str + "_{}".format("final"),
+             path=model_path, 
+             start=rdf_start, 
+             nbins=nbins)
+
     # save loss curve 
-    plt.plot(np.array( loss_log)[:, 0])
-    plt.plot(np.array( loss_log)[:, 1])
+    plt.plot(np.array( loss_log)[:, 0], label='vacf', alpha=0.7)
+    plt.plot(np.array( loss_log)[:, 1], label='rdf', alpha=0.7)
     
-    plt.savefig(model_path + '/loss.jpg', bbox_inches='tight')
+    plt.savefig(model_path + '/loss.pdf', bbox_inches='tight')
     plt.show()
     plt.close()
 
