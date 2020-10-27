@@ -30,7 +30,7 @@ logdir = params['logdir']
 assignments = {
   "epsilon": 0.473500357318721,
   "gaussian_width": 0.15039612844414205,
-  "lr": 0.004010476824304749,
+  "lr": 5e-3, #0.004010476824304749,
   "nbins": 88,
   "opt_freq": 59,
   "power": 10,

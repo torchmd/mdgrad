@@ -47,6 +47,7 @@ if params['id'] == None:
             dict(name='vacf_weight', type='double', bounds=dict(min=0.1, max=1.0)),
             #dict(name='rdf_start', type='double', bounds=dict(min=0.1, max=0.8)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
+            dict(name='train_vacf', type='categorical', categorical_values=["True", "False"]),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,

@@ -234,6 +234,29 @@ def get_sim(system, model, data_str):
 
     return sim
 
+def plot_pair(fn, path, model, prior, device): 
+
+    pair_true = LennardJones(1.0, 1.0).to(device)
+    x = torch.linspace(0.95, 2.5, 50)[:, None].to(device)
+    
+    u_fit = (model(x) + prior(x)).detach().cpu().numpy()
+    u_fit = u_fit = u_fit - u_fit[-1] 
+
+    plt.plot( x.detach().cpu().numpy(), 
+              u_fit, 
+              label='fit', linewidth=4, alpha=0.6)
+    
+    plt.plot( x.detach().cpu().numpy(), 
+              pair_true(x).detach().cpu().numpy(),
+               label='truth', 
+               linewidth=2,linestyle='--', c='black')
+
+    plt.ylabel("g(r)")
+    plt.legend()      
+    plt.show()
+    plt.savefig(path + '/potential_{}.jpg'.format(fn), bbox_inches='tight')
+    plt.close()
+
 def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     n_epochs = sys_params['n_epochs'] 
@@ -280,7 +303,6 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         "power": assignments['power']}
 
     NN = MLP(**mlp_parmas)
-
     pair = ExcludedVolume(**lj_params)
 
     model_list = []
@@ -372,40 +394,26 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                 plot_vacf(vacf_sim.detach().cpu().numpy(), vacf_target_list[j][:t_range].detach().cpu().numpy(), 
                     fn=data_str + "_{}".format(i), 
                     path=model_path)
+
                 plot_rdf(g_sim.detach().cpu().numpy(), rdf_target_list[j].detach().cpu().numpy(), 
                     fn=data_str + "_{}".format(i),
                      path=model_path, 
                      start=rdf_start, 
                      nbins=nbins)
 
-                def plot_pair(fn, path): 
-
-                    pair_true = LennardJones(1.0, 1.0).to(device)
-                    x = torch.linspace(0.95, 2.5, 50)[:, None].to(device)
-                    
-                    u_fit = (pairNN(x) + pair(x)).detach().cpu().numpy()
-                    u_fit = u_fit = u_fit - u_fit[-1] 
-
-                    plt.plot( x.detach().cpu().numpy(), 
-                              u_fit, 
-                              label='fit', linewidth=4, alpha=0.6)
-                    
-                    plt.plot( x.detach().cpu().numpy(), 
-                              pair_true(x).detach().cpu().numpy(),
-                               label='truth', 
-                               linewidth=2,linestyle='--', c='black')
-
-                    plt.ylabel("g(r)")
-                    plt.legend()      
-                    plt.show()
-                    plt.savefig(path + '/potential_{}.jpg'.format(fn), bbox_inches='tight')
-                    plt.close()
-
-                plot_pair( path=model_path, fn=i)
+            if i % 25 ==0 :
+                plot_pair( path=model_path,
+                             fn=str(i),
+                              model=sim.intergrator.model.models['pairnn'].model, 
+                              prior=sim.intergrator.model.models['pair'].model, 
+                              device=device)
 
 
-        loss = assignments['rdf_weight'] * loss_rdf + assignments['vacf_weight'] * loss_vacf
-        
+        if assignments['train_vacf'] == "True":
+            loss = assignments['rdf_weight'] * loss_rdf + assignments['vacf_weight'] * loss_vacf
+        else:
+            loss = assignments['rdf_weight'] * loss_rdf
+
         loss.backward()
 
         optimizer.step()
@@ -440,7 +448,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     # save loss curve 
     plt.plot(np.array( loss_log)[:, 0], label='vacf', alpha=0.7)
     plt.plot(np.array( loss_log)[:, 1], label='rdf', alpha=0.7)
-    
+    plt.yscale("log")
+    plt.legend()
     plt.savefig(model_path + '/loss.pdf', bbox_inches='tight')
     plt.show()
     plt.close()
