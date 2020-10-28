@@ -524,8 +524,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         # save potential file
 
-        if np.array(loss_log[-10:]).mean(0).sum() <=  0.008: 
-            np.savetxt(model_path + '/potential.txt',  delimiter=',')
+        if np.array(loss_log[-10:]).mean(0).sum() <=  0.006: 
+            np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
 
         loss.backward()
 
