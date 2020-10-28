@@ -2,7 +2,7 @@
 import argparse
 from sigopt import Connection
 from gnn_fit_lj import *
-
+from datetime import datetime
 parser = argparse.ArgumentParser()
 parser.add_argument("-logdir", type=str)
 parser.add_argument("-device", type=int, default=0)
@@ -59,8 +59,13 @@ sys_params = {
 
 for i in range(params['nruns']):
 
+    from datetime import date
+
+    now = datetime.now()
+    dt_string = now.strftime("%m-%d-%H-%M-%S")
+
     value = fit_lj(assignments=assignments, 
-                            suggestion_id=params['name'] + str(i), 
+                            suggestion_id=params['name'] + dt_string, 
                             device=params['device'],
                             sys_params=sys_params,
                             project_name=logdir)
