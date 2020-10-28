@@ -85,13 +85,91 @@ data_dict = {
                     'mass': 1.0,
                     "N_unitcell": 4,
                     "cell": FaceCenteredCubic
-                    }
-                }
+                    },
+
+    'lj_0.7_1.2': {
+                'rdf_fn': '../data/LJ_data/rdf_rho0.7_T1.2_dt0.01.csv' ,
+                'vacf_fn': '../data/LJ_data/vacf_rho0.7_T1.2_dt0.01.csv' ,
+                'rho': 0.7,
+                'T': 1.2, 
+                'start': 0.75, 
+                'end': 3.3,
+                'element': "H",
+                'mass': 1.0,
+                "N_unitcell": 4,
+                "cell": FaceCenteredCubic
+                },
+
+    'lj_0.9_1.2': {
+                'rdf_fn': '../data/LJ_data/rdf_rho0.9_T1.2_dt0.01.csv' ,
+                'vacf_fn': '../data/LJ_data/vacf_rho0.9_T1.2_dt0.01.csv' ,
+                'rho': 0.9,
+                'T': 1.2, 
+                'start': 0.75, 
+                'end': 3.3,
+                'element': "H",
+                'mass': 1.0,
+                "N_unitcell": 4,
+                "cell": FaceCenteredCubic
+                },
+
+    'lj_1.0_1.2': {
+            'rdf_fn': '../data/LJ_data/rdf_rho1.0_T1.2_dt0.01.csv' ,
+            'vacf_fn': '../data/LJ_data/vacf_rho1.0_T1.2_dt0.01.csv' ,
+            'rho': 1.0,
+            'T': 1.2, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic
+
+            },
+    'lj_0.5_1.2': {
+            'rdf_fn': '../data/LJ_data/rdf_rho0.5_T1.2_dt0.01.csv' ,
+            'vacf_fn': '../data/LJ_data/vacf_rho0.5_T1.2_dt0.01.csv' ,
+            'rho': 0.5,
+            'T': 1.2, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic
+
+            }, 
+
+    'lj_1.2_0.75': {
+            'rdf_fn': '../data/LJ_data/rdf_rho1.2_T0.75_dt0.01.csv' ,
+            'vacf_fn': '../data/LJ_data/vacf_rho1.2_T0.75_dt0.01.csv' ,
+            'rho': 1.2,
+            'T': 0.75, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic
+            },
+
+    'lj_1.0_0.75': {
+            'rdf_fn': '../data/LJ_data/rdf_rho1.0_T0.75_dt0.01.csv' ,
+            'vacf_fn': '../data/LJ_data/vacf_rho1.0_T0.75_dt0.01.csv' ,
+            'rho': 1.0,
+            'T': 0.75, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic
+            }
+
+        }
 
 from nff.nn.layers import GaussianSmearing
 from torch import nn
-
-
 
 nlr_dict =  {
     'ReLU': nn.ReLU(), 
@@ -274,11 +352,13 @@ def plot_pair(fn, path, model, prior, device):
                label='truth', 
                linewidth=2,linestyle='--', c='black')
 
-    plt.ylabel("g(r)")
+    #plt.ylabel("g(r)")
     plt.legend()      
     plt.show()
     plt.savefig(path + '/potential_{}.jpg'.format(fn), bbox_inches='tight')
     plt.close()
+
+    return u_fit
 
 def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
@@ -374,7 +454,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                   'min', 
-                                                  min_lr=1e-6, 
+                                                  min_lr=5e-5, 
                                                   verbose=True, factor = 0.5, patience= 20,
                                                   threshold=5e-5)
 
@@ -410,13 +490,15 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
             vacf_sim = vacf_obs_list[j](v_t)
 
-            loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
-            loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean() + JS_rdf(g_sim, rdf_target)
+            if data_str in data_str_list:
+                loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
+                loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean() + JS_rdf(g_sim, rdf_target)
+
 
             obs_log[data_str]['rdf'].append(g_sim.detach().cpu().numpy())
             obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())
 
-            if i % 25 ==0 :
+            if i % 5 ==0 :
                 plot_vacf(vacf_sim.detach().cpu().numpy(), vacf_target_list[j][:t_range].detach().cpu().numpy(), 
                     fn=data_str + "_{}".format(i), 
                     path=model_path)
@@ -427,18 +509,23 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                      start=rdf_start, 
                      nbins=nbins)
 
-            if i % 25 ==0 :
-                plot_pair( path=model_path,
+            if i % 5 ==0 :
+                potential = plot_pair( path=model_path,
                              fn=str(i),
                               model=sim.intergrator.model.models['pairnn'].model, 
                               prior=sim.intergrator.model.models['pair'].model, 
                               device=device)
 
-
         if assignments['train_vacf'] == "True":
             loss = assignments['rdf_weight'] * loss_rdf + assignments['vacf_weight'] * loss_vacf
         else:
             loss = assignments['rdf_weight'] * loss_rdf
+
+
+        # save potential file
+
+        if np.array(loss_log[-10:]).mean(0).sum() <=  0.005: 
+            np.savetxt(model_path + '/potential.txt',  delimiter=',')
 
         loss.backward()
 
@@ -453,7 +540,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         current_lr = optimizer.param_groups[0]["lr"]
 
-        if current_lr <= 5.0e-6:
+        if current_lr <= 5.0e-5:
             print("training converged")
             break
 

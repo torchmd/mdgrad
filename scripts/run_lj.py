@@ -6,10 +6,10 @@ from gnn_fit_lj import *
 parser = argparse.ArgumentParser()
 parser.add_argument("-logdir", type=str)
 parser.add_argument("-device", type=int, default=0)
+parser.add_argument("-nruns", type=int, default=1)
 parser.add_argument("-name", type=str)
 parser.add_argument("-data", type=str, nargs='+')
 parser.add_argument("-val", type=str, nargs='+')
-parser.add_argument("--train_vacf", action='store_true', default=False)
 parser.add_argument("--dry_run", action='store_true', default=False)
 params = vars(parser.parse_args())
 
@@ -28,18 +28,22 @@ logdir = params['logdir']
 
 
 assignments = {
-  "epsilon": 0.473500357318721,
-  "gaussian_width": 0.15039612844414205,
-  "lr": 5e-3, #0.004010476824304749,
-  "nbins": 88,
-  "opt_freq": 59,
+  "epsilon": 0.3948606926382243,
+  "gaussian_width": 0.10881955784962147,
+  "lr": 0.0019643144897852463,
+  "n_layers": 2,
+  "n_width": 87,
+  "nbins": 100,
+  "nonlinear": "ELU",
+  "opt_freq": 60,
   "power": 10,
-  "rdf_weight": 0.941665949654944,
-  "sigma": 1.0004267435304715,
-  "vacf_weight": 0.9226457751885145
+  "rdf_weight": 0.9484437969901747,
+  "sigma": 0.9388191830514877,
+  "train_vacf": "True",
+  "vacf_weight": 0.40849975234089253
 }
 
-if not params['train_vacf']:
+if assignments['train_vacf'] == 'False':
     assignments['vacf_weight'] = 0.0
 
 sys_params = {
@@ -52,10 +56,13 @@ sys_params = {
 't_range': 50
 }
 
-value = fit_lj(assignments=assignments, 
-                        suggestion_id=params['name'], 
-                        device=params['device'],
-                        sys_params=sys_params,
-                        project_name=logdir)
+
+for i in range(params['nruns']):
+
+    value = fit_lj(assignments=assignments, 
+                            suggestion_id=params['name'] + str(i), 
+                            device=params['device'],
+                            sys_params=sys_params,
+                            project_name=logdir)
 
 print(value)
