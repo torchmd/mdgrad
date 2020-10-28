@@ -498,7 +498,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             obs_log[data_str]['rdf'].append(g_sim.detach().cpu().numpy())
             obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())
 
-            if i % 5 ==0 :
+            if i % 20 ==0 :
                 plot_vacf(vacf_sim.detach().cpu().numpy(), vacf_target_list[j][:t_range].detach().cpu().numpy(), 
                     fn=data_str + "_{}".format(i), 
                     path=model_path)
@@ -509,7 +509,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                      start=rdf_start, 
                      nbins=nbins)
 
-            if i % 5 ==0 :
+            if i % 20 ==0 :
                 potential = plot_pair( path=model_path,
                              fn=str(i),
                               model=sim.intergrator.model.models['pairnn'].model, 
@@ -524,7 +524,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         # save potential file
 
-        if np.array(loss_log[-10:]).mean(0).sum() <=  0.005: 
+        if np.array(loss_log[-10:]).mean(0).sum() <=  0.008: 
             np.savetxt(model_path + '/potential.txt',  delimiter=',')
 
         loss.backward()
