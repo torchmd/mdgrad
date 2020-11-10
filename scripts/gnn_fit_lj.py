@@ -177,6 +177,34 @@ data_dict = {
             'mass': 1.0,
             "N_unitcell": 4,
             "cell": FaceCenteredCubic
+            },
+
+
+    'lj_0.1_1.2': {
+            'rdf_fn': '../data/LJ_data/rdf_rho0.1_T1.2_dt0.01.csv' ,
+            'vacf_fn': '../data/LJ_data/vacf_rho0.1_T1.2_dt0.01.csv' ,
+            'rho': 0.1,
+            'T': 1.2, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic
+            },
+
+
+    'lj_0.7_1.0': {
+            'rdf_fn': '../data/LJ_data/rdf_rho0.7_T1.0_dt0.01.csv' ,
+            'vacf_fn': '../data/LJ_data/vacf_rho0.7_T1.0_dt0.01.csv' ,
+            'rho': 0.7,
+            'T': 1.0, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic
             }
 
         }
