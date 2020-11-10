@@ -16,6 +16,10 @@ class BulkObservable(torch.nn.Module):
 
 class Pressure(BulkObservable):
     def __init__(self, system, model):
+        '''
+        This paper is a nice read: 
+            https://doi.org/10.1016/j.cplett.2006.01.087
+        '''
         super(Pressure, self).__init__(system)
         self.model = model
         self.mass = torch.Tensor(system.get_masses()).to(system.device)
