@@ -21,11 +21,20 @@ class Pressure(BulkObservable):
         self.mass = torch.Tensor(system.get_masses()).to(system.device)
         
     def forward(self, q, v):
-
-        u = self.model(q)
-        f = -compute_grad(inputs=q, output=u.sum(-1))
+        
+        # use automatic differentiation to compute Virial 
+        # u = self.model(q)
+        #f = -compute_grad(inputs=q, output=u.sum(-1))
+        
+        nbr, dis, offsets = self.model._reset_topology(q)
+        cell = self.model.cell_diag
+        cell.requires_grad = True 
+        dis = x[nbr[:,0]] - x[nbr[:,1]] - offsets[nbr[:,0], nbr[:,1]] * cell
         
         N_dof = self.mass.shape[0] * self.system.dim
+        
+        dis_norm = dis.pow(2).sum(-1).sqrt()
+        u = pair.model(dis_norm).sum()
         
         # compute temperature 
         p = v * self.mass[:, None]         
@@ -33,9 +42,13 @@ class Pressure(BulkObservable):
         Temperature = ke / (N_dof * 0.5)  
         
         Pideal =  self.system.get_number_of_atoms() * Temperature / self.system.get_volume()
-        Pressure = Pideal + (f * q).sum() / (self.system.get_volume() * self.system.dim)
+        
+        Pvirial = compute_grad(cell, u) * (1 / (cell[0] * cell[1]))
+        
+        Pressure = Pideal - Pvirial 
+
         return Pressure 
-    
+
 
 class Temperature(BulkObservable):
     def __init__(self, system):
