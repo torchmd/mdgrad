@@ -205,7 +205,7 @@ if params['id'] == None:
             dict(name='tau', type='int', bounds=dict(min=10, max=80)),
             dict(name='lr', type='double', bounds=dict(min=1e-6, max=5e-4)),
             dict(name='T', type='double', bounds=dict(min=0.01, max=0.25)),
-            dict(name='dt', type='double', bounds=dict(min=0.01, max=0.1)),
+            dict(name='dt', type='double', bounds=dict(min=0.005, max=0.1)),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
