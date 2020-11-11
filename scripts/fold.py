@@ -162,8 +162,9 @@ def train(params, suggestion_id, project_name, device, n_epochs):
             loss_log.append(loss.item())
 
     from utils import to_mdtraj 
-    mdtraj = to_mdtraj(system, diffeq.traj[::1])
-    mdtraj.save_xyz("{}/train.xyz".format(model_path))
+    traj = to_mdtraj(system, diffeq.traj[::1])
+    traj.center_coordinates()
+    traj.save_xyz("{}/train.xyz".format(model_path))
 
     np.savetxt("{}/loss.csv".format(model_path), np.array(loss_log))
 
