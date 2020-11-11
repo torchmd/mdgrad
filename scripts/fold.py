@@ -186,7 +186,7 @@ if params['dry_run']:
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 1000
-    n_epochs = 10000
+    n_epochs = 20000
 
 logdir = params['logdir']
 #Intiailize connections 
@@ -200,7 +200,7 @@ if params['id'] == None:
             dict(name='n_atom_basis', type='int', bounds=dict(min=16, max=64)),
             dict(name='n_filters', type='int', bounds=dict(min=16, max=64)),
             dict(name='n_gaussians', type='int', bounds=dict(min=16, max=64)),
-            dict(name='n_convolutions', type='int', bounds=dict(min=1, max=4)),
+            dict(name='n_convolutions', type='int', bounds=dict(min=2, max=5)),
             dict(name='cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
             dict(name='tau', type='int', bounds=dict(min=10, max=80)),
             dict(name='lr', type='double', bounds=dict(min=1e-6, max=5e-4)),
