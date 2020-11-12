@@ -127,7 +127,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
             adjoint=True).to(device)
 
     tau = params['tau']
-    sim = Simulations(system, diffeq, wrap=False)
+    sim = Simulations(system, diffeq, wrap=False, method=params['method'])
 
     optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=params['lr'])
 
@@ -204,9 +204,10 @@ if params['id'] == None:
             dict(name='n_convolutions', type='int', bounds=dict(min=2, max=5)),
             dict(name='cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
             dict(name='tau', type='int', bounds=dict(min=10, max=80)),
-            dict(name='lr', type='double', bounds=dict(min=1e-6, max=5e-4)),
-            dict(name='T', type='double', bounds=dict(min=0.01, max=0.25)),
+            dict(name='lr', type='double', bounds=dict(min=1e-6, max=2e-4)),
+            dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
             dict(name='dt', type='double', bounds=dict(min=0.005, max=0.1)),
+            dict(name='method', type='categorical',categorical_values=["NH_verlet", "rk4"])
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
