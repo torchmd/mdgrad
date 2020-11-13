@@ -7,6 +7,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-logdir", type=str)
 parser.add_argument("-device", type=int, default=0)
 parser.add_argument("-nruns", type=int, default=1)
+parser.add_argument("-sigma", type=float, default=1.0)
 parser.add_argument("-name", type=str)
 parser.add_argument("-data", type=str, nargs='+')
 parser.add_argument("-val", type=str, nargs='+')
@@ -38,7 +39,7 @@ assignments = {
   "opt_freq": 60,
   "power": 10,
   "rdf_weight": 0.9484437969901747,
-  "sigma": 0.9388191830514877,
+  "sigma": params['sigma'],
   "train_vacf": "True",
   "vacf_weight": 0.40849975234089253
 }
