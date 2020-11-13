@@ -7,13 +7,14 @@ import os
 
 def gen_helix(n_spirals, n_atoms):
 
-    t = np.linspace(0, 3.14 * n_spirals, n_atoms)
+    t = np.linspace(0, 3.1415926 * n_spirals, n_atoms)
     I = np.array([1,0,0])
     J = np.array([0,1,0])
     K = np.array([0,0,1])
 
     a = 1.0
-    z = 0.0 ; dz = 0.5
+    z = 0.0 
+    dz = 0.5
     positions = np.array([ [np.cos(dt) * a *  I + np.sin(dt) * a * J +  i * dz * K] for i, dt in enumerate(t)] ).reshape(-1,3)
 
     return positions
@@ -43,18 +44,14 @@ def compute_dihe(xyz, dihes):
     cross2 = torch.cross(vec3, vec4)
 
     norm = (cross1.pow(2).sum(-1)*cross2.pow(2).sum(-1)).sqrt()
-    cos_phi = 1.0*((cross1*cross2).sum(-1)/norm)
+    cos_phi = ((cross1*cross2).sum(-1)/norm)
     
     return cos_phi 
 
 def compute_bond(xyz, bonds):
     assert len(xyz.shape) == 3 
-    
     bonds = (xyz[:, bonds[:,0], :] - xyz[:, bonds[:,1], :]).pow(2).sum(-1).sqrt()
-    
     return bonds
-
-
 
 def train(params, suggestion_id, project_name, device, n_epochs):
 
@@ -134,20 +131,18 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     diffeq = NoseHooverChain(FF, 
             system,
             Q=50.0, 
-            T=0.1,
+            T=params['T'],
             num_chains=5, 
             adjoint=True).to(device)
 
     tau = params['tau']
     sim = Simulations(system, diffeq, wrap=False, method=params['method'])
-
     optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=params['lr'])
 
     loss_log = []
 
     for i in range(0, n_epochs):
         trajs = sim.simulate(steps=tau , frequency=int(tau), dt=params['dt'])
-        
         v_t, q_t, pv_t = trajs 
         
         if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
@@ -162,10 +157,9 @@ def train(params, suggestion_id, project_name, device, n_epochs):
         bonds16 = compute_bond(q_t, bond16_top.to(device))
 
         if i > 0:
-
             loss_angle = (angles - targ_angle.to(device).squeeze()).pow(2).mean()
             loss_bond = (bonds - targ_bond.to(device).squeeze()).pow(2).mean()
-            loss_dihe= (dihes - targ_dihe.to(device).squeeze()).pow(2).mean()
+            loss_dihe = (dihes - targ_dihe.to(device).squeeze()).pow(2).mean()
             loss_bond13 = (bonds13 - targ_bond13.to(device).squeeze()).pow(2).mean()
             loss_bond14 = (bonds14 - targ_bond14.to(device).squeeze()).pow(2).mean()
             loss_bond15 = (bonds15 - targ_bond15.to(device).squeeze()).pow(2).mean()
