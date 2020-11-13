@@ -73,10 +73,22 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     angle_top = torch.LongTensor(angle_index)
     bond_index = [[i, i+1]  for i in range(n_atoms) if max([i, i+1]) <= n_atoms-1]
     bond_top = torch.LongTensor(bond_index)
+    bond13 = [[i, i+2]  for i in range(n_atoms) if max([i, i+2]) <= n_atoms-1]
+    bond13_top = torch.LongTensor(bond13)
+    bond14 = [[i, i+3]  for i in range(n_atoms) if max([i, i+3]) <= n_atoms-1]
+    bond14_top = torch.LongTensor(bond14)
+    bond15 = [[i, i+4]  for i in range(n_atoms) if max([i, i+4]) <= n_atoms-1]
+    bond15_top = torch.LongTensor(bond15)
+    bond16 = [[i, i+5]  for i in range(n_atoms) if max([i, i+5]) <= n_atoms-1]
+    bond16_top = torch.LongTensor(bond16)
 
     targ_dihe = compute_dihe(xyz, dihe_top)
     targ_angle = compute_angle(xyz, angle_top)
     targ_bond = compute_bond(xyz, bond_top)
+    targ_bond13 = compute_bond(xyz, bond13_top)
+    targ_bond14 = compute_bond(xyz, bond14_top)
+    targ_bond15 = compute_bond(xyz, bond15_top)
+    targ_bond16 = compute_bond(xyz, bond16_top)
 
     bond_len = targ_bond[0, 0].item()
 
@@ -139,27 +151,46 @@ def train(params, suggestion_id, project_name, device, n_epochs):
         v_t, q_t, pv_t = trajs 
         
         if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
-            return 5.0 
+            return 15.0 
 
         angles = compute_angle(q_t, angle_top.to(device))
         dihes = compute_dihe(q_t, dihe_top.to(device))
         bonds = compute_bond(q_t, bond_top.to(device))
+        bonds13 = compute_bond(q_t, bond13_top.to(device))
+        bonds14 = compute_bond(q_t, bond14_top.to(device))
+        bonds15 = compute_bond(q_t, bond15_top.to(device))
+        bonds16 = compute_bond(q_t, bond16_top.to(device))
 
         if i > 0:
-            loss = (angles - targ_angle.to(device).squeeze()).pow(2).mean()
-            loss += (dihes - targ_dihe.to(device).squeeze()).pow(2).mean()
-            loss += (bonds - targ_bond.to(device).squeeze()).pow(2).mean()
+
+            loss_angle = (angles - targ_angle.to(device).squeeze()).pow(2).mean()
+            loss_bond = (bonds - targ_bond.to(device).squeeze()).pow(2).mean()
+            loss_dihe= (dihes - targ_dihe.to(device).squeeze()).pow(2).mean()
+            loss_bond13 = (bonds13 - targ_bond13.to(device).squeeze()).pow(2).mean()
+            loss_bond14 = (bonds14 - targ_bond14.to(device).squeeze()).pow(2).mean()
+            loss_bond15 = (bonds15 - targ_bond15.to(device).squeeze()).pow(2).mean()
+            loss_bond16 = (bonds16 - targ_bond16.to(device).squeeze()).pow(2).mean()
+
+            loss = params['l_angle'] * loss_angle + params['l_bond'] *  loss_bond + \
+                    params['l_dihe'] * loss_dihe + params['l_bond13'] * loss_bond13 + \
+                    params['l_bond14'] * loss_bond14 + params['l_bond15'] * loss_bond15 + \
+                    params['l_bond16'] * loss_bond16
             
+            loss_record = loss_angle + loss_bond + \
+                            loss_dihe + loss_bond13 + \
+                            loss_bond14 + loss_bond15 + \
+                            loss_bond16
+
             loss.backward()
             # duration = (datetime.now() - current_time)
             optimizer.step()
             optimizer.zero_grad()
             
             print(loss.item())
-            if math.isnan(loss.item()):
-                return 5.0 
+            if math.isnan(loss_record.item()):
+                return 13.0 
 
-            loss_log.append(loss.item())
+            loss_log.append(loss_record.item())
 
     from utils import to_mdtraj 
     traj = to_mdtraj(system, diffeq.traj[::1])
@@ -207,7 +238,14 @@ if params['id'] == None:
             dict(name='lr', type='double', bounds=dict(min=1e-6, max=2e-4)),
             dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
             dict(name='dt', type='double', bounds=dict(min=0.005, max=0.1)),
-            dict(name='method', type='categorical',categorical_values=["NH_verlet", "rk4"])
+            dict(name='method', type='categorical',categorical_values=["NH_verlet", "rk4"]),
+            dict(name='l_bond', type='double', bounds=dict(min=0.01, max=1.0)),
+            dict(name='l_bond13', type='double', bounds=dict(min=0.01, max=1.0)),
+            dict(name='l_bond14', type='double', bounds=dict(min=0.01, max=1.0)),
+            dict(name='l_bond15', type='double', bounds=dict(min=0.01, max=1.0)),
+            dict(name='l_bond16', type='double', bounds=dict(min=0.01, max=1.0)),
+            dict(name='l_angle', type='double', bounds=dict(min=0.01, max=1.0)),
+            dict(name='l_dihe', type='double', bounds=dict(min=0.01, max=1.0)),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
