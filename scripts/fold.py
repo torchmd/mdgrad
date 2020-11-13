@@ -105,7 +105,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     system.set_temperature(params['T']/units.kB)
 
     from torchmd.interface import BondPotentials, GNNPotentials, Stack
-    bondenergy = BondPotentials(system, bond_top, 1.0, bond_len)
+    bondenergy = BondPotentials(system, bond_top, params['k0'], bond_len)
 
     from nff.train import get_model
 
@@ -146,7 +146,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     loss_log = []
 
     for i in range(0, n_epochs):
-        trajs = sim.simulate(steps=tau , frequency=int(tau), dt=0.1)
+        trajs = sim.simulate(steps=tau , frequency=int(tau), dt=params['dt'])
         
         v_t, q_t, pv_t = trajs 
         
@@ -237,8 +237,8 @@ if params['id'] == None:
             dict(name='tau', type='int', bounds=dict(min=10, max=80)),
             dict(name='lr', type='double', bounds=dict(min=1e-6, max=2e-4)),
             dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
-            dict(name='dt', type='double', bounds=dict(min=0.005, max=0.1)),
-            dict(name='method', type='categorical',categorical_values=["NH_verlet", "rk4"]),
+            dict(name='dt', type='double', bounds=dict(min=0.005, max=0.05)),
+            dict(name='method', type='categorical', categorical_values=["NH_verlet", "rk4"]),
             dict(name='l_bond', type='double', bounds=dict(min=0.01, max=1.0)),
             dict(name='l_bond13', type='double', bounds=dict(min=0.01, max=1.0)),
             dict(name='l_bond14', type='double', bounds=dict(min=0.01, max=1.0)),
@@ -246,6 +246,7 @@ if params['id'] == None:
             dict(name='l_bond16', type='double', bounds=dict(min=0.01, max=1.0)),
             dict(name='l_angle', type='double', bounds=dict(min=0.01, max=1.0)),
             dict(name='l_dihe', type='double', bounds=dict(min=0.01, max=1.0)),
+            dict(name='k0', type='double', bounds=dict(min=0.2, max=5.0)),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
