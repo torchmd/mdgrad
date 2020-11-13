@@ -10,6 +10,8 @@ parser.add_argument("-id", type=int, default=None)
 parser.add_argument("-data", type=str, nargs='+', default='water')
 parser.add_argument("-size", type=int, default=4)
 parser.add_argument("--dry_run", action='store_true', default=False)
+parser.add_argument("--pair", action='store_true', default=False)
+parser.add_argument("--anneal", action='store_true', default=False)
 params = vars(parser.parse_args())
 
 
@@ -33,11 +35,32 @@ logdir = params['logdir']
 #Intiailize connections 
 conn = Connection(client_token=token)
 
-if params['id'] == None:
-    experiment = conn.experiments().create(
-        name=logdir,
-        metrics=[dict(name='loss', objective='minimize')],
-        parameters=[
+
+if params['pair']:
+
+    parameters = [
+            dict(name='n_width', type='int', bounds=dict(min=32, max=128)),
+            dict(name='n_layers', type='int', bounds=dict(min=0, max=4)),
+            dict(name='nonlinear', type='categorical', categorical_values=['ReLU', 'ELU', 'Tanh', 
+                                                                            'LeakyReLU', 'ReLU6', 
+                                                                            'SELU', 'CELU', 'Tanhshrink']),
+            dict(name='gaussian_width', type='double', bounds=dict(min=0.05, max=0.25)),
+            dict(name='power', type='int', bounds=dict(min=6, max=12)),
+            dict(name='sigma', type='double', bounds=dict(min=1.0, max=1.5)),
+            dict(name='epsilon', type='double', bounds=dict(min=0.0025, max=0.025)),
+            dict(name='opt_freq', type='int', bounds=dict(min=10, max=80)),
+            dict(name='lr', type='double', bounds=dict(min=1.1e-7, max=5e-4)),
+            dict(name='cutoff', type='double', bounds=dict(min=3.0, max=4.0)),
+            dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
+            dict(name='anneal_rate', type='double', bounds=dict(min=3, max=10)),
+            dict(name='start_T', type='double', bounds=dict(min=300, max=500)),
+            dict(name='anneal_freq', type='int', bounds=dict(min=1, max=20)),
+            dict(name='minimize_freq', type='int', bounds=dict(min=10, max=500))
+        ]
+
+else:
+    parameters = [
             dict(name='n_atom_basis', type='categorical',categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='n_filters', type='categorical', categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='gaussian_width', type='double', bounds=dict(min=0.05, max=0.25)),
@@ -49,19 +72,17 @@ if params['id'] == None:
             dict(name='cutoff', type='double', bounds=dict(min=3.0, max=4.0)),
             dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
-            #dict(name='anneal_flag', type='categorical', categorical_values=['True',' True']),
             dict(name='anneal_rate', type='double', bounds=dict(min=3, max=10)),
             dict(name='start_T', type='double', bounds=dict(min=300, max=500)),
             dict(name='anneal_freq', type='int', bounds=dict(min=1, max=20)),
             dict(name='minimize_freq', type='int', bounds=dict(min=10, max=500))
-            # dict(name='angle_train_start', type='int', bounds=dict(min=4, max=20)),
-            # dict(name='angle_MSE_weight', type='double', bounds=dict(min=0.0, max=2.0)),
-            # dict(name='angle_JS_weight', type='double', bounds=dict(min=0.0, max=2.0)),
-            # dict(name='nbins_angle_train', type='int', bounds=dict(min=10, max=128)),
-            # dict(name='angle_start_train', type='double', bounds=dict(min=0.3, max=0.8)),
-            #dict(name='frameskip_ratio', type='double', bounds=dict(min=0.05, max=0.5)),
-            # dict(name='angle_cutoff', type='double', bounds=dict(min=3.15, max=3.35))
-        ],
+        ]
+
+if params['id'] == None:
+    experiment = conn.experiments().create(
+        name=logdir,
+        metrics=[dict(name='loss', objective='minimize')],
+        parameters=parameters,
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
     )
@@ -82,7 +103,8 @@ while experiment.progress.observation_count < experiment.observation_budget:
     'n_epochs': n_epochs,
     'n_sim': n_sim,
     'data': params['data'],
-    'anneal_flag': 'True'
+    'anneal_flag': params['anneal'],
+    'pair_flag': params['pair']
     }
 
     value = fit_rdf(assignments=suggestion.assignments, 

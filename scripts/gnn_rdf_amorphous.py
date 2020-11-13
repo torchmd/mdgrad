@@ -12,6 +12,8 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.lattice.cubic import FaceCenteredCubic, Diamond
 from ase import units
 
+from gnn_fit_lj import pairMLP
+
 import math 
 
 width_dict = {'tiny': 64,
@@ -222,6 +224,25 @@ def warmup(net, pair, device, size, cutoff):
         print("average forces", f.abs().mean().item())
         
 
+def plot_pair(fn, path, model, prior, device): 
+
+    x = torch.linspace(0.95, 2.5, 50)[:, None].to(device)
+    
+    u_fit = (model(x) + prior(x)).detach().cpu().numpy()
+    u_fit = u_fit = u_fit - u_fit[-1] 
+
+    plt.plot( x.detach().cpu().numpy(), 
+              u_fit, 
+              label='fit', linewidth=4, alpha=0.6)
+
+    #plt.ylabel("g(r)")
+    plt.legend()      
+    plt.show()
+    plt.savefig(path + '/potential_{}.jpg'.format(fn), bbox_inches='tight')
+    plt.close()
+
+    return u_fit
+
 def get_unit_len(rho, mass, N_unitcell):
     
     Na = 6.02214086 * 10**23 # avogadro number 
@@ -363,20 +384,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     tau = assignments['opt_freq'] 
     print("Training for {} epochs".format(n_epochs))
 
-    # Define prior potential 
-    lj_params = {'epsilon': assignments['epsilon'], 
-                 'sigma': assignments['sigma'], 
-                 'power': 12}
-
-    gnn_params = {
-        'n_atom_basis': width_dict[assignments['n_atom_basis']],
-        'n_filters': width_dict[assignments['n_filters']],
-        'n_gaussians': int(assignments['cutoff']//assignments['gaussian_width']),
-        'n_convolutions': assignments['n_convolutions'],
-        'cutoff': assignments['cutoff'],
-        'trainable_gauss': False
-    }
-
     # get cell parameter and data 
     data_str_list = sys_params['data']
 
@@ -393,18 +400,59 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         system_list.append(system)
 
     # Initialize potentials, one model that simulate all 
-    schnet = get_model(gnn_params)
 
-    pair = ExcludedVolume(**lj_params)
+    if sys_params["pair_flag"]:
+
+        mlp_parmas = {'n_gauss': int(cutoff//assignments['gaussian_width']), 
+                  'r_start': 0.0,
+                  'r_end': cutoff, 
+                  'n_width': assignments['n_width'],
+                  'n_layers': assignments['n_layers'],
+                  'nonlinear': assignments['nonlinear']}
+
+        lj_params = {'epsilon': assignments['epsilon'], 
+             'sigma': assignments['sigma'],
+            "power": assignments['power']}
+
+        net = pairMLP(**mlp_parmas)
+        pair = ExcludedVolume(**lj_params)
+
+    else:
+        # Define prior potential 
+        lj_params = {'epsilon': assignments['epsilon'], 
+                     'sigma': assignments['sigma'], 
+                     'power': 12}
+
+        gnn_params = {
+            'n_atom_basis': width_dict[assignments['n_atom_basis']],
+            'n_filters': width_dict[assignments['n_filters']],
+            'n_gaussians': int(assignments['cutoff']//assignments['gaussian_width']),
+            'n_convolutions': assignments['n_convolutions'],
+            'cutoff': assignments['cutoff'],
+            'trainable_gauss': False
+        }
+
+        net = get_model(gnn_params)
+        pair = ExcludedVolume(**lj_params)
+
     # build GNN_list 
     model_list = []
     for i, data_str in enumerate(data_str_list + val_str_list):
-        GNN = GNNPotentials(system_list[i], schnet, cutoff=cutoff)
+        
+        if sys_params["pair_flag"]:
+            NN = PairPotentials(system_list[i], net,
+                        cutoff=assignments['cutoff'],
+                        ).to(device)
+        else:
+            NN = GNNPotentials(system_list[i], 
+                                net, 
+                                cutoff=cutoff)
+
         prior = PairPotentials(system_list[i], pair,
-                        cutoff=8.0,
+                        cutoff=cutoff,
                         ).to(device)
 
-        model = Stack({'gnn': GNN, 'pair': prior})
+        model = Stack({'nn': NN, 'pair': prior})
         model_list.append(model)
 
     sim_list = [get_sim(system_list[i], 
@@ -421,9 +469,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         g_obs_list.append(g_obs)
         obs_list.append(obs)
 
-
     # define optimizer 
-    optimizer = torch.optim.Adam(list(schnet.parameters()), lr=assignments['lr'])
+    optimizer = torch.optim.Adam(list(net.parameters()), lr=assignments['lr'])
 
     loss_log = []
     test_loss_log = []
@@ -435,22 +482,18 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                   'min', 
                                                   min_lr=0.9e-7, 
-                                                  verbose=True, factor = 0.5, patience= 15,
+                                                  verbose=True, factor = 0.5, patience=15,
                                                   threshold=5e-5)
 
     for i in range(0, n_epochs):
 
-        if i % assignments['minimize_freq']:
-            warmup(schnet, pair, device, size, cutoff)
-
-        
+        # if i % assignments['minimize_freq']:
+        #     warmup(net, pair, device, size, cutoff)
         loss_js = torch.Tensor([0.0]).to(device)
         loss_mse = torch.Tensor([0.0]).to(device)
 
         # temperature annealing 
         for j, sim in enumerate(sim_list):
-
-            
             data_str = (data_str_list + val_str_list)[j]
 
             if sys_params['anneal_flag'] == 'True':
@@ -487,6 +530,13 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                 plot_rdfs(bins_list[j], g_obs_list[j], g, "{}_{}".format(data_str, i),
                              model_path, pname=i)
 
+                if sys_params['pair_flag']:
+                    potential = plot_pair( path=model_path,
+                                 fn=str(i),
+                                  model=net, 
+                                  prior=pair, 
+                                  device=device)
+
         loss = loss_js + loss_mse 
         loss.backward()
         
@@ -498,13 +548,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         optimizer.zero_grad()
 
         scheduler.step(loss)
-
-            # # plot VACF 
-            # vacf_sim = vacf_obs(v_t.detach())
-            # plt.plot(vacf_sim.detach().cpu().numpy())
-            # plt.savefig(model_path + '/{}_{}.jpg'.format("vacf", i), bbox_inches='tight')
-            # plt.show()
-            # plt.close()
 
         if torch.isnan(loss):
             plt.plot(loss_log)
