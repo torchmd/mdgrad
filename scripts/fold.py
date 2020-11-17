@@ -53,6 +53,23 @@ def compute_bond(xyz, bonds):
     bonds = (xyz[:, bonds[:,0], :] - xyz[:, bonds[:,1], :]).pow(2).sum(-1).sqrt()
     return bonds
 
+def compute_intcoord(xyz):
+    # compute internal coordinates for a chain  
+    vec = xyz[: ,:-1] - xyz[:, 1:]
+
+    u_norm = vec.pow(2).sum(-1).sqrt()
+    u_i = vec/u_norm[..., None]
+
+    a = (u_i[:, :-1] * u_i[:, 1:]).sum(-1).clamp(-0.99, 0.99).acos()
+
+    n_unorm = u_i[:, :-1].cross(u_i[:, 1:]) # u_{i-1} x u_{i}
+    n_norm = n_unorm.pow(2).sum(-1).sqrt()  
+
+    n_i = n_unorm / n_norm[..., None]
+    d_i = (n_i[:, :-1] * n_i[:, 1:]).sum(-1).clamp(-0.99, 0.99).acos() * (u_i[:, :-2] * n_i[:, 1:]).sum(-1).sign()
+
+    return u_norm, a, d_i
+
 def train(params, suggestion_id, project_name, device, n_epochs):
 
     print(params)
@@ -101,6 +118,8 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     targ_bond16 = compute_bond(xyz, bond16_top)
     targ_bond17 = compute_bond(xyz, bond17_top)
     targ_bond18 = compute_bond(xyz, bond18_top)
+
+    b_targ, a_targ, d_targ = compute_intcoord(xyz)
 
     bond_len = targ_bond[0, 0].item()
 
@@ -198,32 +217,44 @@ def train(params, suggestion_id, project_name, device, n_epochs):
         bonds18 = compute_bond(q_t, bond18_top.to(device))
 
         if i > 0:
-            loss_bond = (bonds - targ_bond.to(device).squeeze()).pow(2).mean()
-            loss_angle1 = (angle1 - targ_angle1.to(device).squeeze()).pow(2).mean()
-            loss_dihe1 = (dihe1 - targ_dihe1.to(device).squeeze()).pow(2).mean()
-            loss_angle2 = (angle2 - targ_angle2.to(device).squeeze()).pow(2).mean()
-            loss_dihe2 = (dihe2 - targ_dihe2.to(device).squeeze()).pow(2).mean()
 
-            loss_bond13 = (bonds13 - targ_bond13.to(device).squeeze()).pow(2).mean()
-            loss_bond14 = (bonds14 - targ_bond14.to(device).squeeze()).pow(2).mean()
-            loss_bond15 = (bonds15 - targ_bond15.to(device).squeeze()).pow(2).mean()
-            loss_bond16 = (bonds16 - targ_bond16.to(device).squeeze()).pow(2).mean()
-            loss_bond17 = (bonds17 - targ_bond17.to(device).squeeze()).pow(2).mean()
-            loss_bond18 = (bonds18 - targ_bond18.to(device).squeeze()).pow(2).mean()
-
-            loss =  params['l_bond'] *  loss_bond + \
-                    params['l_dihe1'] * loss_dihe1 + params['l_dihe2'] * loss_dihe2 + \
-                    params['l_angle1'] * loss_angle1 + params['l_angle2'] * loss_angle2 + \
-                    params['l_bond13'] * loss_bond13 + \
-                    params['l_bond14'] * loss_bond14 + params['l_bond15'] * loss_bond15 + \
-                    params['l_bond16'] * loss_bond16 + params['l_bond17'] * loss_bond17 + \
-                    params['l_bond18'] * loss_bond18
+            b, a, d = compute_intcoord(q_t[[-1]])
             
-            loss_record = loss_angle1 + loss_angle2 + loss_bond + \
-                            loss_dihe1 + loss_dihe2 + \
-                            loss_bond13 + \
-                            loss_bond14 + loss_bond15 + \
-                            loss_bond16 + loss_bond17 + loss_bond18
+            loss_b = (b - b_targ.to(device).squeeze()).pow(2).mean()
+            loss_a = (a - a_targ.to(device).squeeze()).pow(2).mean()
+            loss_d = (d - d_targ.to(device).squeeze()).pow(2).mean()
+
+            loss = params['l_b'] * loss_b + params['l_a'] * loss_a + params['l_d'] * loss_d
+
+            loss_record = loss_b + loss_a + loss_d
+
+
+            # loss_bond = (bonds - targ_bond.to(device).squeeze()).pow(2).mean()
+            # loss_angle1 = (angle1 - targ_angle1.to(device).squeeze()).pow(2).mean()
+            # loss_dihe1 = (dihe1 - targ_dihe1.to(device).squeeze()).pow(2).mean()
+            # loss_angle2 = (angle2 - targ_angle2.to(device).squeeze()).pow(2).mean()
+            # loss_dihe2 = (dihe2 - targ_dihe2.to(device).squeeze()).pow(2).mean()
+
+            # loss_bond13 = (bonds13 - targ_bond13.to(device).squeeze()).pow(2).mean()
+            # loss_bond14 = (bonds14 - targ_bond14.to(device).squeeze()).pow(2).mean()
+            # loss_bond15 = (bonds15 - targ_bond15.to(device).squeeze()).pow(2).mean()
+            # loss_bond16 = (bonds16 - targ_bond16.to(device).squeeze()).pow(2).mean()
+            # loss_bond17 = (bonds17 - targ_bond17.to(device).squeeze()).pow(2).mean()
+            # loss_bond18 = (bonds18 - targ_bond18.to(device).squeeze()).pow(2).mean()
+
+            # loss =  params['l_bond'] *  loss_bond + \
+            #         params['l_dihe1'] * loss_dihe1 + params['l_dihe2'] * loss_dihe2 + \
+            #         params['l_angle1'] * loss_angle1 + params['l_angle2'] * loss_angle2 + \
+            #         params['l_bond13'] * loss_bond13 + \
+            #         params['l_bond14'] * loss_bond14 + params['l_bond15'] * loss_bond15 + \
+            #         params['l_bond16'] * loss_bond16 + params['l_bond17'] * loss_bond17 + \
+            #         params['l_bond18'] * loss_bond18
+            
+            # loss_record = loss_angle1 + loss_angle2 + loss_bond + \
+            #                 loss_dihe1 + loss_dihe2 + \
+            #                 loss_bond13 + \
+            #                 loss_bond14 + loss_bond15 + \
+            #                 loss_bond16 + loss_bond17 + loss_bond18
 
             loss.backward()
             # duration = (datetime.now() - current_time)
@@ -279,25 +310,28 @@ if params['id'] == None:
             # dict(name='n_filters', type='int', bounds=dict(min=16, max=64)),
             # dict(name='n_gaussians', type='int', bounds=dict(min=16, max=64)),
             # dict(name='n_convolutions', type='int', bounds=dict(min=2, max=5)),
-            dict(name='sigma', type='double', bounds=dict(min=0.01, max=0.1)),
-            dict(name='epsilon', type='double', bounds=dict(min=0.7, max=1.3)),
+            dict(name='sigma', type='double', bounds=dict(min=0.7, max=1.3)),
+            dict(name='epsilon', type='double', bounds=dict(min=0.01, max=1.3)),
             #dict(name='cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
             dict(name='tau', type='int', bounds=dict(min=10, max=100)),
             dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-3)),
             dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
             dict(name='dt', type='double', bounds=dict(min=0.005, max=0.05)),
             dict(name='method', type='categorical', categorical_values=["NH_verlet", "rk4"]),
-            dict(name='l_bond', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_bond13', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_bond14', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_bond15', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_bond16', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_bond17', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_bond18', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_angle1', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_dihe1', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_angle2', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_dihe2', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_bond', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_bond13', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_bond14', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_bond15', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_bond16', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_bond17', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_bond18', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_angle1', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_dihe1', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_angle2', type='double', bounds=dict(min=0.0, max=1.0)),
+            # dict(name='l_dihe2', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_b', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_a', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_d', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='k0', type='double', bounds=dict(min=0.2, max=5.0)),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
