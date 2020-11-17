@@ -64,10 +64,16 @@ def train(params, suggestion_id, project_name, device, n_epochs):
 
     xyz = torch.Tensor( gen_helix(15, n_atoms) )[None, ...]
 
-    dihe_index = [[i, i+1, i+2, i+3]  for i in range(n_atoms) if max([i, i+1, i+2, i+3]) <= n_atoms-1]
-    dihe_top = torch.LongTensor(dihe_index)
-    angle_index = [[i, i+1, i+2]  for i in range(n_atoms) if max([i, i+1, i+2]) <= n_atoms-1]
-    angle_top = torch.LongTensor(angle_index)
+    dihe1_index = [[i, i+1, i+2, i+3]  for i in range(n_atoms) if max([i, i+1, i+2, i+3]) <= n_atoms-1]
+    dihe1_top = torch.LongTensor(dihe1_index)
+    dihe2_index = [[i, i+2, i+4, i+6]  for i in range(n_atoms) if max([i, i+2, i+4, i+6]) <= n_atoms-1]
+    dihe2_top = torch.LongTensor(dihe2_index)
+
+    angle1_index = [[i, i+1, i+2]  for i in range(n_atoms) if max([i, i+1, i+2]) <= n_atoms-1]
+    angle1_top = torch.LongTensor(angle1_index)
+    angle2_index = [[i, i+2, i+4]  for i in range(n_atoms) if max([i, i+2, i+4]) <= n_atoms-1]
+    angle2_top = torch.LongTensor(angle2_index)
+
     bond_index = [[i, i+1]  for i in range(n_atoms) if max([i, i+1]) <= n_atoms-1]
     bond_top = torch.LongTensor(bond_index)
     bond13 = [[i, i+2]  for i in range(n_atoms) if max([i, i+2]) <= n_atoms-1]
@@ -78,14 +84,23 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     bond15_top = torch.LongTensor(bond15)
     bond16 = [[i, i+5]  for i in range(n_atoms) if max([i, i+5]) <= n_atoms-1]
     bond16_top = torch.LongTensor(bond16)
+    bond17 = [[i, i+6]  for i in range(n_atoms) if max([i, i+6]) <= n_atoms-1]
+    bond17_top = torch.LongTensor(bond17)
+    bond18 = [[i, i+7]  for i in range(n_atoms) if max([i, i+7]) <= n_atoms-1]
+    bond18_top = torch.LongTensor(bond18)
 
-    targ_dihe = compute_dihe(xyz, dihe_top)
-    targ_angle = compute_angle(xyz, angle_top)
+    targ_dihe1 = compute_dihe(xyz, dihe1_top)
+    targ_angle1 = compute_angle(xyz, angle1_top)
+    targ_dihe2 = compute_dihe(xyz, dihe2_top)
+    targ_angle2 = compute_angle(xyz, angle2_top)
+
     targ_bond = compute_bond(xyz, bond_top)
     targ_bond13 = compute_bond(xyz, bond13_top)
     targ_bond14 = compute_bond(xyz, bond14_top)
     targ_bond15 = compute_bond(xyz, bond15_top)
     targ_bond16 = compute_bond(xyz, bond16_top)
+    targ_bond17 = compute_bond(xyz, bond17_top)
+    targ_bond18 = compute_bond(xyz, bond18_top)
 
     bond_len = targ_bond[0, 0].item()
 
@@ -96,23 +111,30 @@ def train(params, suggestion_id, project_name, device, n_epochs):
 
 
     from torchmd.system import System
+    from torchmd.potentials import LennardJones, ExcludedVolume
     from ase import units 
 
     system = System(chain, device=device)
     system.set_temperature(params['T']/units.kB)
 
-    from torchmd.interface import BondPotentials, GNNPotentials, Stack
+    from torchmd.interface import BondPotentials, GNNPotentials, Stack, PairPotentials
     bondenergy = BondPotentials(system, bond_top, params['k0'], bond_len)
 
     from nff.train import get_model
 
-    gnnparams = {
-        'n_atom_basis': params['n_atom_basis'],
-        'n_filters': params['n_filters'],
-        'n_gaussians': params['n_gaussians'],
-        'n_convolutions': params['n_convolutions'],
-        'cutoff': params['cutoff']
-    }
+    # gnnparams = {
+    #     'n_atom_basis': params['n_atom_basis'],
+    #     'n_filters': params['n_filters'],
+    #     'n_gaussians': params['n_gaussians'],
+    #     'n_convolutions': params['n_convolutions'],
+    #     'cutoff': params['cutoff']
+    # }
+
+    gnnparams = {'n_atom_basis': 32,
+                'n_filters': 32,
+                'n_gaussians': 32,
+                'n_convolutions': 3,
+                'cutoff': 2.5,}
 
     schnet = get_model(gnnparams)
 
@@ -121,9 +143,17 @@ def train(params, suggestion_id, project_name, device, n_epochs):
                          cutoff=params['cutoff'], 
                          )
 
+    pair = PairPotentials(system, ExcludedVolume(**{'epsilon': params['epsilon'], 
+                                                     'sigma': params['sigma'],
+                                                      'power':10}),
+                        cutoff=2.5,
+                        ex_pairs=bond_top
+                        ).to(system.device)
+
     FF = Stack({
            'gnn': GNN,
-           'prior': bondenergy
+           'prior': bondenergy,
+           'pair': pair
             }) 
 
     from torchmd.md import NoseHooverChain, Simulations
@@ -137,7 +167,13 @@ def train(params, suggestion_id, project_name, device, n_epochs):
 
     tau = params['tau']
     sim = Simulations(system, diffeq, wrap=False, method=params['method'])
+
     optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=params['lr'])
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                              'min', 
+                                              min_lr=5e-5, 
+                                              verbose=True, factor = 0.5, patience= 20,
+                                              threshold=5e-5)
 
     loss_log = []
 
@@ -146,43 +182,59 @@ def train(params, suggestion_id, project_name, device, n_epochs):
         v_t, q_t, pv_t = trajs 
         
         if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
-            return 15.0 
+            return 55.0 
 
-        angles = compute_angle(q_t, angle_top.to(device))
-        dihes = compute_dihe(q_t, dihe_top.to(device))
+        angle1 = compute_angle(q_t, angle1_top.to(device))
+        dihe1 = compute_dihe(q_t, dihe1_top.to(device))
+        angle2 = compute_angle(q_t, angle2_top.to(device))
+        dihe2 = compute_dihe(q_t, dihe2_top.to(device))
+
         bonds = compute_bond(q_t, bond_top.to(device))
         bonds13 = compute_bond(q_t, bond13_top.to(device))
         bonds14 = compute_bond(q_t, bond14_top.to(device))
         bonds15 = compute_bond(q_t, bond15_top.to(device))
         bonds16 = compute_bond(q_t, bond16_top.to(device))
+        bonds17 = compute_bond(q_t, bond17_top.to(device))
+        bonds18 = compute_bond(q_t, bond18_top.to(device))
 
         if i > 0:
-            loss_angle = (angles - targ_angle.to(device).squeeze()).pow(2).mean()
             loss_bond = (bonds - targ_bond.to(device).squeeze()).pow(2).mean()
-            loss_dihe = (dihes - targ_dihe.to(device).squeeze()).pow(2).mean()
+            loss_angle1 = (angle1 - targ_angle1.to(device).squeeze()).pow(2).mean()
+            loss_dihe1 = (dihe1 - targ_dihe1.to(device).squeeze()).pow(2).mean()
+            loss_angle2 = (angle2 - targ_angle2.to(device).squeeze()).pow(2).mean()
+            loss_dihe2 = (dihe2 - targ_dihe2.to(device).squeeze()).pow(2).mean()
+
             loss_bond13 = (bonds13 - targ_bond13.to(device).squeeze()).pow(2).mean()
             loss_bond14 = (bonds14 - targ_bond14.to(device).squeeze()).pow(2).mean()
             loss_bond15 = (bonds15 - targ_bond15.to(device).squeeze()).pow(2).mean()
             loss_bond16 = (bonds16 - targ_bond16.to(device).squeeze()).pow(2).mean()
+            loss_bond17 = (bonds17 - targ_bond17.to(device).squeeze()).pow(2).mean()
+            loss_bond18 = (bonds18 - targ_bond18.to(device).squeeze()).pow(2).mean()
 
-            loss = params['l_angle'] * loss_angle + params['l_bond'] *  loss_bond + \
-                    params['l_dihe'] * loss_dihe + params['l_bond13'] * loss_bond13 + \
+            loss =  params['l_bond'] *  loss_bond + \
+                    params['l_dihe1'] * loss_dihe1 + params['l_dihe2'] * loss_dihe2 + \
+                    params['l_angle1'] * loss_angle1 + params['l_angle2'] * loss_angle2 + \
+                    params['l_bond13'] * loss_bond13 + \
                     params['l_bond14'] * loss_bond14 + params['l_bond15'] * loss_bond15 + \
-                    params['l_bond16'] * loss_bond16
+                    params['l_bond16'] * loss_bond16 + params['l_bond17'] * loss_bond17 + \
+                    params['l_bond18'] * loss_bond18
             
-            loss_record = loss_angle + loss_bond + \
-                            loss_dihe + loss_bond13 + \
+            loss_record = loss_angle1 + loss_angle2 + loss_bond + \
+                            loss_dihe1 + loss_dihe2 + \
+                            loss_bond13 + \
                             loss_bond14 + loss_bond15 + \
-                            loss_bond16
+                            loss_bond16 + loss_bond17 + loss_bond18
 
             loss.backward()
             # duration = (datetime.now() - current_time)
             optimizer.step()
             optimizer.zero_grad()
+
+            scheduler.step(loss)
             
             print(loss.item())
             if math.isnan(loss_record.item()):
-                return 13.0 
+                return 55.0 
 
             loss_log.append(loss_record.item())
 
@@ -193,7 +245,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
 
     np.savetxt("{}/loss.csv".format(model_path), np.array(loss_log))
 
-    return np.array( loss_log[-5:] ).mean()
+    return np.array( loss_log[-10:] ).mean()
 
 import argparse
 from sigopt import Connection
@@ -212,7 +264,7 @@ if params['dry_run']:
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 1000
-    n_epochs = 1000
+    n_epochs = 200
 
 logdir = params['logdir']
 #Intiailize connections 
@@ -223,23 +275,29 @@ if params['id'] == None:
         name=logdir,
         metrics=[dict(name='loss', objective='minimize')],
         parameters=[
-            dict(name='n_atom_basis', type='int', bounds=dict(min=16, max=64)),
-            dict(name='n_filters', type='int', bounds=dict(min=16, max=64)),
-            dict(name='n_gaussians', type='int', bounds=dict(min=16, max=64)),
-            dict(name='n_convolutions', type='int', bounds=dict(min=2, max=5)),
-            dict(name='cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
-            dict(name='tau', type='int', bounds=dict(min=10, max=80)),
-            dict(name='lr', type='double', bounds=dict(min=1e-6, max=2e-4)),
+            # dict(name='n_atom_basis', type='int', bounds=dict(min=16, max=64)),
+            # dict(name='n_filters', type='int', bounds=dict(min=16, max=64)),
+            # dict(name='n_gaussians', type='int', bounds=dict(min=16, max=64)),
+            # dict(name='n_convolutions', type='int', bounds=dict(min=2, max=5)),
+            dict(name='sigma', type='double', bounds=dict(min=0.01, max=0.1)),
+            dict(name='epsilon', type='double', bounds=dict(min=0.7, max=1.3)),
+            #dict(name='cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
+            dict(name='tau', type='int', bounds=dict(min=10, max=100)),
+            dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-3)),
             dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
             dict(name='dt', type='double', bounds=dict(min=0.005, max=0.05)),
             dict(name='method', type='categorical', categorical_values=["NH_verlet", "rk4"]),
-            dict(name='l_bond', type='double', bounds=dict(min=0.01, max=1.0)),
-            dict(name='l_bond13', type='double', bounds=dict(min=0.01, max=1.0)),
-            dict(name='l_bond14', type='double', bounds=dict(min=0.01, max=1.0)),
-            dict(name='l_bond15', type='double', bounds=dict(min=0.01, max=1.0)),
-            dict(name='l_bond16', type='double', bounds=dict(min=0.01, max=1.0)),
-            dict(name='l_angle', type='double', bounds=dict(min=0.01, max=1.0)),
-            dict(name='l_dihe', type='double', bounds=dict(min=0.01, max=1.0)),
+            dict(name='l_bond', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_bond13', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_bond14', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_bond15', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_bond16', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_bond17', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_bond18', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_angle1', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_dihe1', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_angle2', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_dihe2', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='k0', type='double', bounds=dict(min=0.2, max=5.0)),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
