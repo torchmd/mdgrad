@@ -295,7 +295,7 @@ if params['dry_run']:
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 1000
-    n_epochs = 200
+    n_epochs = 1000
 
 logdir = params['logdir']
 #Intiailize connections 
@@ -313,7 +313,7 @@ if params['id'] == None:
             dict(name='sigma', type='double', bounds=dict(min=0.7, max=1.3)),
             dict(name='epsilon', type='double', bounds=dict(min=0.01, max=1.3)),
             #dict(name='cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
-            dict(name='tau', type='int', bounds=dict(min=10, max=100)),
+            dict(name='tau', type='int', bounds=dict(min=10, max=60)),
             dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-3)),
             dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
             dict(name='dt', type='double', bounds=dict(min=0.005, max=0.05)),
