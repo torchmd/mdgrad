@@ -140,7 +140,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
 
     GNN = GNNPotentials(system, 
                         schnet, 
-                         cutoff=params['cutoff'], 
+                         cutoff=gnnparams['cutoff'], 
                          )
 
     pair = PairPotentials(system, ExcludedVolume(**{'epsilon': params['epsilon'], 
