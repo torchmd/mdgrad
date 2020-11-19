@@ -33,7 +33,8 @@ class GeneralInteraction(torch.nn.Module):
         super(GeneralInteraction, self).__init__()
         self.system = system
         self.cell = torch.Tensor(system.get_cell()).to(system.device)
-        self.cell_diag = self.cell.diag()
+        self.cell.requires_grad = True 
+        #self.cell_diag = self.cell.diag()
         self.device = system.device
 
     def _reset_system(self):
@@ -98,7 +99,7 @@ class GNNPotentials(GeneralInteraction):
         self.to(self.device)
 
     def _reset_topology(self, xyz):
-        self.inputs['nbr_list'], offsets = generate_nbr_list(xyz, self.cutoff, self.cell_diag, ex_pairs=self.ex_pairs)
+        self.inputs['nbr_list'], offsets = generate_nbr_list(xyz, self.cutoff, self.cell, ex_pairs=self.ex_pairs)
         offsets = offsets[self.inputs['nbr_list'][:,0], self.inputs['nbr_list'][:,1], :]
         self.inputs['offsets'] = offsets
 
@@ -120,7 +121,7 @@ class PairPotentials(GeneralInteraction):
     def _reset_topology(self, xyz):
         nbr_list, pair_dis, _ = generate_nbr_list(xyz, 
                                                self.cutoff, 
-                                               self.cell_diag, 
+                                               self.cell, 
                                                index_tuple=self.index_tuple, 
                                                ex_pairs=self.ex_pairs, 
                                                get_dis=True)
