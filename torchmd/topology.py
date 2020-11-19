@@ -56,7 +56,7 @@ def generate_nbr_list(xyz, cutoff, cell, index_tuple=None, ex_pairs=None, get_di
     
     dis_sq = torch.triu( dis_mat.pow(2).sum(-1) )
     mask = (dis_sq < cutoff ** 2) & (dis_sq != 0)
-    nbr_list = torch.triu(mask.to(torch.long)).nonzero()
+    nbr_list = torch.nonzero( torch.triu(mask.to(torch.long)) , as_tuple=False)
 
     if get_dis:
         return nbr_list, dis_sq[mask].sqrt(), offsets 
@@ -111,3 +111,28 @@ def make_directed(nbr_list):
     new_nbrs = torch.cat([nbr_list, nbr_list_reverse], dim=0)
     
     return new_nbrs
+
+
+
+if __name__ == "__main__": 
+
+    from ase.lattice.cubic import FaceCenteredCubic
+
+    atoms = FaceCenteredCubic(symbol='H',
+                          size=(3, 3, 3),
+                          latticeconstant=1.679,
+                          pbc=True)
+
+    from ase.neighborlist import neighbor_list
+
+
+    i, j, d= neighbor_list("ijD", atoms, cutoff=2.5, self_interaction=False)
+
+    print("ASE calculated {} pairs".format(i.shape[0]))
+    xyz = torch.Tensor( atoms.get_positions() )
+    cell = torch.Tensor(atoms.get_cell() )
+    cutoff = 2.5
+
+    nbr_list, offsets = generate_nbr_list(xyz, cutoff, cell)
+
+    print("torchmd calculated {} pairs".format(nbr_list.shape[0] * 2 ))
