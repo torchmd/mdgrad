@@ -119,6 +119,21 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     targ_bond17 = compute_bond(xyz, bond17_top)
     targ_bond18 = compute_bond(xyz, bond18_top)
 
+    def get_dis_list(xyz, cutoff=5.0):
+
+        n_atoms = xyz.shape[1]
+        adj = torch.ones(n_atoms, n_atoms) 
+
+        atom_idx = torch.LongTensor([[i, i] for i in range(n_atoms)] )
+        adj[atom_idx[:, 0], atom_idx[:, 1]] = 0.0
+
+        adj = adj.nonzero(as_tuple=False)
+        adj = adj[(compute_bond(xyz, adj).squeeze() < cutoff), :]
+        targ_dis = compute_bond(xyz, adj)        
+
+        return targ_dis, adj 
+
+    dis_targ, adj = get_dis_list(xyz, 5.0)
     b_targ, a_targ, d_targ = compute_intcoord(xyz)
 
     bond_len = targ_bond[0, 0].item()
@@ -217,17 +232,27 @@ def train(params, suggestion_id, project_name, device, n_epochs):
         bonds18 = compute_bond(q_t, bond18_top.to(device))
 
         if i > 0:
+            if params['lastframe'] == 'True':
+                traj_train = q_t[[-1]]
+            else:
+                traj_train = q_t
 
-            b, a, d = compute_intcoord(q_t[[-1]])
+            b, a, d = compute_intcoord(traj_train) 
+            dis = compute_bond(traj_train, adj.to(device))
             
             loss_b = (b - b_targ.to(device).squeeze()).pow(2).mean()
             loss_a = (a - a_targ.to(device).squeeze()).pow(2).mean()
             loss_d = (d - d_targ.to(device).squeeze()).pow(2).mean()
 
-            loss = params['l_b'] * loss_b + params['l_a'] * loss_a + params['l_d'] * loss_d
+            dis_diff = dis - dis_targ.to(dis.device)
+            focus = (dis_diff.abs() * (1/params['focus_temp'])).softmax(-1)
+            #print(dis.mean().item())
+            loss_dis = (focus * dis_diff.pow(2)).mean()
 
-            loss_record = loss_b + loss_a + loss_d
+            loss = params['l_b'] * loss_b + params['l_a'] * loss_a + params['l_d'] * loss_d + params['l_dis'] * loss_dis
+            loss_record = loss_b + loss_a + loss_d + dis_diff.pow(2).mean()
 
+            #print(loss_b, loss_a, loss_d, dis_diff.pow(2).mean())
 
             # loss_bond = (bonds - targ_bond.to(device).squeeze()).pow(2).mean()
             # loss_angle1 = (angle1 - targ_angle1.to(device).squeeze()).pow(2).mean()
@@ -318,6 +343,7 @@ if params['id'] == None:
             dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
             dict(name='dt', type='double', bounds=dict(min=0.005, max=0.05)),
             dict(name='method', type='categorical', categorical_values=["NH_verlet", "rk4"]),
+            dict(name='lastframe', type='categorical', categorical_values=["True", "False"]),
             # dict(name='l_bond', type='double', bounds=dict(min=0.0, max=1.0)),
             # dict(name='l_bond13', type='double', bounds=dict(min=0.0, max=1.0)),
             # dict(name='l_bond14', type='double', bounds=dict(min=0.0, max=1.0)),
@@ -329,9 +355,11 @@ if params['id'] == None:
             # dict(name='l_dihe1', type='double', bounds=dict(min=0.0, max=1.0)),
             # dict(name='l_angle2', type='double', bounds=dict(min=0.0, max=1.0)),
             # dict(name='l_dihe2', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_b', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_a', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_d', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_b', type='double', bounds=dict(min=0.0, max=2.0)),
+            dict(name='l_a', type='double', bounds=dict(min=0.0, max=2.0)),
+            dict(name='l_d', type='double', bounds=dict(min=0.0, max=2.0)),
+            dict(name='l_dis', type='double', bounds=dict(min=0.0, max=2.0)),
+            dict(name='focus_temp', type='double', bounds=dict(min=0.01, max=1.0)),
             dict(name='k0', type='double', bounds=dict(min=0.2, max=5.0)),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
