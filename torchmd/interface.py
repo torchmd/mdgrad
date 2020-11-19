@@ -34,7 +34,6 @@ class GeneralInteraction(torch.nn.Module):
         self.system = system
         self.cell = torch.Tensor(system.get_cell()).to(system.device)
         self.cell.requires_grad = True 
-        #self.cell_diag = self.cell.diag()
         self.device = system.device
 
     def _reset_system(self):
@@ -130,7 +129,6 @@ class PairPotentials(GeneralInteraction):
 
     def forward(self, xyz):
         nbr_list, pair_dis, _ = self._reset_topology(xyz)
-
         # compute pair energy 
         energy = self.model(pair_dis[..., None]).sum()
         return energy
