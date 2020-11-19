@@ -20,7 +20,6 @@ def generate_pair_index(N, index_tuple):
 
 def generate_nbr_list(xyz, cutoff, cell, index_tuple=None, ex_pairs=None, get_dis=False):
     
-    # todo: make it compatible for non-cubic cells
     # todo: topology should be a class to handle some initialization 
     device = xyz.device
 
@@ -43,10 +42,18 @@ def generate_nbr_list(xyz, cutoff, cell, index_tuple=None, ex_pairs=None, get_di
 
         # todo handle this calculation like a sparse tensor 
         dis_mat = dis_mat * mask[..., None].to(device)
-
-    offsets = -dis_mat.ge(0.5 *  cell).to(torch.float).to(device) + \
-                    dis_mat.lt(-0.5 *  cell).to(torch.float).to(device)
-    dis_mat = dis_mat + offsets * cell
+        
+    if len(cell.shape) == 1: # I should probably completely get rid of cubic cell convention, will do it some other day 
+        cell = torch.diag(diag)
+    
+    # project the position vector onto the cell basis (does not need to be orthonormal )
+    reduced_dis = dis_mat.matmul( cell.inverse())
+    offsets_add = -(reduced_dis > torch.Tensor([0.5, 0.5, 0.5])).to(torch.float).to(device)
+    offsets_sub = (reduced_dis < -torch.Tensor([0.5, 0.5, 0.5])).to(torch.float).to(device)
+    offsets = offsets_add + offsets_sub
+    
+    dis_mat = dis_mat + offsets.matmul(cell)
+    
     dis_sq = torch.triu( dis_mat.pow(2).sum(-1) )
     mask = (dis_sq < cutoff ** 2) & (dis_sq != 0)
     nbr_list = torch.triu(mask.to(torch.long)).nonzero()
