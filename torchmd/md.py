@@ -43,23 +43,16 @@ class Simulations():
 
     def get_check_point(self):
 
-        if hasattr(self, 'traj'):
-            states = [torch.Tensor(log[key]).to(self.device) for key in self.log]
+        if hasattr(self, 'log'):
+            states = [torch.Tensor(self.log[key][-1]).to(self.device) for key in self.log]
 
             if self.wrap:
                 wrapped_xyz = wrap_positions(self.log['positions'][-1], self.system.get_cell())
                 states[1] = torch.Tensor(wrapped_xyz).to(self.device)
 
-    def get_inital_states(self, wrap=True):
-        states = [
-                self.system.get_velocities(), 
-                self.system.get_positions(wrap=wrap), 
-                [0.0] * self.num_chains]
-
-        states = [torch.Tensor(var).to(self.system.device) for var in states]
-
-        self.traj = []
-        return states
+            return states 
+        else:
+            raise ValueError("No log available")
         
     def simulate(self, steps=1, dt=1.0 * units.fs, frequency=1):
 
@@ -183,14 +176,6 @@ class NoseHooverChain(torch.nn.Module):
         self.traj = []
         return states
 
-    # def update_traj(self, states):
-    #     # should there be a Trajectory objects?
-    #     assert len(states) == self.num_vars
-    #     assert all([type(state) == torch.Tensor for state in states])        
-    #     if states[0].device != 'cpu':
-    #         self.traj.append([var.detach().cpu().numpy() for var in states])
-    #     else:
-    #         self.traj.append([var.detach().numpy() for var in states])
 
 class NeuralNVT(torch.nn.Module):
 
