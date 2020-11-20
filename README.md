@@ -21,8 +21,3 @@ conda install -c conda-forge mdtraj
 conda install nglview -c conda-forge
 # might need: jupyter-nbextension enable nglview --py --sys-prefix
 ```
-
-[torchdiffeq](https://github.com/rtqichen/torchdiffeq)
-```
-git clone https://github.com/rtqichen/torchdiffeq.git
-```
