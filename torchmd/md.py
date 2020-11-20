@@ -35,11 +35,16 @@ class Simulations():
 
     def update_log(self, trajs):
         for i, key in enumerate( self.keys ):
-
             if trajs[i][0].device != 'cpu':
                 self.log[key].append(trajs[i][-1].detach().cpu().numpy()) 
             else:
                 self.log[key].append(trajs[i][-1].detach().numpy()) 
+
+    def update_states(self):
+        if "positions" in self.log.keys():
+            self.system.set_positions(self.log['positions'][-1])
+        if "velocities" in self.log.keys():
+            self.system.set_velocities(self.log['velocities'][-1])
 
     def get_check_point(self):
 
@@ -75,7 +80,10 @@ class Simulations():
                 # check for NaN
             #self.integrator.update_traj(tuple([var[-1] for var in trajs]))
             self.update_log(trajs)
+            self.update_states()
+
             states = self.get_check_point()
+
 
         return trajs
 
