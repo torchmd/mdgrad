@@ -1,3 +1,5 @@
+"""Summary
+"""
 import torch
 from nff.utils.scatter import compute_grad
 from nff.utils import batch_to
@@ -29,7 +31,25 @@ from torchmd.topology import generate_nbr_list, get_offsets, generate_angle_list
 '''
 
 class GeneralInteraction(torch.nn.Module):
+
+    """Interface for energy calculator that requires dynamic update of interaction topology 
+    
+        example:
+            Graph neural networks (GNNPotentials) need to update its topology given coordinates update during the simulation 
+            Pair potentials (PairPotentials) need to search for interaction neighbor list 
+    
+    Attributes:
+        cell (torch.Tensor): N x N tensor that specifies the basis of the simulation box 
+        device (int or str): integer if for GPU; "cpu" for cpu  
+        system (torchmd.system.System): Object to contain simulation information 
+    """
+    
     def __init__(self, system):
+        """Summary
+        
+        Args:
+            system (TYPE): Description
+        """
         super(GeneralInteraction, self).__init__()
         self.system = system
         self.cell = torch.Tensor(system.get_cell()).to(system.device)
@@ -37,34 +57,78 @@ class GeneralInteraction(torch.nn.Module):
         self.device = system.device
 
     def _reset_system(self):
+        """Summary
+        """
         pass
 
     def _reset_topology(self, xyz):
+        """Summary
+        
+        Args:
+            xyz (TYPE): Description
+        """
         pass
 
     def forward(self):
+        """Summary
+        """
         pass
 
 class SpecificInteraction(torch.nn.Module):
+
+    """Summary
+    
+    Attributes:
+        cell (TYPE): Description
+        cell_diag (TYPE): Description
+        cutoff (TYPE): Description
+        device (TYPE): Description
+        system (TYPE): Description
+        topology (TYPE): Description
+    """
+    
     def __init__(self, system):
+        """Summary
+        
+        Args:
+            system (TYPE): Description
+        """
         super(SpecificInteraction, self).__init__()
+        self.system = system 
         self.cell = torch.Tensor(system.get_cell()).to(system.device)
-        self.cell_diag = self.cell.diag()
+        self.cell_diag = self.system.cell.diag()
         self.device = device
         self.cutoff = cutoff
         self.topology = topology 
 
     def _reset_system(self):
+        """Summary
+        """
         pass
 
     def forward(self):
+        """Summary
+        """
         pass
 
 
 class GNNPotentialsTrain(GeneralInteraction):
+
+    """Summary
+    
+    Attributes:
+        gnn_module (TYPE): Description
+        prior (TYPE): Description
+    """
+    
     def __init__(self, system, gnn_module, prior_module):
         '''
-            only works for batch size 1 
+        only works for batch size 1 
+        
+        Args:
+            system (TYPE): Description
+            gnn_module (TYPE): Description
+            prior_module (TYPE): Description
         '''
         super().__init__(system)
         self.gnn_module = gnn_module
@@ -73,7 +137,14 @@ class GNNPotentialsTrain(GeneralInteraction):
         self.to(self.device)
 
     def forward(self, batch): 
+        """Summary
         
+        Args:
+            batch (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
         xyz = batch['nxyz'][:, 1:]
         xyz.requires_grad = True
         
@@ -88,7 +159,25 @@ class GNNPotentialsTrain(GeneralInteraction):
         return results
 
 class GNNPotentials(GeneralInteraction):
+
+    """Summary
+    
+    Attributes:
+        cutoff (TYPE): Description
+        ex_pairs (TYPE): Description
+        gnn (TYPE): Description
+        inputs (TYPE): Description
+    """
+    
     def __init__(self, system, gnn, cutoff, ex_pairs=None):
+        """Summary
+        
+        Args:
+            system (TYPE): Description
+            gnn (TYPE): Description
+            cutoff (TYPE): Description
+            ex_pairs (None, optional): Description
+        """
         super().__init__(system)
         self.gnn = gnn
         self.cutoff = cutoff
@@ -98,11 +187,24 @@ class GNNPotentials(GeneralInteraction):
         self.to(self.device)
 
     def _reset_topology(self, xyz):
+        """Summary
+        
+        Args:
+            xyz (TYPE): Description
+        """
         self.inputs['nbr_list'], offsets = generate_nbr_list(xyz, self.cutoff, self.cell, ex_pairs=self.ex_pairs)
         offsets = offsets[self.inputs['nbr_list'][:,0], self.inputs['nbr_list'][:,1], :]
         self.inputs['offsets'] = offsets
 
     def forward(self, xyz): 
+        """Summary
+        
+        Args:
+            xyz (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
         self._reset_topology(xyz)
         results = self.gnn(self.inputs, xyz)
         return results['energy']
@@ -110,7 +212,25 @@ class GNNPotentials(GeneralInteraction):
 
 class PairPotentials(GeneralInteraction):
 
+    """Summary
+    
+    Attributes:
+        cutoff (TYPE): Description
+        ex_pairs (TYPE): Description
+        index_tuple (TYPE): Description
+        model (TYPE): Description
+    """
+    
     def __init__(self, system, pair_model, cutoff=2.5, index_tuple=None, ex_pairs=None):
+        """Summary
+        
+        Args:
+            system (TYPE): Description
+            pair_model (TYPE): Description
+            cutoff (float, optional): Description
+            index_tuple (None, optional): Description
+            ex_pairs (None, optional): Description
+        """
         super().__init__(system)
         self.model = pair_model
         self.cutoff = cutoff
@@ -118,6 +238,14 @@ class PairPotentials(GeneralInteraction):
         self.ex_pairs = ex_pairs
 
     def _reset_topology(self, xyz):
+        """Summary
+        
+        Args:
+            xyz (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
         nbr_list, pair_dis, _ = generate_nbr_list(xyz, 
                                                self.cutoff, 
                                                self.cell, 
@@ -128,6 +256,14 @@ class PairPotentials(GeneralInteraction):
         return nbr_list, pair_dis, _
 
     def forward(self, xyz):
+        """Summary
+        
+        Args:
+            xyz (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
         nbr_list, pair_dis, _ = self._reset_topology(xyz)
         # compute pair energy 
         energy = self.model(pair_dis[..., None]).sum()
@@ -135,7 +271,30 @@ class PairPotentials(GeneralInteraction):
 
 
 class Electrostatics(torch.nn.Module):
+
+    """Summary
+    
+    Attributes:
+        cell (TYPE): Description
+        charges (TYPE): Description
+        conversion (TYPE): Description
+        cutoff (TYPE): Description
+        device (TYPE): Description
+        ex_pairs (TYPE): Description
+        index_tuple (TYPE): Description
+    """
+    
     def __init__(self, charges, cell, device=0, cutoff=2.5, index_tuple=None, ex_pairs=None):
+        """Summary
+        
+        Args:
+            charges (TYPE): Description
+            cell (TYPE): Description
+            device (int, optional): Description
+            cutoff (float, optional): Description
+            index_tuple (None, optional): Description
+            ex_pairs (None, optional): Description
+        """
         super(Electrostatics, self).__init__()
         self.charges = charges.to(device)
         from ase import units 
@@ -150,6 +309,14 @@ class Electrostatics(torch.nn.Module):
         self.ex_pairs = ex_pairs
         
     def forward(self, x):
+        """Summary
+        
+        Args:
+            x (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
         nbr_list, pair_dis, _ = generate_nbr_list(x, 
                                                self.cutoff, 
                                                self.cell, 
@@ -165,11 +332,32 @@ class Electrostatics(torch.nn.Module):
    
 
 class Stack(torch.nn.Module):
+
+    """Summary
+    
+    Attributes:
+        models (TYPE): Description
+    """
+    
     def __init__(self, model_dict, mode='sum'):
+        """Summary
+        
+        Args:
+            model_dict (TYPE): Description
+            mode (str, optional): Description
+        """
         super().__init__()
         self.models = ModuleDict(model_dict)
         
     def forward(self, x):
+        """Summary
+        
+        Args:
+            x (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
         for i, key in enumerate(self.models.keys()):
             if i == 0:
                 result = self.models[key](x).sum().reshape(-1)
@@ -181,7 +369,26 @@ class Stack(torch.nn.Module):
 
 
 class BondPotentials(torch.nn.Module):
+
+    """Summary
+    
+    Attributes:
+        cell (TYPE): Description
+        device (TYPE): Description
+        k (TYPE): Description
+        ro (TYPE): Description
+        top (TYPE): Description
+    """
+    
     def __init__(self, system, top, k, ro):
+        """Summary
+        
+        Args:
+            system (TYPE): Description
+            top (TYPE): Description
+            k (TYPE): Description
+            ro (TYPE): Description
+        """
         super().__init__()
         self.device = system.device
         self.cell = torch.Tensor( system.get_cell() )
@@ -192,6 +399,14 @@ class BondPotentials(torch.nn.Module):
         self.top = top.to(self.device)
         
     def forward(self, xyz):
+        """Summary
+        
+        Args:
+            xyz (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
         bond_vec = xyz[self.top[:,0]] - xyz[self.top[:, 1]]
         offsets = get_offsets(bond_vec, self.cell, self.device)
         bond_vec = bond_vec + offsets * self.cell
@@ -202,7 +417,26 @@ class BondPotentials(torch.nn.Module):
         return energy
     
 class AnglePotentials(torch.nn.Module):
+
+    """Summary
+    
+    Attributes:
+        cell (TYPE): Description
+        device (TYPE): Description
+        k (TYPE): Description
+        thetao (TYPE): Description
+        top (TYPE): Description
+    """
+    
     def __init__(self, system, top, k, thetao):
+        """Summary
+        
+        Args:
+            system (TYPE): Description
+            top (TYPE): Description
+            k (TYPE): Description
+            thetao (TYPE): Description
+        """
         super().__init__()
         self.device = system.device
         self.cell = torch.Tensor( system.get_cell() )
@@ -213,7 +447,14 @@ class AnglePotentials(torch.nn.Module):
         self.top = top.to(self.device)
         
     def forward(self, xyz):
+        """Summary
         
+        Args:
+            xyz (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
         bond_vec1 = xyz[self.top[:,0]] - xyz[self.top[:, 1]]
         bond_vec2 = xyz[self.top[:,2]] - xyz[self.top[:, 1]]
         bond_vec1 = bond_vec1 + get_offsets(bond_vec1, self.cell, self.device) * self.cell
@@ -232,17 +473,33 @@ class AnglePotentials(torch.nn.Module):
 
 
 class topology:
+
+    """Summary
+    
+    Attributes:
+        top (TYPE): Description
+    """
+    
     def __init__():
+        """Summary
+        """
         self.top = top
 
     def _mutate(self, xyz, boundary):
-        '''update topology'''
+        '''update topology
+        
+        Args:
+            xyz (TYPE): Description
+            boundary (TYPE): Description
+        '''
         pass
 
     def _get_topology(): 
-        '''return toplogy'''
+        '''return toplogy
+        '''
         pass 
 
     def _stack(self):
-        '''stack topology for parrallelized calculations'''
+        '''stack topology for parrallelized calculations
+        '''
         pass
