@@ -1,7 +1,5 @@
-from torchdiffeq._impl.misc import _check_inputs
-from torchdiffeq._impl.fixed_grid import Euler, Midpoint, RK4
-from torchdiffeq._impl.misc import _check_inputs, _flatten, _flatten_convert_none_to_zeros
-from torchdiffeq._impl.solvers import FixedGridODESolver
+from torchmd.tinydiffeq import _check_inputs, _flatten, _flatten_convert_none_to_zeros
+from torchmd.tinydiffeq import RK4, FixedGridODESolver
 
 import torch 
 from torch import nn
