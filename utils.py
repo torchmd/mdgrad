@@ -18,7 +18,7 @@ matplotlib.rcParams['axes.linewidth'] = 3.0
 
 
 def to_mdtraj(system, traj):
-    traj = [Atoms(positions=xyz[1], numbers=system.get_atomic_numbers()) for xyz in traj]
+    traj = [Atoms(positions=xyz, numbers=system.get_atomic_numbers()) for xyz in traj['positions']]
     # create tmp file 
     ase.io.write("junk.pdb", traj)
     traj = mdtraj.load_pdb("junk.pdb")
