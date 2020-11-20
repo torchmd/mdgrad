@@ -137,8 +137,16 @@ class FixedGridODESolver(object):
 class RK4(FixedGridODESolver):
 
     def step_func(self, func, t, dt, y):
-        return rk_common.rk4_alt_step_func(func, t, dt, y)
+        return rk4_alt_step_func(func, t, dt, y)
 
     @property
     def order(self):
         return 4
+
+def rk4_alt_step_func(func, t, dt, y, k1=None):
+    """Smaller error with slightly more compute."""
+    if k1 is None: k1 = func(t, y)
+    k2 = func(t + dt / 3, tuple(y_ + dt * k1_ / 3 for y_, k1_ in zip(y, k1)))
+    k3 = func(t + dt * 2 / 3, tuple(y_ + dt * (k1_ / -3 + k2_) for y_, k1_, k2_ in zip(y, k1, k2)))
+    k4 = func(t + dt, tuple(y_ + dt * (k1_ - k2_ + k3_) for y_, k1_, k2_, k3_ in zip(y, k1, k2, k3)))
+    return tuple((k1_ + 3 * k2_ + 3 * k3_ + k4_) * (dt / 8) for k1_, k2_, k3_, k4_ in zip(k1, k2, k3, k4))
