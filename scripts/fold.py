@@ -111,6 +111,10 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     targ_dihe2 = compute_dihe(xyz, dihe2_top)
     targ_angle2 = compute_angle(xyz, angle2_top)
 
+    end2end = torch.LongTensor([[0, 49], [0, 24], [25, 49]])
+    dis_end2end_targ = compute_bond(xyz, end2end)
+
+
     targ_bond = compute_bond(xyz, bond_top)
     targ_bond13 = compute_bond(xyz, bond13_top)
     targ_bond14 = compute_bond(xyz, bond14_top)
@@ -231,6 +235,8 @@ def train(params, suggestion_id, project_name, device, n_epochs):
         bonds17 = compute_bond(q_t, bond17_top.to(device))
         bonds18 = compute_bond(q_t, bond18_top.to(device))
 
+        dis_end2end = compute_bond(q_t, end2end.to(device))
+
         if i > 0:
             if params['lastframe'] == 'True':
                 traj_train = q_t[[-1]]
@@ -243,13 +249,14 @@ def train(params, suggestion_id, project_name, device, n_epochs):
             loss_b = (b - b_targ.to(device).squeeze()).pow(2).mean()
             loss_a = (a - a_targ.to(device).squeeze()).pow(2).mean()
             loss_d = (d - d_targ.to(device).squeeze()).pow(2).mean()
+            loss_end2end = (dis_end2end - dis_end2end_targ.to(device).squeeze()).pow(2).mean()
 
             dis_diff = dis - dis_targ.to(dis.device)
             focus = (dis_diff.abs() * (1/params['focus_temp'])).softmax(-1)
             #print(dis.mean().item())
             loss_dis = (focus * dis_diff.pow(2)).mean()
 
-            loss = params['l_b'] * loss_b + params['l_a'] * loss_a + params['l_d'] * loss_d + params['l_dis'] * loss_dis
+            loss = params['l_b'] * loss_b + params['l_a'] * loss_a + params['l_d'] * loss_d + params['l_dis'] * loss_dis + params['l_end2end'] * loss_end2end
             loss_record = loss_b + loss_a + loss_d + dis_diff.pow(2).mean()
 
             #print(loss_b, loss_a, loss_d, dis_diff.pow(2).mean())
@@ -295,7 +302,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
             loss_log.append(loss_record.item())
 
     from utils import to_mdtraj 
-    traj = to_mdtraj(system, diffeq.traj[::1])
+    traj = to_mdtraj(system, sim.log)
     traj.center_coordinates()
     traj.save_xyz("{}/train.xyz".format(model_path))
 
@@ -355,10 +362,11 @@ if params['id'] == None:
             # dict(name='l_dihe1', type='double', bounds=dict(min=0.0, max=1.0)),
             # dict(name='l_angle2', type='double', bounds=dict(min=0.0, max=1.0)),
             # dict(name='l_dihe2', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_b', type='double', bounds=dict(min=0.0, max=2.0)),
-            dict(name='l_a', type='double', bounds=dict(min=0.0, max=2.0)),
-            dict(name='l_d', type='double', bounds=dict(min=0.0, max=2.0)),
-            dict(name='l_dis', type='double', bounds=dict(min=0.0, max=3.0)),
+            dict(name='l_b', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_a', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_d', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_dis', type='double', bounds=dict(min=0.0, max=1.0)),
+            dict(name='l_end2end', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='focus_temp', type='double', bounds=dict(min=0.01, max=1.0)),
             dict(name='k0', type='double', bounds=dict(min=0.2, max=5.0)),
         ],
