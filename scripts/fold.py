@@ -327,7 +327,7 @@ if params['dry_run']:
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 1000
-    n_epochs = 1000
+    n_epochs = 500
 
 logdir = params['logdir']
 #Intiailize connections 
