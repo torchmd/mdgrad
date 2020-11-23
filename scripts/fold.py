@@ -111,7 +111,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     targ_dihe2 = compute_dihe(xyz, dihe2_top)
     targ_angle2 = compute_angle(xyz, angle2_top)
 
-    end2end = torch.LongTensor([[0, 49], [0, 24], [25, 49]])
+    end2end = torch.LongTensor([[0, 49]])
     dis_end2end_targ = compute_bond(xyz, end2end)
 
 
@@ -160,19 +160,19 @@ def train(params, suggestion_id, project_name, device, n_epochs):
 
     from nff.train import get_model
 
-    # gnnparams = {
-    #     'n_atom_basis': params['n_atom_basis'],
-    #     'n_filters': params['n_filters'],
-    #     'n_gaussians': params['n_gaussians'],
-    #     'n_convolutions': params['n_convolutions'],
-    #     'cutoff': params['cutoff']
-    # }
+    gnnparams = {
+        'n_atom_basis': params['n_atom_basis'],
+        'n_filters': params['n_filters'],
+        'n_gaussians': params['n_gaussians'],
+        'n_convolutions': params['n_convolutions'],
+        'cutoff': params['cutoff']
+    }
 
-    gnnparams = {'n_atom_basis': 32,
-                'n_filters': 32,
-                'n_gaussians': 32,
-                'n_convolutions': 3,
-                'cutoff': 2.5,}
+    # gnnparams = {'n_atom_basis': 32,
+    #             'n_filters': 32,
+    #             'n_gaussians': 32,
+    #             'n_convolutions': 3,
+    #             'cutoff': 2.5,}
 
     schnet = get_model(gnnparams)
 
@@ -238,55 +238,68 @@ def train(params, suggestion_id, project_name, device, n_epochs):
         dis_end2end = compute_bond(q_t, end2end.to(device))
 
         if i > 0:
-            if params['lastframe'] == 'True':
-                traj_train = q_t[[-1]]
-            else:
-                traj_train = q_t
+            # if params['lastframe'] == 'True':
+            #     traj_train = q_t[[-1]]
+            # else:
+            traj_train = q_t
 
-            b, a, d = compute_intcoord(traj_train) 
-            dis = compute_bond(traj_train, adj.to(device))
+            #b, a, d = compute_intcoord(traj_train) 
+            # dis = compute_bond(traj_train, adj.to(device))
             
-            loss_b = (b - b_targ.to(device).squeeze()).pow(2).mean()
-            loss_a = (a - a_targ.to(device).squeeze()).pow(2).mean()
-            loss_d = (d - d_targ.to(device).squeeze()).pow(2).mean()
+            # loss_b = (b - b_targ.to(device).squeeze()).pow(2).mean()
+            # loss_a = (a - a_targ.to(device).squeeze()).pow(2).mean()
+            # loss_d = (d - d_targ.to(device).squeeze()).pow(2).mean()
             loss_end2end = (dis_end2end - dis_end2end_targ.to(device).squeeze()).pow(2).mean()
 
-            dis_diff = dis - dis_targ.to(dis.device)
-            focus = (dis_diff.abs() * (1/params['focus_temp'])).softmax(-1)
-            #print(dis.mean().item())
-            loss_dis = (focus * dis_diff.pow(2)).mean()
+            # dis_diff = dis - dis_targ.to(dis.device)
+            # focus = (dis_diff.abs() * (1/params['focus_temp'])).softmax(-1)
+            # #print(dis.mean().item())
+            # loss_dis = (focus * dis_diff.pow(2)).mean()
 
-            loss = params['l_b'] * loss_b + params['l_a'] * loss_a + params['l_d'] * loss_d + params['l_dis'] * loss_dis + params['l_end2end'] * loss_end2end
-            loss_record = loss_b + loss_a + loss_d + dis_diff.pow(2).mean()
+            # loss = params['l_b'] * loss_b + \
+            #         params['l_a'] * loss_a + \
+            #          params['l_d'] * loss_d + \
+            #          params['l_dis'] * loss_dis + \
+            #           params['l_end2end'] * loss_end2end
+
+            #loss_record = loss_b + loss_a + loss_d + dis_diff.pow(2).mean()
 
             #print(loss_b, loss_a, loss_d, dis_diff.pow(2).mean())
 
-            # loss_bond = (bonds - targ_bond.to(device).squeeze()).pow(2).mean()
-            # loss_angle1 = (angle1 - targ_angle1.to(device).squeeze()).pow(2).mean()
-            # loss_dihe1 = (dihe1 - targ_dihe1.to(device).squeeze()).pow(2).mean()
-            # loss_angle2 = (angle2 - targ_angle2.to(device).squeeze()).pow(2).mean()
-            # loss_dihe2 = (dihe2 - targ_dihe2.to(device).squeeze()).pow(2).mean()
+            loss_bond = (bonds - targ_bond.to(device).squeeze()).pow(2).mean()
+            loss_angle1 = (angle1 - targ_angle1.to(device).squeeze()).pow(2).mean()
+            loss_dihe1 = (dihe1 - targ_dihe1.to(device).squeeze()).pow(2).mean()
+            #loss_angle2 = (angle2 - targ_angle2.to(device).squeeze()).pow(2).mean()
+            #loss_dihe2 = (dihe2 - targ_dihe2.to(device).squeeze()).pow(2).mean()
 
-            # loss_bond13 = (bonds13 - targ_bond13.to(device).squeeze()).pow(2).mean()
-            # loss_bond14 = (bonds14 - targ_bond14.to(device).squeeze()).pow(2).mean()
-            # loss_bond15 = (bonds15 - targ_bond15.to(device).squeeze()).pow(2).mean()
-            # loss_bond16 = (bonds16 - targ_bond16.to(device).squeeze()).pow(2).mean()
-            # loss_bond17 = (bonds17 - targ_bond17.to(device).squeeze()).pow(2).mean()
-            # loss_bond18 = (bonds18 - targ_bond18.to(device).squeeze()).pow(2).mean()
+            loss_bond13 = (bonds13 - targ_bond13.to(device).squeeze()).pow(2).mean()
+            loss_bond14 = (bonds14 - targ_bond14.to(device).squeeze()).pow(2).mean()
+            loss_bond15 = (bonds15 - targ_bond15.to(device).squeeze()).pow(2).mean()
+            loss_bond16 = (bonds16 - targ_bond16.to(device).squeeze()).pow(2).mean()
+            #loss_bond17 = (bonds17 - targ_bond17.to(device).squeeze()).pow(2).mean()
+            #loss_bond18 = (bonds18 - targ_bond18.to(device).squeeze()).pow(2).mean()
 
-            # loss =  params['l_bond'] *  loss_bond + \
-            #         params['l_dihe1'] * loss_dihe1 + params['l_dihe2'] * loss_dihe2 + \
-            #         params['l_angle1'] * loss_angle1 + params['l_angle2'] * loss_angle2 + \
-            #         params['l_bond13'] * loss_bond13 + \
-            #         params['l_bond14'] * loss_bond14 + params['l_bond15'] * loss_bond15 + \
-            #         params['l_bond16'] * loss_bond16 + params['l_bond17'] * loss_bond17 + \
-            #         params['l_bond18'] * loss_bond18
+            loss =  params['l_bond'] *  loss_bond + \
+                    params['l_dihe1'] * loss_dihe1 + \
+                    params['l_angle1'] * loss_angle1 + \
+                    params['l_bond13'] * loss_bond13 + \
+                    params['l_bond14'] * loss_bond14 + \
+                    params['l_bond15'] * loss_bond15 + \
+                    params['l_bond16'] * loss_bond16 + \
+                    params['l_end2end'] * loss_end2end  # + \
+                    #params['l_bond17'] * loss_bond17 + \
+                    #params['l_bond18'] * loss_bond18
             
-            # loss_record = loss_angle1 + loss_angle2 + loss_bond + \
-            #                 loss_dihe1 + loss_dihe2 + \
-            #                 loss_bond13 + \
-            #                 loss_bond14 + loss_bond15 + \
-            #                 loss_bond16 + loss_bond17 + loss_bond18
+            loss_record = loss_angle1 + \
+                            loss_bond + \
+                            loss_dihe1 + \
+                            loss_bond13 + \
+                            loss_bond14 + \
+                            loss_bond15 + \
+                            loss_bond16 + \
+                            loss_end2end
+                            # loss_bond17 + \
+                            # loss_bond18
 
             loss.backward()
             # duration = (datetime.now() - current_time)
@@ -310,89 +323,92 @@ def train(params, suggestion_id, project_name, device, n_epochs):
 
     return np.array( loss_log[-10:] ).mean()
 
-import argparse
-from sigopt import Connection
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-logdir", type=str)
-parser.add_argument("-device", type=int, default=0)
-parser.add_argument("-id", type=int, default=None)
-parser.add_argument("--dry_run", action='store_true', default=False)
-params = vars(parser.parse_args())
+if __name__ == '__main__':
 
-if params['dry_run']:
-    token = 'FSDXBSGDUZUQEDGDCYPCXFTRXFNYBVXVACKZQUWNSOKGKGFN'
-    n_obs = 2
-    n_epochs = 5
-else:
-    token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
-    n_obs = 1000
-    n_epochs = 500
+    import argparse
+    from sigopt import Connection
 
-logdir = params['logdir']
-#Intiailize connections 
-conn = Connection(client_token=token)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-logdir", type=str)
+    parser.add_argument("-device", type=int, default=0)
+    parser.add_argument("-id", type=int, default=None)
+    parser.add_argument("--dry_run", action='store_true', default=False)
+    params = vars(parser.parse_args())
 
-if params['id'] == None:
-    experiment = conn.experiments().create(
-        name=logdir,
-        metrics=[dict(name='loss', objective='minimize')],
-        parameters=[
-            # dict(name='n_atom_basis', type='int', bounds=dict(min=16, max=64)),
-            # dict(name='n_filters', type='int', bounds=dict(min=16, max=64)),
-            # dict(name='n_gaussians', type='int', bounds=dict(min=16, max=64)),
-            # dict(name='n_convolutions', type='int', bounds=dict(min=2, max=5)),
-            dict(name='sigma', type='double', bounds=dict(min=0.7, max=1.3)),
-            dict(name='epsilon', type='double', bounds=dict(min=0.01, max=0.2)),
-            #dict(name='cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
-            dict(name='tau', type='int', bounds=dict(min=10, max=60)),
-            dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-3)),
-            dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
-            dict(name='dt', type='double', bounds=dict(min=0.005, max=0.05)),
-            dict(name='method', type='categorical', categorical_values=["NH_verlet", "rk4"]),
-            dict(name='lastframe', type='categorical', categorical_values=["True", "False"]),
-            # dict(name='l_bond', type='double', bounds=dict(min=0.0, max=1.0)),
-            # dict(name='l_bond13', type='double', bounds=dict(min=0.0, max=1.0)),
-            # dict(name='l_bond14', type='double', bounds=dict(min=0.0, max=1.0)),
-            # dict(name='l_bond15', type='double', bounds=dict(min=0.0, max=1.0)),
-            # dict(name='l_bond16', type='double', bounds=dict(min=0.0, max=1.0)),
-            # dict(name='l_bond17', type='double', bounds=dict(min=0.0, max=1.0)),
-            # dict(name='l_bond18', type='double', bounds=dict(min=0.0, max=1.0)),
-            # dict(name='l_angle1', type='double', bounds=dict(min=0.0, max=1.0)),
-            # dict(name='l_dihe1', type='double', bounds=dict(min=0.0, max=1.0)),
-            # dict(name='l_angle2', type='double', bounds=dict(min=0.0, max=1.0)),
-            # dict(name='l_dihe2', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_b', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_a', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_d', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_dis', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='l_end2end', type='double', bounds=dict(min=0.0, max=1.0)),
-            dict(name='focus_temp', type='double', bounds=dict(min=0.01, max=1.0)),
-            dict(name='k0', type='double', bounds=dict(min=0.2, max=5.0)),
-        ],
-        observation_budget = n_obs, # how many iterations to run for the optimization
-        parallel_bandwidth=10,
-    )
+    if params['dry_run']:
+        token = 'FSDXBSGDUZUQEDGDCYPCXFTRXFNYBVXVACKZQUWNSOKGKGFN'
+        n_obs = 2
+        n_epochs = 5
+    else:
+        token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
+        n_obs = 1000
+        n_epochs = 500
 
-elif type(params['id']) == int:
-    experiment = conn.experiments(params['id']).fetch()
+    logdir = params['logdir']
+    #Intiailize connections 
+    conn = Connection(client_token=token)
 
-i = 0
-while experiment.progress.observation_count < experiment.observation_budget:
+    if params['id'] == None:
+        experiment = conn.experiments().create(
+            name=logdir,
+            metrics=[dict(name='loss', objective='minimize')],
+            parameters=[
+                # dict(name='n_atom_basis', type='int', bounds=dict(min=16, max=64)),
+                # dict(name='n_filters', type='int', bounds=dict(min=16, max=64)),
+                # dict(name='n_gaussians', type='int', bounds=dict(min=16, max=64)),
+                # dict(name='n_convolutions', type='int', bounds=dict(min=2, max=5)),
+                dict(name='sigma', type='double', bounds=dict(min=0.7, max=1.3)),
+                dict(name='epsilon', type='double', bounds=dict(min=0.01, max=0.2)),
+                #dict(name='cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
+                dict(name='tau', type='int', bounds=dict(min=10, max=60)),
+                dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-3)),
+                dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
+                dict(name='dt', type='double', bounds=dict(min=0.005, max=0.05)),
+                dict(name='method', type='categorical', categorical_values=["NH_verlet", "rk4"]),
+                dict(name='lastframe', type='categorical', categorical_values=["True", "False"]),
+                # dict(name='l_bond', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_bond13', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_bond14', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_bond15', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_bond16', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_bond17', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_bond18', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_angle1', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_dihe1', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_angle2', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_dihe2', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_b', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_a', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_d', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_dis', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_end2end', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='focus_temp', type='double', bounds=dict(min=0.01, max=1.0)),
+                dict(name='k0', type='double', bounds=dict(min=0.2, max=5.0)),
+            ],
+            observation_budget = n_obs, # how many iterations to run for the optimization
+            parallel_bandwidth=10,
+        )
 
-    suggestion = conn.experiments(experiment.id).suggestions().create()
+    elif type(params['id']) == int:
+        experiment = conn.experiments(params['id']).fetch()
 
-    value = train(params=suggestion.assignments, 
-                            suggestion_id=suggestion.id, 
-                            device=params['device'],
-                            project_name=logdir,
-                            n_epochs=n_epochs)
+    i = 0
+    while experiment.progress.observation_count < experiment.observation_budget:
 
-    print(value)
+        suggestion = conn.experiments(experiment.id).suggestions().create()
 
-    conn.experiments(experiment.id).observations().create(
-      suggestion=suggestion.id,
-      value=value,
-    )
+        value = train(params=suggestion.assignments, 
+                                suggestion_id=suggestion.id, 
+                                device=params['device'],
+                                project_name=logdir,
+                                n_epochs=n_epochs)
 
-    experiment = conn.experiments(experiment.id).fetch()
+        print(value)
+
+        conn.experiments(experiment.id).observations().create(
+          suggestion=suggestion.id,
+          value=value,
+        )
+
+        experiment = conn.experiments(experiment.id).fetch()
