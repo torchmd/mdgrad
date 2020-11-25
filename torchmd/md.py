@@ -8,8 +8,7 @@ from ase.geometry import wrap_positions
 
 def _check_T(T):
     if T >= units.kB * 1000:
-        print("The input temperature is {} K in electronic units, \
-            it seems too high. If you are not using electronic unit, you can ignore this msg ".format(T / units.kB) )
+        print("The input temperature is {} K if it is in electronic units ".format(T / units.kB) )
 
 class Simulations():
     

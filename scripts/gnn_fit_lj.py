@@ -264,7 +264,7 @@ class pairMLP(nn.Module):
         return r
 
 
-def plot_vacf(vacf_sim, vacf_target, fn, path, dt=0.01):
+def plot_vacf(vacf_sim, vacf_target, fn, path, dt=0.01, save_data=False):
 
     t_range = np.linspace(0.0,  vacf_sim.shape[0], vacf_sim.shape[0]) * dt 
 
@@ -273,10 +273,14 @@ def plot_vacf(vacf_sim, vacf_target, fn, path, dt=0.01):
 
     plt.legend()
     plt.show()
+
+    if save_data:
+         np.savetxt(path + '/vacf_{}.txt'.format(fn), np.stack((t_range, vacf_sim)), delimiter=',' )
+
     plt.savefig(path + '/vacf_{}.pdf'.format(fn), bbox_inches='tight')
     plt.close()
 
-def plot_rdf( g_sim, rdf_target, fn, path, start, nbins):
+def plot_rdf( g_sim, rdf_target, fn, path, start, nbins, save_data=False):
 
     bins = np.linspace(start, 2.5, nbins)
 
@@ -285,6 +289,9 @@ def plot_rdf( g_sim, rdf_target, fn, path, start, nbins):
     
     plt.xlabel("$\AA$")
     plt.ylabel("g(r)")
+
+    if save_data:
+        np.savetxt(path + '/rdf_{}.txt'.format(fn), np.stack((bins, g_sim)), delimiter=',' )
 
     plt.show()
     plt.savefig(path + '/rdf_{}.pdf'.format(fn), bbox_inches='tight')
@@ -590,13 +597,17 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         plot_vacf(np.array(obs_log[data_str]['vacf'])[-10:].mean(0), vacf_target_list[j][:t_range].detach().cpu().numpy(), 
             fn=data_str + "_{}".format("final"), 
-            path=model_path)
+            path=model_path,
+            save_data=True)
 
         plot_rdf(np.array(obs_log[data_str]['rdf'])[-10:].mean(0), rdf_target_list[j].detach().cpu().numpy(), 
             fn=data_str + "_{}".format("final"),
              path=model_path, 
              start=rdf_start, 
-             nbins=nbins)
+             nbins=nbins,
+             save_data=True)
+
+        # save rdf data 
 
     # save loss curve 
     plt.plot(np.array( loss_log)[:, 0], label='vacf', alpha=0.7)
