@@ -25,6 +25,8 @@ from torchmd.md import NoseHooverChain
 from torchmd.observable import rdf, vacf
 from torchmd.md import Simulations
 
+import json 
+
 matplotlib.rcParams.update({'font.size': 25})
 matplotlib.rc('lines', linewidth=3, color='g')
 matplotlib.rcParams['axes.linewidth'] = 2.0
@@ -423,13 +425,12 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     else:
         val_str_list = []
 
-    print(assignments)
+    print( json.dumps(assignments, indent=1))
 
     model_path = '{}/{}'.format(project_name, suggestion_id)
     os.makedirs(model_path)
 
     print("Training for {} epochs".format(n_epochs))
-
 
     system_list = []
     for data_str in data_str_list + val_str_list:
@@ -437,7 +438,6 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         system_list.append(system)
 
     # Define prior potential
-
     mlp_parmas = {'n_gauss': int(cutoff//assignments['gaussian_width']), 
               'r_start': 0.0,
               'r_end': 2.5, 
@@ -553,8 +553,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             if i % 20 ==0 :
                 potential = plot_pair( path=model_path,
                              fn=str(i),
-                              model=sim.intergrator.model.models['pairnn'].model, 
-                              prior=sim.intergrator.model.models['pair'].model, 
+                              model=sim.integrator.model.models['pairnn'].model, 
+                              prior=sim.integrator.model.models['pair'].model, 
                               device=device)
 
         if assignments['train_vacf'] == "True":
