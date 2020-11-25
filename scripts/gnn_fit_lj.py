@@ -102,6 +102,19 @@ data_dict = {
                 "cell": FaceCenteredCubic
                 },
 
+    'lj_1.2_1.2': {
+                'rdf_fn': '../data/LJ_data/rdf_rho1.2_T1.2_dt0.01.csv' ,
+                'vacf_fn': '../data/LJ_data/vacf_rho1.2_T1.2_dt0.01.csv' ,
+                'rho': 1.2,
+                'T': 1.2, 
+                'start': 0.75, 
+                'end': 3.3,
+                'element': "H",
+                'mass': 1.0,
+                "N_unitcell": 4,
+                "cell": FaceCenteredCubic
+                },
+
     'lj_0.9_1.2': {
                 'rdf_fn': '../data/LJ_data/rdf_rho0.9_T1.2_dt0.01.csv' ,
                 'vacf_fn': '../data/LJ_data/vacf_rho0.9_T1.2_dt0.01.csv' ,
