@@ -89,31 +89,48 @@ class Simulations():
 
 class NVE(torch.nn.Module):
 
-    def __init__(self, model, mass, dim=3, device=0):
+    def __init__(self, potentials, system, adjoint=True):
         super().__init__()
-        self.model = model  # declarce model that outputs a dictionary with key ['energy']
-        self.mass = torch.Tensor(mass).to(device)
-        self.device = device 
-        self.dim = dim
+        self.model = potentials 
+        self.system = system
+        self.device = system.device # should just use system.device throughout
+        self.mass = torch.Tensor(system.get_masses()).to(self.device)
+        self.N_dof = self.mass.shape[0] * system.dim
+        self.dim = system.dim
+        self.num_vars = 3 
+        self.adjoint = adjoint
         self.state_keys = ['velocities', 'positions']
         
-    def forward(self, t, pq):
+    def forward(self, t, state):
         # pq are the canonical momentum and position variables
-        with torch.set_grad_enabled(True):
-            pq.requires_grad = True
-            N = int(pq.shape[0]//2)
+        with torch.set_grad_enabled(True):        
             
-            p = pq[:N]
-            q = pq[N:]
+            v = state[0]
+            q = state[1]
             
-            q = q.reshape(-1, self.dim)
+            if self.adjoint:
+                q.requires_grad = True
+            
+            p = v * self.mass[:, None]
+            #q = q.reshape(-1, self.dim)
+
+            sys_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum() 
             
             u = self.model(q)
-            
-            v = (p.reshape(-1, self.dim) / self.mass[:, None]).reshape(-1)
-            f = -compute_grad(inputs=q, output=u).reshape(-1)
+            f = -compute_grad(inputs=q, output=u.sum(-1))
+            dvdt = f
 
-        return torch.cat((f, v))
+        return (dvdt, v)
+
+    def get_inital_states(self, wrap=True):
+        states = [
+                self.system.get_velocities(), 
+                self.system.get_positions(wrap=wrap)]
+
+        states = [torch.Tensor(var).to(self.system.device) for var in states]
+
+        self.traj = []
+        return states
 
 class NoseHooverChain(torch.nn.Module):
 
