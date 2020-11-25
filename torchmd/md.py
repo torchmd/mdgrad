@@ -8,7 +8,8 @@ from ase.geometry import wrap_positions
 
 def _check_T(T):
     if T >= units.kB * 1000:
-        print("The input temperature is {} K, it seems too high.".format(T / units.kB) )
+        print("The input temperature is {} K in electronic units, \
+            it seems too high. If you are not using electronic unit, you can ignore this msg ".format(T / units.kB) )
 
 class Simulations():
     
@@ -112,9 +113,6 @@ class NVE(torch.nn.Module):
                 q.requires_grad = True
             
             p = v * self.mass[:, None]
-            #q = q.reshape(-1, self.dim)
-
-            sys_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum() 
             
             u = self.model(q)
             f = -compute_grad(inputs=q, output=u.sum(-1))
