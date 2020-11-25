@@ -179,7 +179,7 @@ def fit_rdf_aa(assignments, i, suggestion_id, device, sys_params, project_name):
 
     from torchmd.system import System
     system = System(atoms, device=device)
-    system.set_temperature(298.0)
+    system.set_temperature(298.0 * ase.units.kB)
 
     print("device: ", device)
 

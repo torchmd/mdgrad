@@ -134,7 +134,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                           pbc=True)
 
     system = System(atoms, device=device)
-    system.set_temperature(298.0)
+    system.set_temperature(298.0 * ase.units.kB)
 
     print(system.get_temperature())
 

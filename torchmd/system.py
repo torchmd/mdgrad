@@ -61,7 +61,7 @@ class System(Atoms):
         
     def set_temperature(self, T):
         from ase.md.velocitydistribution import MaxwellBoltzmannDistribution 
-        MaxwellBoltzmannDistribution(self, T * units.kB )
+        MaxwellBoltzmannDistribution(self, T)
     
 
 if __name__ == "__main__":

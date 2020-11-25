@@ -324,7 +324,7 @@ def get_system(data_str, device, size):
                               latticeconstant= L,
                               pbc=True)
     system = System(atoms, device=device)
-    system.set_temperature(T)
+    system.set_temperature(T * ase.units.kB)
 
     return system 
 

@@ -2,7 +2,7 @@ from fold import train
 
 
 params = {
-  "T": 0.0075,
+  "T": 0.005,
   "cutoff": 3.1559881833397347,
   "dt": 0.034251112820653726,
   "k0": 1.978841425420648,
@@ -13,7 +13,7 @@ params = {
   "l_bond15": 0.2920580429389884,
   "l_bond16": 0.6028453335703119,
   "l_dihe1": 0.25553783649798717,
-  "l_end2end": 0.01,
+  "l_end2end": 0.0025,
   "lr": 0.00009466977730217914,
   "method": "NH_verlet",
   "n_atom_basis": 16,
@@ -28,7 +28,7 @@ params = {
 params['device'] = 0 
 
 logdir = 'test1'
-name = 'end2end'
+name = 'end2end2'
 n_epochs = 500
 
 train(params=params, 

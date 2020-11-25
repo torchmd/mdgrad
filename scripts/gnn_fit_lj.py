@@ -334,7 +334,7 @@ def get_system(data_str, device, size):
                               latticeconstant= L,
                               pbc=True)
     system = System(atoms, device=device)
-    system.set_temperature(T / units.kB)
+    system.set_temperature(T)
 
     return system 
 
@@ -409,14 +409,13 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     n_sim = sys_params['n_sim'] 
     size = sys_params['size']
 
-    #cutoff = assignments['cutoff']
     nbins = assignments['nbins']
     tau = assignments['opt_freq']
 
     cutoff = 2.5
     t_range = sys_params['t_range']
 
-    rdf_start = 0.75 #assignments['rdf_start']
+    rdf_start = 0.75
 
     data_str_list = sys_params['data']
 
@@ -425,7 +424,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     else:
         val_str_list = []
 
-    print( json.dumps(assignments, indent=1))
+    print(json.dumps(assignments, indent=1))
 
     model_path = '{}/{}'.format(project_name, suggestion_id)
     os.makedirs(model_path)

@@ -32,7 +32,7 @@ atoms = FaceCenteredCubic(directions=[[1, 0, 0],
 from torchmd.system import System
 
 system = System(atoms, device=device)
-system.set_temperature(298.0)
+system.set_temperature(298.0 * ase.units.kB)
 
 # Potential 
 lj_params = {'epsilon': 0.05, 
