@@ -28,37 +28,37 @@ else:
 logdir = params['logdir']
 
 
-# assignments = {
-#   "epsilon": 0.3948606926382243,
-#   "gaussian_width": 0.10881955784962147,
-#   "lr": 0.0019643144897852463,
-#   "n_layers": 2,
-#   "n_width": 87,
-#   "nbins": 100,
-#   "nonlinear": "ELU",
-#   "opt_freq": 60,
-#   "power": 10,
-#   "rdf_weight": 0.9484437969901747,
-#   "sigma": params['sigma'],
-#   "train_vacf": "True",
-#   "vacf_weight": 0.40849975234089253
-# }
-
 assignments = {
-  "epsilon": 0.4,
-  "gaussian_width": 0.1,
-  "lr": 0.002,
+  "epsilon": 0.3948606926382243,
+  "gaussian_width": 0.10881955784962147,
+  "lr": 0.0019643144897852463,
   "n_layers": 2,
   "n_width": 87,
   "nbins": 100,
   "nonlinear": "ELU",
   "opt_freq": 60,
   "power": 10,
-  "rdf_weight": 1.0,
+  "rdf_weight": 0.9484437969901747,
   "sigma": params['sigma'],
   "train_vacf": "True",
-  "vacf_weight": 0.4
+  "vacf_weight": 0.40849975234089253
 }
+
+# assignments = {
+#   "epsilon": 0.4,
+#   "gaussian_width": 0.1,
+#   "lr": 0.002,
+#   "n_layers": 2,
+#   "n_width": 87,
+#   "nbins": 100,
+#   "nonlinear": "ELU",
+#   "opt_freq": 60,
+#   "power": 10,
+#   "rdf_weight": 1.0,
+#   "sigma": params['sigma'],
+#   "train_vacf": "True",
+#   "vacf_weight": 0.4
+# }
 
 if assignments['train_vacf'] == 'False':
     assignments['vacf_weight'] = 0.0
