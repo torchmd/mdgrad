@@ -220,7 +220,33 @@ data_dict = {
             'mass': 1.0,
             "N_unitcell": 4,
             "cell": FaceCenteredCubic
-            }
+            },
+
+    'softsphere_0.7_1.0': {
+            'rdf_fn': '../data/softsphere_data/rdf_rho0.7_T1.0_dt0.01.csv' ,
+            'vacf_fn': '../data/softsphere_data/vacf_rho0.7_T1.0_dt0.01.csv' ,
+            'rho': 0.7,
+            'T': 1.0, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic
+            }, 
+
+    'yukawa_0.7_1.0': {
+        'rdf_fn': '../data/Yukawa_data/rdf_rho0.7_T1.0_dt0.01.csv' ,
+        'vacf_fn': '../data/Yukawa_data/vacf_rho0.7_T1.0_dt0.01.csv' ,
+        'rho': 0.7,
+        'T': 1.0, 
+        'start': 0.5, 
+        'end': 3.0,
+        'element': "H",
+        'mass': 1.0,
+        "N_unitcell": 4,
+        "cell": FaceCenteredCubic
+        }, 
 
         }
 
@@ -543,17 +569,22 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             # Simulate 
             v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=0.01)
 
+            if data_str in val_str_list:
+                v_t = v_t.detach()
+                q_t = q_t.detach()
+                pv_t = pv_t.detach()
+
             if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
                 return 5 - (i / n_epochs) * 5
 
             _, _, g_sim = rdf_obs_list[j](q_t)
-
             vacf_sim = vacf_obs_list[j](v_t)
 
             if data_str in data_str_list:
                 loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
                 loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean() + JS_rdf(g_sim, rdf_target)
-
+            else:
+                optimizer.zero_grad()
 
             obs_log[data_str]['rdf'].append(g_sim.detach().cpu().numpy())
             obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())
@@ -584,7 +615,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         # save potential file
 
-        if np.array(loss_log[-10:]).mean(0).sum() <=  0.006: 
+        if np.array(loss_log[-10:]).mean(0).sum() <=  0.01: 
             np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
 
         loss.backward()
