@@ -7,7 +7,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-logdir", type=str)
 parser.add_argument("-device", type=int, default=0)
 parser.add_argument("-nruns", type=int, default=1)
-parser.add_argument("-sigma", type=float, default=1.0)
+parser.add_argument("-sigma", type=float, default=0.9)
+parser.add_argument("-lr", type=float, default=0.002)
+parser.add_argument("-vacf_weight", type=float, default=0.41)
 parser.add_argument("-name", type=str)
 parser.add_argument("-data", type=str, nargs='+')
 parser.add_argument("-val", type=str, nargs='+')
@@ -31,7 +33,7 @@ logdir = params['logdir']
 assignments = {
   "epsilon": 0.3948606926382243,
   "gaussian_width": 0.10881955784962147,
-  "lr": 0.0019643144897852463,
+  "lr": params['lr'],
   "n_layers": 2,
   "n_width": 87,
   "nbins": 100,
@@ -41,7 +43,7 @@ assignments = {
   "rdf_weight": 0.9484437969901747,
   "sigma": params['sigma'],
   "train_vacf": "True",
-  "vacf_weight": 0.40849975234089253
+  "vacf_weight": params['vacf_weight']
 }
 
 # assignments = {
