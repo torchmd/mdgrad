@@ -77,9 +77,10 @@ sys_params = {
 for i in range(params['nruns']):
 
     from datetime import date
+    import random 
 
     now = datetime.now()
-    dt_string = now.strftime("%m-%d-%H-%M-%S")
+    dt_string = now.strftime("%m-%d-%H-%M-%S") + str(random.randint(0, 100))
 
     value = fit_lj(assignments=assignments, 
                             suggestion_id=params['name'] + dt_string, 
