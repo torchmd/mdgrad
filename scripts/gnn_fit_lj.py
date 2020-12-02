@@ -541,7 +541,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                   'min', 
-                                                  min_lr=5e-5, 
+                                                  min_lr=5e-6, 
                                                   verbose=True, factor = 0.5, patience= 20,
                                                   threshold=5e-5)
 
