@@ -248,6 +248,32 @@ data_dict = {
         "cell": FaceCenteredCubic
         }, 
 
+    'yukawa_0.5_1.0': {
+        'rdf_fn': '../data/Yukawa_data/rdf_rho0.5_T1.0_dt0.01.csv' ,
+        'vacf_fn': '../data/Yukawa_data/vacf_rho0.5_T1.0_dt0.01.csv' ,
+        'rho': 0.5,
+        'T': 1.0, 
+        'start': 0.5, 
+        'end': 3.0,
+        'element': "H",
+        'mass': 1.0,
+        "N_unitcell": 4,
+        "cell": FaceCenteredCubic
+        }, 
+
+    'yukawa_0.3_1.0': {
+        'rdf_fn': '../data/Yukawa_data/rdf_rho0.3_T1.0_dt0.01.csv' ,
+        'vacf_fn': '../data/Yukawa_data/vacf_rho0.3_T1.0_dt0.01.csv' ,
+        'rho': 0.3,
+        'T': 1.0, 
+        'start': 0.5, 
+        'end': 3.0,
+        'element': "H",
+        'mass': 1.0,
+        "N_unitcell": 4,
+        "cell": FaceCenteredCubic
+        }, 
+
         }
 
 from nff.nn.layers import GaussianSmearing
