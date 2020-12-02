@@ -6,24 +6,35 @@ from ase import units
 from torchmd.sovlers import odeint_adjoint, odeint
 from ase.geometry import wrap_positions
 
-def _check_T(T):
-    if T >= units.kB * 1000:
-        print("The input temperature is {} K if it is in electronic units ".format(T / units.kB) )
+'''
+    Here contains object for simulation and computing the equation of state
+'''
+
 
 class Simulations():
+
+    """Simulation object for handing runnindg MD and logging
+    
+    Attributes:
+        device (str or int): int for GPU, "cpu" for cpu
+        integrator (nn.module): function that updates force and velocity n
+        keys (list): name of the state variables e.g. "velocities" and "positions "
+        log (dict): save state vaiables in numpy arrays 
+        solvemethod (str): integration method, current options are 4th order Runge-Kutta (rk4) and Verlet 
+        system (torch.System): System object to contain state of molecular systems 
+        wrap (bool): if True, wrap the coordinates based on system.cell 
+    """
     
     def __init__(self,
                  system,
-                  diffeq,
+                  integrator,
                   wrap=True,
                   method="NH_verlet"):
+
         self.system = system 
         self.device = system.device
-        self.integrator = diffeq
-        self.adjoint = diffeq.adjoint
+        self.integrator = integrator
         self.solvemethod = method
-        # flat for printing out simulation status
-        self.verbose = True
         self.wrap = wrap
         self.keys = self.integrator.state_keys
         self.initialize_log()
@@ -71,33 +82,40 @@ class Simulations():
 
         for epoch in range(sim_epochs):
 
-            if self.adjoint:
+            if self.integrator.adjoint:
                 trajs = odeint_adjoint(self.integrator, states, t, method=self.solvemethod)
             else:
                 for var in states:
                     var.requires_grad = True 
                 trajs = odeint(self.integrator, tuple(states), t, method=self.solvemethod)
-                # check for NaN
-            #self.integrator.update_traj(tuple([var[-1] for var in trajs]))
             self.update_log(trajs)
             self.update_states()
 
             states = self.get_check_point()
 
-
         return trajs
 
 class NVE(torch.nn.Module):
 
+    """Equation of state for constant energy integrator (NVE ensemble)
+    
+    Attributes:
+        adjoint (str): if True using adjoint sensitivity 
+        dim (int): system dimensions
+        mass (torch.Tensor): masses of each particle
+        model (nn.module): energy functions that takes in coordinates 
+        N_dof (int): total number of degree of freedoms
+        state_keys (list): keys of state variables "positions", "velocity" etc. 
+        system (torchmd.System): system object
+    """
+    
     def __init__(self, potentials, system, adjoint=True):
         super().__init__()
         self.model = potentials 
         self.system = system
-        self.device = system.device # should just use system.device throughout
-        self.mass = torch.Tensor(system.get_masses()).to(self.device)
+        self.mass = torch.Tensor(system.get_masses()).to(self.system.device)
         self.N_dof = self.mass.shape[0] * system.dim
         self.dim = system.dim
-        self.num_vars = 3 
         self.adjoint = adjoint
         self.state_keys = ['velocities', 'positions']
         
@@ -126,11 +144,29 @@ class NVE(torch.nn.Module):
 
         states = [torch.Tensor(var).to(self.system.device) for var in states]
 
-        self.traj = []
         return states
 
 class NoseHooverChain(torch.nn.Module):
 
+    """Equation of state for NVT integrator using Nose Hoover Chain 
+
+    Nosé, S. A unified formulation of the constant temperature molecular dynamics methods. The Journal of Chemical Physics 81, 511–519 (1984).
+    
+    Attributes:
+        adjoint (str): if True using adjoint sensitivity 
+        dim (int): system dimensions
+        mass (torch.Tensor): masses of each particle
+        model (nn.module): energy functions that takes in coordinates 
+        N_dof (int): total number of degree of freedoms
+        state_keys (list): keys of state variables "positions", "velocity" etc. 
+        system (torchmd.System): system object
+        num_chains (TYPE): number of chains 
+        Q (TYPE): Heat bath mass
+        T (TYPE): Temperature
+        target_ke (TYPE): target Kinetic energy 
+        traj (list): Description
+    """
+    
     def __init__(self, potentials, system, T, num_chains=2, Q=1.0, adjoint=True):
         super().__init__()
         self.model = potentials 
@@ -147,17 +183,12 @@ class NoseHooverChain(torch.nn.Module):
         self.Q = torch.Tensor(self.Q).to(self.device)
         self.dim = system.dim
         self.adjoint = adjoint
-        self.num_vars = 3 
         self.state_keys = ['velocities', 'positions', 'baths']
-
-        # check temperature
-        _check_T(T)
 
     def update_T(self, T):
         self.T = T 
         
     def forward(self, t, state):
-        # pq are the canonical momentum and position variables
         with torch.set_grad_enabled(True):        
             
             v = state[0]
@@ -168,9 +199,7 @@ class NoseHooverChain(torch.nn.Module):
                 q.requires_grad = True
             
             N = self.N_dof
-            
             p = v * self.mass[:, None]
-            #q = q.reshape(-1, self.dim)
 
             sys_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum() 
             
@@ -194,82 +223,33 @@ class NoseHooverChain(torch.nn.Module):
                 [0.0] * self.num_chains]
 
         states = [torch.Tensor(var).to(self.system.device) for var in states]
-
-        self.traj = []
         return states
-
-
-class NeuralNVT(torch.nn.Module):
-
-    def __init__(self, potentials, bathnn, system, T, num_chains=2, Q=1.0, adjoint=True):
-        super().__init__()
-        self.model = potentials 
-        self.system = system
-        self.device = system.device
-        self.mass = torch.Tensor(system.get_masses()).to(self.device)
-        self.T = T # in energy unit(eV)
-        self.N_dof = self.mass.shape[0] * system.dim
-        self.target_ke = (0.5 * self.N_dof * T )
-        self.dim = system.dim
-        self.adjoint = adjoint
-        
-        self.bath = bath
-        # check temperature
-        _check_T(T)
-
-    def initial_conditions():
-        pass
-        
-    def forward(self, t, state):
-        # pq are the canonical momentum and position variables
-        with torch.set_grad_enabled(True):        
-            
-            v = state[0]
-            q = state[1]
-            
-            if self.adjoint:
-                q.requires_grad = True
-                p.requires_grad = True
-            
-            N = self.N_dof
-            
-            p = v.reshape(-1, self.dim) * self.mass[:, None]
-            q = q.reshape(-1, self.dim)
-            
-            u = self.model(q)
-            f = -compute_grad(inputs=q, output=u.sum(-1))
-
-            atomwise_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum(-1)
-            sys_ke = atomwise_ke.sum()
-            bath_input = atomwise_ke - self.T * 3 * 0.5
-            bath_u = self.bath(bath_input)
-            
-            coupled_forces = -compute_grad(inputs=p, output=u.sum(-1))
-            
-            dvdt = f - coupled_forces
-            
-            bath_input = atomwise_ke - self.T * 3 * 0.5
-            u_bath = self.bath(bath_input)
-            
-        return (dvdt, v)
 
 
 class Isomerization(torch.nn.Module):
 
-    """ODE class for model isomerization"""
+    """Quantum isomerization equation of state. 
+
+    The hamiltonian is precomputed in the new basis obtained by orthogonalizing
+         the original tensor product space of vibrational and rotational coordinates 
+    
+    Attributes:
+        device (int or str): device
+        dim (int): the size of wave function 
+        dipole (torch.nn.Parameter): dipole operator
+        e_field (torch.nn.Parameter): electric field 
+        ham (torch.nn.Parameter): hamiltonian
+        max_e_t (int): max time the electric field can be on
+    """
 
     def __init__(self, dipole, e_field, ham, max_e_t, device=0):
         super().__init__()
 
         self.device = device
         self.dipole = dipole.to(self.device)
-        # hamiltonian
         self.ham = ham.to(self.device)
-        # hilbert space dimension
         self.dim = len(ham)
-        # optimizable electric field
         self.e_field = torch.nn.Parameter(e_field)
-        # max time the electric field can be on
         self.max_e_t = max_e_t
 
     
