@@ -651,8 +651,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         # save rdf data 
 
     # save loss curve 
-    plt.plot(np.array( loss_log)[:, 0], label='vacf', alpha=0.7)
-    plt.plot(np.array( loss_log)[:, 1], label='rdf', alpha=0.7)
+    plt.plot(np.array( loss_log)[:, 1], label='vacf', alpha=0.7)
+    plt.plot(np.array( loss_log)[:, 0], label='rdf', alpha=0.7)
     plt.yscale("log")
     plt.legend()
     plt.savefig(model_path + '/loss.pdf', bbox_inches='tight')
