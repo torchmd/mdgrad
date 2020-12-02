@@ -583,7 +583,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
             if data_str in data_str_list:
                 loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
-                loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean() + JS_rdf(g_sim, rdf_target)
+                loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean() + JS_rdf(g_sim, rdf_target_list[j])
 
             obs_log[data_str]['rdf'].append(g_sim.detach().cpu().numpy())
             obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())
@@ -612,7 +612,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             loss = assignments['rdf_weight'] * loss_rdf
 
         # save potential file
-        if np.array(loss_log[-10:]).mean(0).sum() <=  0.015: 
+        if np.array(loss_log[-10:]).mean(0).sum() <=  0.01: 
             np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
 
         loss.backward()
@@ -651,8 +651,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         # save rdf data 
 
     # save loss curve 
-    plt.plot(np.array( loss_log)[:, 1], label='vacf', alpha=0.7)
-    plt.plot(np.array( loss_log)[:, 0], label='rdf', alpha=0.7)
+    plt.plot(np.array( loss_log)[:, 0], label='vacf', alpha=0.7)
+    plt.plot(np.array( loss_log)[:, 1], label='rdf', alpha=0.7)
     plt.yscale("log")
     plt.legend()
     plt.savefig(model_path + '/loss.pdf', bbox_inches='tight')
