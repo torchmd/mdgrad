@@ -473,6 +473,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     print(json.dumps(assignments, indent=1))
 
     model_path = '{}/{}'.format(project_name, suggestion_id)
+
     os.makedirs(model_path)
 
     print("Training for {} epochs".format(n_epochs))
@@ -583,8 +584,6 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             if data_str in data_str_list:
                 loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
                 loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean() + JS_rdf(g_sim, rdf_target)
-            else:
-                optimizer.zero_grad()
 
             obs_log[data_str]['rdf'].append(g_sim.detach().cpu().numpy())
             obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())
@@ -612,10 +611,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         else:
             loss = assignments['rdf_weight'] * loss_rdf
 
-
         # save potential file
-
-        if np.array(loss_log[-10:]).mean(0).sum() <=  0.01: 
+        if np.array(loss_log[-10:]).mean(0).sum() <=  0.015: 
             np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
 
         loss.backward()
