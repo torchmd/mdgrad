@@ -56,24 +56,6 @@ class GeneralInteraction(torch.nn.Module):
         self.cell.requires_grad = True 
         self.device = system.device
 
-    def _reset_system(self):
-        """Summary
-        """
-        pass
-
-    def _reset_topology(self, xyz):
-        """Summary
-        
-        Args:
-            xyz (TYPE): Description
-        """
-        pass
-
-    def forward(self):
-        """Summary
-        """
-        pass
-
 class SpecificInteraction(torch.nn.Module):
 
     """Summary
@@ -87,7 +69,7 @@ class SpecificInteraction(torch.nn.Module):
         topology (TYPE): Description
     """
     
-    def __init__(self, system):
+    def __init__(self, system, topology):
         """Summary
         
         Args:
@@ -96,67 +78,10 @@ class SpecificInteraction(torch.nn.Module):
         super(SpecificInteraction, self).__init__()
         self.system = system 
         self.cell = torch.Tensor(system.get_cell()).to(system.device)
-        self.cell_diag = self.system.cell.diag()
-        self.device = device
-        self.cutoff = cutoff
+        self.cell.requires_grad = True
+        self.device = system.device
         self.topology = topology 
 
-    def _reset_system(self):
-        """Summary
-        """
-        pass
-
-    def forward(self):
-        """Summary
-        """
-        pass
-
-
-class GNNPotentialsTrain(GeneralInteraction):
-
-    """Summary
-    
-    Attributes:
-        gnn_module (TYPE): Description
-        prior (TYPE): Description
-    """
-    
-    def __init__(self, system, gnn_module, prior_module):
-        '''
-        only works for batch size 1 
-        
-        Args:
-            system (TYPE): Description
-            gnn_module (TYPE): Description
-            prior_module (TYPE): Description
-        '''
-        super().__init__(system)
-        self.gnn_module = gnn_module
-        self.prior = prior_module
-        # initialize the dictionary for model inputs 
-        self.to(self.device)
-
-    def forward(self, batch): 
-        """Summary
-        
-        Args:
-            batch (TYPE): Description
-        
-        Returns:
-            TYPE: Description
-        """
-        xyz = batch['nxyz'][:, 1:]
-        xyz.requires_grad = True
-        
-        results = self.gnn_module(batch, xyz)
-
-        prior_energy = self.prior(xyz)
-        prior_grad = compute_grad(xyz, prior_energy)
-        
-        results['energy'] += prior_energy
-        results['energy_grad'] += prior_grad
-        
-        return results
 
 class GNNPotentials(GeneralInteraction):
 
