@@ -1,6 +1,21 @@
 import torch
 from torch.nn import Sequential, Linear, ReLU, LeakyReLU, ModuleDict
 
+from nff.nn.layers import GaussianSmearing
+from torch import nn
+
+nlr_dict =  {
+    'ReLU': nn.ReLU(), 
+    'ELU': nn.ELU(),
+    'Tanh': nn.Tanh(),
+    'LeakyReLU': nn.LeakyReLU(),
+    'ReLU6':nn.ReLU6(),
+    'SELU': nn.SELU(),
+    'CELU': nn.CELU(),
+    'Tanhshrink': nn.Tanhshrink()
+}
+
+
 LJPARAMS = {'epsilon': 1.0, 
              'sigma': 1.0}
 
@@ -9,7 +24,6 @@ MLPPARAMS = {'D_in': 1,
               'num_layers': 3,
               'act': 'relu',
               'D_out': 1}
-
 
 class pairMLP(torch.nn.Module):
     def __init__(self, n_gauss, r_start, r_end, n_layers, n_width, nonlinear ):
