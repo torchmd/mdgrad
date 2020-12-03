@@ -1,23 +1,19 @@
-
 import argparse
-from gnn_rdf_amorphous import *
+from fit_rdf_gnn import *
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-logdir", type=str)
 parser.add_argument("-data", type=str, nargs='+')
-parser.add_argument("-validate", type=str, nargs='+')
+parser.add_argument("-val", type=str, nargs='+')
 parser.add_argument("-name", type=str)
 parser.add_argument("-device", type=int, default=0)
+parser.add_argument("-nepochs", type=int, default=700)
+parser.add_argument("-nsim", type=int, default=20)
+parser.add_argument("--pair", action='store_true', default=False)
 params = vars(parser.parse_args())
 
-n_obs = 1000
-tmax = 25000
-n_epochs = 700
-n_sim = 50
-
 i = 0
-
 
 assignments = {
   "anneal_freq": 17,
@@ -36,29 +32,15 @@ assignments = {
   "start_T": 379.19160932066393
 }
 
-# assignments = {
-#   "cutoff": 7.495446445532104,
-#   "epsilon": 0.010419107274105301,
-#   "gaussian_width": 0.09428836476711633,
-#   "lr": 0.0001,
-#   "mse_weight": 4.06718828005474,
-#   "n_atom_basis": "tiny",
-#   "n_convolutions": 2,
-#   "n_filters": "high",
-#   "nbins": 119,
-#   "opt_freq": 56,
-#   "sigma": 2.5888283843240973
-# }
-
 sys_params = {
-'tmax': tmax,
 'dt': 1.0,
-'n_epochs': n_epochs,
-'n_sim': n_sim,
+'n_epochs': params['nepochs'],
+'n_sim': params['nsim'],
 'data': params['data'],
-'validate': params['validate'],
+'val': params['val'],
 'size': 4,
-'anneal_flag': True
+'anneal_flag': "True",
+'pair_flag': params['pair']
 }
 
 value = fit_rdf(assignments=assignments, 
