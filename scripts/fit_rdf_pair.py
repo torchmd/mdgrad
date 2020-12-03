@@ -3,39 +3,34 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import sys 
-#import mdtraj
-#from nglview import show_ase, show_file, show_mdtraj
 import torch
 
-import matplotlib
 from scipy import interpolate
-
-from ase.lattice.cubic import FaceCenteredCubic
 from ase import units
 
-from torchmd.interface import GNNPotentials,PairPotentials, Stack
+from torchmd.interface import GNNPotentials, PairPotentials, Stack
 from torchmd.system import System
-from torchmd.potentials import ExcludedVolume, LennardJones
-from nff.train import get_model
-
-from torchmd.potentials import ExcludedVolume
+from torchmd.potentials import ExcludedVolume, LennardJones, pairMLP
 from nff.train import get_model
 
 from torchmd.md import NoseHooverChain 
 from torchmd.observable import rdf, vacf
 from torchmd.md import Simulations
+from data import pair_data_dict
+from plot import *
 
 import json 
+import matplotlib
 
-matplotlib.rcParams.update({'font.size': 25})
-matplotlib.rc('lines', linewidth=3, color='g')
-matplotlib.rcParams['axes.linewidth'] = 2.0
-matplotlib.rcParams['axes.linewidth'] = 2.0
-matplotlib.rcParams["xtick.major.size"] = 6
-matplotlib.rcParams["ytick.major.size"] = 6
-matplotlib.rcParams["ytick.major.width"] = 2
-matplotlib.rcParams["xtick.major.width"] = 2
-matplotlib.rcParams['text.usetex'] = False
+# matplotlib.rcParams.update({'font.size': 25})
+# matplotlib.rc('lines', linewidth=3, color='g')
+# matplotlib.rcParams['axes.linewidth'] = 2.0
+# matplotlib.rcParams['axes.linewidth'] = 2.0
+# matplotlib.rcParams["xtick.major.size"] = 6
+# matplotlib.rcParams["ytick.major.size"] = 6
+# matplotlib.rcParams["ytick.major.width"] = 2
+# matplotlib.rcParams["xtick.major.width"] = 2
+# matplotlib.rcParams['text.usetex'] = False
 
 
 width_dict = {'tiny': 64,
@@ -48,286 +43,15 @@ gaussian_dict = {'tiny': 16,
                'mid': 64, 
                'high': 128}
 
-
-data_dict = {
-    'lj_0.845_1.5': { 
-                      'rdf_fn': '../data/LJ_data/rdf_rho0.845_T1.5_dt0.01.csv' ,
-                      'vacf_fn': '../data/LJ_data/vacf_rho0.845_T1.5_dt0.01.csv',
-                       'rho': 0.845,
-                        'T': 1.5, 
-                        'start': 0.75, 
-                        'end': 3.3,
-                        'element': "H",
-                        'mass': 1.0,
-                        "N_unitcell": 4,
-                        "cell": FaceCenteredCubic
-                        },
-
-    'lj_0.845_1.0': {
-                    'rdf_fn': '../data/LJ_data/rdf_rho0.845_T1.0_dt0.01.csv' ,
-                    'vacf_fn': '../data/LJ_data/vacf_rho0.845_T1.0_dt0.01.csv' ,
-                   'rho': 0.845,
-                    'T': 1.0, 
-                    'start': 0.75, 
-                    'end': 3.3,
-                    'element': "H",
-                    'mass': 1.0,
-                    "N_unitcell": 4,
-                    "cell": FaceCenteredCubic
-                    },
-
-    'lj_0.845_0.75': {
-                    'rdf_fn': '../data/LJ_data/rdf_rho0.845_T0.75_dt0.01.csv' ,
-                    'vacf_fn': '../data/LJ_data/vacf_rho0.845_T0.75_dt0.01.csv' ,
-                   'rho': 0.845,
-                    'T': 0.75, 
-                    'start': 0.75, 
-                    'end': 3.3,
-                    'element': "H",
-                    'mass': 1.0,
-                    "N_unitcell": 4,
-                    "cell": FaceCenteredCubic
-                    },
-
-    'lj_0.7_1.2': {
-                'rdf_fn': '../data/LJ_data/rdf_rho0.7_T1.2_dt0.01.csv' ,
-                'vacf_fn': '../data/LJ_data/vacf_rho0.7_T1.2_dt0.01.csv' ,
-                'rho': 0.7,
-                'T': 1.2, 
-                'start': 0.75, 
-                'end': 3.3,
-                'element': "H",
-                'mass': 1.0,
-                "N_unitcell": 4,
-                "cell": FaceCenteredCubic
-                },
-
-    'lj_1.2_1.2': {
-                'rdf_fn': '../data/LJ_data/rdf_rho1.2_T1.2_dt0.01.csv' ,
-                'vacf_fn': '../data/LJ_data/vacf_rho1.2_T1.2_dt0.01.csv' ,
-                'rho': 1.2,
-                'T': 1.2, 
-                'start': 0.75, 
-                'end': 3.3,
-                'element': "H",
-                'mass': 1.0,
-                "N_unitcell": 4,
-                "cell": FaceCenteredCubic
-                },
-
-    'lj_0.9_1.2': {
-                'rdf_fn': '../data/LJ_data/rdf_rho0.9_T1.2_dt0.01.csv' ,
-                'vacf_fn': '../data/LJ_data/vacf_rho0.9_T1.2_dt0.01.csv' ,
-                'rho': 0.9,
-                'T': 1.2, 
-                'start': 0.75, 
-                'end': 3.3,
-                'element': "H",
-                'mass': 1.0,
-                "N_unitcell": 4,
-                "cell": FaceCenteredCubic
-                },
-
-    'lj_1.0_1.2': {
-            'rdf_fn': '../data/LJ_data/rdf_rho1.0_T1.2_dt0.01.csv' ,
-            'vacf_fn': '../data/LJ_data/vacf_rho1.0_T1.2_dt0.01.csv' ,
-            'rho': 1.0,
-            'T': 1.2, 
-            'start': 0.75, 
-            'end': 3.3,
-            'element': "H",
-            'mass': 1.0,
-            "N_unitcell": 4,
-            "cell": FaceCenteredCubic
-
-            },
-    'lj_0.5_1.2': {
-            'rdf_fn': '../data/LJ_data/rdf_rho0.5_T1.2_dt0.01.csv' ,
-            'vacf_fn': '../data/LJ_data/vacf_rho0.5_T1.2_dt0.01.csv' ,
-            'rho': 0.5,
-            'T': 1.2, 
-            'start': 0.75, 
-            'end': 3.3,
-            'element': "H",
-            'mass': 1.0,
-            "N_unitcell": 4,
-            "cell": FaceCenteredCubic
-
-            }, 
-
-    'lj_1.2_0.75': {
-            'rdf_fn': '../data/LJ_data/rdf_rho1.2_T0.75_dt0.01.csv' ,
-            'vacf_fn': '../data/LJ_data/vacf_rho1.2_T0.75_dt0.01.csv' ,
-            'rho': 1.2,
-            'T': 0.75, 
-            'start': 0.75, 
-            'end': 3.3,
-            'element': "H",
-            'mass': 1.0,
-            "N_unitcell": 4,
-            "cell": FaceCenteredCubic
-            },
-
-    'lj_1.0_0.75': {
-            'rdf_fn': '../data/LJ_data/rdf_rho1.0_T0.75_dt0.01.csv' ,
-            'vacf_fn': '../data/LJ_data/vacf_rho1.0_T0.75_dt0.01.csv' ,
-            'rho': 1.0,
-            'T': 0.75, 
-            'start': 0.75, 
-            'end': 3.3,
-            'element': "H",
-            'mass': 1.0,
-            "N_unitcell": 4,
-            "cell": FaceCenteredCubic
-            },
-
-    'lj_0.3_1.2': {
-            'rdf_fn': '../data/LJ_data/rdf_rho0.3_T1.2_dt0.01.csv' ,
-            'vacf_fn': '../data/LJ_data/vacf_rho0.3_T1.2_dt0.01.csv' ,
-            'rho': 0.3,
-            'T': 1.2, 
-            'start': 0.75, 
-            'end': 3.3,
-            'element': "H",
-            'mass': 1.0,
-            "N_unitcell": 4,
-            "cell": FaceCenteredCubic
-            },
-
-
-    'lj_0.1_1.2': {
-            'rdf_fn': '../data/LJ_data/rdf_rho0.1_T1.2_dt0.01.csv' ,
-            'vacf_fn': '../data/LJ_data/vacf_rho0.1_T1.2_dt0.01.csv' ,
-            'rho': 0.1,
-            'T': 1.2, 
-            'start': 0.75, 
-            'end': 3.3,
-            'element': "H",
-            'mass': 1.0,
-            "N_unitcell": 4,
-            "cell": FaceCenteredCubic
-            },
-
-
-    'lj_0.7_1.0': {
-            'rdf_fn': '../data/LJ_data/rdf_rho0.7_T1.0_dt0.01.csv' ,
-            'vacf_fn': '../data/LJ_data/vacf_rho0.7_T1.0_dt0.01.csv' ,
-            'rho': 0.7,
-            'T': 1.0, 
-            'start': 0.75, 
-            'end': 3.3,
-            'element': "H",
-            'mass': 1.0,
-            "N_unitcell": 4,
-            "cell": FaceCenteredCubic
-            },
-
-    'softsphere_0.7_1.0': {
-            'rdf_fn': '../data/softsphere_data/rdf_rho0.7_T1.0_dt0.01.csv' ,
-            'vacf_fn': '../data/softsphere_data/vacf_rho0.7_T1.0_dt0.01.csv' ,
-            'rho': 0.7,
-            'T': 1.0, 
-            'start': 0.75, 
-            'end': 3.3,
-            'element': "H",
-            'mass': 1.0,
-            "N_unitcell": 4,
-            "cell": FaceCenteredCubic
-            }, 
-
-    'yukawa_0.7_1.0': {
-        'rdf_fn': '../data/Yukawa_data/rdf_rho0.7_T1.0_dt0.01.csv' ,
-        'vacf_fn': '../data/Yukawa_data/vacf_rho0.7_T1.0_dt0.01.csv' ,
-        'rho': 0.7,
-        'T': 1.0, 
-        'start': 0.5, 
-        'end': 3.0,
-        'element': "H",
-        'mass': 1.0,
-        "N_unitcell": 4,
-        "cell": FaceCenteredCubic
-        }, 
-
-    'yukawa_0.5_1.0': {
-        'rdf_fn': '../data/Yukawa_data/rdf_rho0.5_T1.0_dt0.01.csv' ,
-        'vacf_fn': '../data/Yukawa_data/vacf_rho0.5_T1.0_dt0.01.csv' ,
-        'rho': 0.5,
-        'T': 1.0, 
-        'start': 0.5, 
-        'end': 3.0,
-        'element': "H",
-        'mass': 1.0,
-        "N_unitcell": 4,
-        "cell": FaceCenteredCubic
-        }, 
-
-    'yukawa_0.3_1.0': {
-        'rdf_fn': '../data/Yukawa_data/rdf_rho0.3_T1.0_dt0.01.csv' ,
-        'vacf_fn': '../data/Yukawa_data/vacf_rho0.3_T1.0_dt0.01.csv' ,
-        'rho': 0.3,
-        'T': 1.0, 
-        'start': 0.5, 
-        'end': 3.0,
-        'element': "H",
-        'mass': 1.0,
-        "N_unitcell": 4,
-        "cell": FaceCenteredCubic
-        }, 
-
-        }
-
-from nff.nn.layers import GaussianSmearing
-from torch import nn
-
-nlr_dict =  {
-    'ReLU': nn.ReLU(), 
-    'ELU': nn.ELU(),
-    'Tanh': nn.Tanh(),
-    'LeakyReLU': nn.LeakyReLU(),
-    'ReLU6':nn.ReLU6(),
-    'SELU': nn.SELU(),
-    'CELU': nn.CELU(),
-    'Tanhshrink': nn.Tanhshrink()
-}
-
-
-class pairMLP(nn.Module):
-    def __init__(self, n_gauss, r_start, r_end, n_layers, n_width, nonlinear ):
-        super(pairMLP, self).__init__()
-        
-
-        nlr = nlr_dict[nonlinear]
-
-        self.smear = GaussianSmearing(
-            start=r_start,
-            stop=r_end,
-            n_gaussians=n_gauss,
-            trainable=False
-        )
-        
-        self.layers = nn.ModuleList(
-            [
-            nn.Linear(n_gauss, n_gauss),
-            nlr,
-            nn.Linear(n_gauss, n_width),
-            nlr]
-            )
-
-        for _ in range(n_layers):
-            self.layers.append(nn.Linear(n_width, n_width))
-            self.layers.append(nlr)
-
-        self.layers.append(nn.Linear(n_width, n_gauss))  
-        self.layers.append(nlr)  
-        self.layers.append(nn.Linear(n_gauss, 1)) 
-
-        
-    def forward(self, r):
-        r = self.smear(r)
-        for i in range(len(self.layers)):
-            r = self.layers[i](r)
-        return r
-
+def get_exp_rdf(data, nbins, r_range, obs):
+    # load RDF data 
+    f = interpolate.interp1d(data[0], data[1])
+    start = r_range[0]
+    end = r_range[1]
+    xnew = np.linspace(start, end, nbins)
+    g_obs = torch.Tensor(f(xnew)).to(obs.device)
+    
+    return g_obs
 
 def plot_vacf(vacf_sim, vacf_target, fn, path, dt=0.01, save_data=False):
 
@@ -362,16 +86,6 @@ def plot_rdf( g_sim, rdf_target, fn, path, start, nbins, save_data=False):
     plt.savefig(path + '/rdf_{}.pdf'.format(fn), bbox_inches='tight')
     plt.close()
 
-def get_exp_rdf(data, nbins, r_range, obs):
-    # load RDF data 
-    f = interpolate.interp1d(data[0], data[1])
-    start = r_range[0]
-    end = r_range[1]
-    xnew = np.linspace(start, end, nbins)
-    g_obs = torch.Tensor(f(xnew)).to(obs.device)
-    
-    return g_obs
-    
 def JS_rdf(g_obs, g):
     e0 = 1e-5
     g_m = 0.5 * (g_obs + g)
@@ -389,19 +103,18 @@ def get_unit_len(rho, N_unitcell):
 
 def get_system(data_str, device, size):
 
-    rho = data_dict[data_str]['rho']
-    T = data_dict[data_str]['T']
+    rho = pair_data_dict[data_str]['rho']
+    T = pair_data_dict[data_str]['T']
 
     # initialize states with ASE 
-    cell_module = data_dict[data_str]['cell']
-    N_unitcell = data_dict[data_str]['N_unitcell']
+    cell_module = pair_data_dict[data_str]['cell']
+    N_unitcell = pair_data_dict[data_str]['N_unitcell']
 
     L = get_unit_len(rho, N_unitcell)
 
     print("lattice param:", L)
 
-    atoms = cell_module(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                              symbol=data_dict[data_str]['element'],
+    atoms = cell_module(symbol=pair_data_dict[data_str]['element'],
                               size=(size, size, size),
                               latticeconstant= L,
                               pbc=True)
@@ -412,16 +125,16 @@ def get_system(data_str, device, size):
 
 def get_observer(system, data_str, nbins, t_range):
 
-    rdf_data_path = data_dict[data_str]['rdf_fn']
+    rdf_data_path = pair_data_dict[data_str]['rdf_fn']
     rdf_data = np.loadtxt(rdf_data_path, delimiter=',')
 
-    vacf_data_path = data_dict[data_str]['vacf_fn']
+    vacf_data_path = pair_data_dict[data_str]['vacf_fn']
     vacf_target = np.loadtxt(vacf_data_path, delimiter=',')[:t_range]
     vacf_target = torch.Tensor(vacf_target).to(system.device)
 
     # define the equation of motion to propagate 
-    rdf_start = data_dict[data_str]['start']
-    rdf_end = data_dict[data_str]['end']
+    rdf_start = pair_data_dict[data_str]['start']
+    rdf_end = pair_data_dict[data_str]['end']
 
     xnew = np.linspace(rdf_start , rdf_end, nbins)
         # initialize observable function 
@@ -436,7 +149,7 @@ def get_observer(system, data_str, nbins, t_range):
 
 def get_sim(system, model, data_str):
 
-    T = data_dict[data_str]['T']
+    T = pair_data_dict[data_str]['T']
 
     diffeq = NoseHooverChain(model, 
             system,

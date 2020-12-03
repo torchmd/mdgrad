@@ -21,6 +21,32 @@ def get_exp_rdf(data, nbins, r_range, obs):
 
     return count_obs, g_obs
 
+def exp_angle_data(nbins, angle_range, fn='../data/water_angle_pccp.csv'):
+    angle_data = np.loadtxt(fn, delimiter=',')
+    # convert angle to cos(phi)
+    cos = angle_data[:, 0] * np.pi / 180
+    density = angle_data[:, 1]
+    f = interpolate.interp1d(cos, density)
+    start = angle_range[0]
+    end = angle_range[1]
+    xnew = np.linspace(start, end, nbins)
+    density = f(xnew)
+    density /= density.sum()
+    
+    return density
+
+def get_unit_len(rho, mass, N_unitcell):
+    
+    Na = 6.02214086 * 10**23 # avogadro number 
+
+    N = (rho * 10**6 / mass) * Na  # number of molecules in 1m^3 of water 
+
+    rho = N / (10 ** 30) # number density in 1 A^3
+ 
+    L = (N_unitcell / rho) ** (1/3)
+    
+    return L 
+
 pair_data_dict = {
     'lj_0.845_1.5': { 
                       'rdf_fn': '../data/LJ_data/rdf_rho0.845_T1.5_dt0.01.csv' ,
