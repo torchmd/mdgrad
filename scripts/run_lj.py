@@ -1,7 +1,7 @@
 
 import argparse
 from sigopt import Connection
-from gnn_fit_lj import *
+from fit_rdf_pair import *
 from datetime import datetime
 parser = argparse.ArgumentParser()
 parser.add_argument("-logdir", type=str)
@@ -45,22 +45,6 @@ assignments = {
   "train_vacf": "True",
   "vacf_weight": params['vacf_weight']
 }
-
-# assignments = {
-#   "epsilon": 0.4,
-#   "gaussian_width": 0.1,
-#   "lr": 0.002,
-#   "n_layers": 2,
-#   "n_width": 87,
-#   "nbins": 100,
-#   "nonlinear": "ELU",
-#   "opt_freq": 60,
-#   "power": 10,
-#   "rdf_weight": 1.0,
-#   "sigma": params['sigma'],
-#   "train_vacf": "True",
-#   "vacf_weight": 0.4
-# }
 
 if assignments['train_vacf'] == 'False':
     assignments['vacf_weight'] = 0.0
