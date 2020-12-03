@@ -10,15 +10,43 @@ MLPPARAMS = {'D_in': 1,
               'act': 'relu',
               'D_out': 1}
 
-class gaussianchain(torch.nn.Module):
-    def __init__(self,  nbr_list, bond_dis=1.0, device='cpu'):
-        super(gaussianchain, self).__init__()
-        self.nbr_list = nbr_list.to(device)
-        self.bond_dis = bond_dis
+
+class pairMLP(torch.nn.Module):
+    def __init__(self, n_gauss, r_start, r_end, n_layers, n_width, nonlinear ):
+        super(pairMLP, self).__init__()
         
-    def forward(self, q):   
-        bond_dist = (q[self.nbr_list[:, 0]] - q[self.nbr_list[:, 1]]).pow(2).sum(-1).sqrt() 
-        return (bond_dist - self.bond_dis).pow(2).sum(-1)
+
+        nlr = nlr_dict[nonlinear]
+
+        self.smear = GaussianSmearing(
+            start=r_start,
+            stop=r_end,
+            n_gaussians=n_gauss,
+            trainable=False
+        )
+        
+        self.layers = nn.ModuleList(
+            [
+            nn.Linear(n_gauss, n_gauss),
+            nlr,
+            nn.Linear(n_gauss, n_width),
+            nlr]
+            )
+
+        for _ in range(n_layers):
+            self.layers.append(nn.Linear(n_width, n_width))
+            self.layers.append(nlr)
+
+        self.layers.append(nn.Linear(n_width, n_gauss))  
+        self.layers.append(nlr)  
+        self.layers.append(nn.Linear(n_gauss, 1)) 
+
+        
+    def forward(self, r):
+        r = self.smear(r)
+        for i in range(len(self.layers)):
+            r = self.layers[i](r)
+        return r
 
 
 class toy2d(torch.nn.Module):
