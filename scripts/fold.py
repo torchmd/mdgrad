@@ -168,12 +168,6 @@ def train(params, suggestion_id, project_name, device, n_epochs):
         'cutoff': params['cutoff']
     }
 
-    # gnnparams = {'n_atom_basis': 32,
-    #             'n_filters': 32,
-    #             'n_gaussians': 32,
-    #             'n_convolutions': 3,
-    #             'cutoff': 2.5,}
-
     schnet = get_model(gnnparams)
 
     GNN = GNNPotentials(system, 
@@ -269,15 +263,12 @@ def train(params, suggestion_id, project_name, device, n_epochs):
             loss_bond = (bonds - targ_bond.to(device).squeeze()).pow(2).mean()
             loss_angle1 = (angle1 - targ_angle1.to(device).squeeze()).pow(2).mean()
             loss_dihe1 = (dihe1 - targ_dihe1.to(device).squeeze()).pow(2).mean()
-            #loss_angle2 = (angle2 - targ_angle2.to(device).squeeze()).pow(2).mean()
-            #loss_dihe2 = (dihe2 - targ_dihe2.to(device).squeeze()).pow(2).mean()
 
             loss_bond13 = (bonds13 - targ_bond13.to(device).squeeze()).pow(2).mean()
             loss_bond14 = (bonds14 - targ_bond14.to(device).squeeze()).pow(2).mean()
             loss_bond15 = (bonds15 - targ_bond15.to(device).squeeze()).pow(2).mean()
             loss_bond16 = (bonds16 - targ_bond16.to(device).squeeze()).pow(2).mean()
-            #loss_bond17 = (bonds17 - targ_bond17.to(device).squeeze()).pow(2).mean()
-            #loss_bond18 = (bonds18 - targ_bond18.to(device).squeeze()).pow(2).mean()
+
 
             loss =  params['l_bond'] *  loss_bond + \
                     params['l_dihe1'] * loss_dihe1 + \
@@ -287,8 +278,6 @@ def train(params, suggestion_id, project_name, device, n_epochs):
                     params['l_bond15'] * loss_bond15 + \
                     params['l_bond16'] * loss_bond16 + \
                     params['l_end2end'] * loss_end2end  # + \
-                    #params['l_bond17'] * loss_bond17 + \
-                    #params['l_bond18'] * loss_bond18
             
             loss_record = loss_angle1 + \
                             loss_bond + \
@@ -298,8 +287,6 @@ def train(params, suggestion_id, project_name, device, n_epochs):
                             loss_bond15 + \
                             loss_bond16 + \
                             loss_end2end
-                            # loss_bond17 + \
-                            # loss_bond18
 
             loss.backward()
             # duration = (datetime.now() - current_time)
@@ -354,30 +341,14 @@ if __name__ == '__main__':
             name=logdir,
             metrics=[dict(name='loss', objective='minimize')],
             parameters=[
-                # dict(name='n_atom_basis', type='int', bounds=dict(min=16, max=64)),
-                # dict(name='n_filters', type='int', bounds=dict(min=16, max=64)),
-                # dict(name='n_gaussians', type='int', bounds=dict(min=16, max=64)),
-                # dict(name='n_convolutions', type='int', bounds=dict(min=2, max=5)),
                 dict(name='sigma', type='double', bounds=dict(min=0.7, max=1.3)),
                 dict(name='epsilon', type='double', bounds=dict(min=0.01, max=0.2)),
-                #dict(name='cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
                 dict(name='tau', type='int', bounds=dict(min=10, max=60)),
                 dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-3)),
                 dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
                 dict(name='dt', type='double', bounds=dict(min=0.005, max=0.05)),
                 dict(name='method', type='categorical', categorical_values=["NH_verlet", "rk4"]),
                 dict(name='lastframe', type='categorical', categorical_values=["True", "False"]),
-                # dict(name='l_bond', type='double', bounds=dict(min=0.0, max=1.0)),
-                # dict(name='l_bond13', type='double', bounds=dict(min=0.0, max=1.0)),
-                # dict(name='l_bond14', type='double', bounds=dict(min=0.0, max=1.0)),
-                # dict(name='l_bond15', type='double', bounds=dict(min=0.0, max=1.0)),
-                # dict(name='l_bond16', type='double', bounds=dict(min=0.0, max=1.0)),
-                # dict(name='l_bond17', type='double', bounds=dict(min=0.0, max=1.0)),
-                # dict(name='l_bond18', type='double', bounds=dict(min=0.0, max=1.0)),
-                # dict(name='l_angle1', type='double', bounds=dict(min=0.0, max=1.0)),
-                # dict(name='l_dihe1', type='double', bounds=dict(min=0.0, max=1.0)),
-                # dict(name='l_angle2', type='double', bounds=dict(min=0.0, max=1.0)),
-                # dict(name='l_dihe2', type='double', bounds=dict(min=0.0, max=1.0)),
                 dict(name='l_b', type='double', bounds=dict(min=0.0, max=1.0)),
                 dict(name='l_a', type='double', bounds=dict(min=0.0, max=1.0)),
                 dict(name='l_d', type='double', bounds=dict(min=0.0, max=1.0)),

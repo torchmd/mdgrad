@@ -8,7 +8,7 @@ parser.add_argument("-data", type=str, nargs='+')
 parser.add_argument("-val", type=str, nargs='+')
 parser.add_argument("-name", type=str)
 parser.add_argument("-device", type=int, default=0)
-parser.add_argument("-nepochs", type=int, default=700)
+parser.add_argument("-nepochs", type=int, default=1000)
 parser.add_argument("-nsim", type=int, default=20)
 parser.add_argument("--pair", action='store_true', default=False)
 params = vars(parser.parse_args())
@@ -16,20 +16,20 @@ params = vars(parser.parse_args())
 i = 0
 
 assignments = {
-  "anneal_freq": 20,
-  "anneal_rate": 8.0,
-  "cutoff": 4.3,
-  "epsilon": 0.022,
-  "gaussian_width": 0.125,
-  "lr": 0.00003,
-  "mse_weight": 0,
-  "n_atom_basis": "mid",
+  "anneal_freq": 7,
+  "anneal_rate": 5.2,
+  "cutoff": 4.9,
+  "epsilon": 0.015,
+  "gaussian_width": 0.145,
+  "lr": 0.000025,
+  "mse_weight": 0.4,
+  "n_atom_basis": "high",
   "n_convolutions": 3,
-  "n_filters": "high",
-  "nbins": 120,
-  "opt_freq": 20,
-  "sigma": 1.95,
-  "start_T": 380.0
+  "n_filters": "mid",
+  "nbins": 90,
+  "opt_freq": 26,
+  "sigma": 1.9,
+  "start_T": 200
 }
 
 sys_params = {

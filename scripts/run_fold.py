@@ -1,12 +1,19 @@
 from fold import train 
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-logdir", type=str)
+parser.add_argument("-name", type=str)
+parser.add_argument("-device", type=int, default=0)
+parser.add_argument("-nepochs", type=int, default=1000)
+params = vars(parser.parse_args())
 
-params = {
+hyperparams = {
   "T": 0.005,
-  "cutoff": 3.1559881833397347,
-  "dt": 0.034251112820653726,
-  "k0": 1.978841425420648,
-  "l_angle1": 0.2727264843535817,
+  "cutoff": 3.15,
+  "dt": 0.034,
+  "k0": 2.0,
+  "l_angle1": 0.27,
   "l_bond": 0.6648074692624293,
   "l_bond13": 1,
   "l_bond14": 0.14802716271046765,
@@ -25,14 +32,9 @@ params = {
   'sigma': 1.0
 }
 
-params['device'] = 0 
 
-logdir = 'test1'
-name = 'end2end2'
-n_epochs = 500
-
-train(params=params, 
-        suggestion_id=name, 
+train(params=hyperparams, 
+        suggestion_id=params['name'],
         device=params['device'],
-        project_name=logdir,
-        n_epochs=n_epochs)
+        project_name=params['logdir'],
+        n_epochs=params['nepochs'])
