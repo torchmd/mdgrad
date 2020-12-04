@@ -76,7 +76,8 @@ class NH_sampler(torch.nn.Module):
 from torch import nn
 import torch
 
-nlr = nn.ReLU()
+nlr = nn.SELU()
+
 # initial model: a NN 
 class Noneq_NN(torch.nn.Module):
     def __init__(self, device, tau=100, k_0=1.0):
@@ -107,7 +108,7 @@ class Noneq_NN(torch.nn.Module):
         return self.net(inp) #- self.net(torch.Tensor([0.0]).to(self.device))
     
     def control(self, t): 
-        return torch.exp(-(8/self.tau) * t ) 
+        return torch.exp(-(4/self.tau) * t ) 
     
     def forward(self, x, t):
 
@@ -130,6 +131,8 @@ class eq_NN(torch.nn.Module):
                                 nlr,
                                 nn.Linear(32, 64),
                                 nlr,  
+                                nn.Linear(64, 64),
+                                nlr,
                                 nn.Linear(64, 64),
                                 nlr,
                                 nn.Linear(64, 32),
