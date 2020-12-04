@@ -33,7 +33,7 @@ if __name__ == '__main__':
                               pbc=True)
 
     system = System(atoms, device=device)
-    system.set_temperature(1.0 /units.kB)
+    system.set_temperature(1.0)
 
     lj_params = {'epsilon': 1.0, 
                  'sigma': 1.0}
