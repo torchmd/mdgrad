@@ -153,7 +153,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     from ase import units 
 
     system = System(chain, device=device)
-    system.set_temperature(params['T']/units.kB)
+    system.set_temperature(params['T'])
 
     from torchmd.interface import BondPotentials, GNNPotentials, Stack, PairPotentials
     bondenergy = BondPotentials(system, bond_top, params['k0'], bond_len)
