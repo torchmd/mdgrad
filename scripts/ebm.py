@@ -3,16 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys 
 
-ODE_PATH = '/home/wwj/Repo/projects/torchdiffeq/'
-
-sys.path.insert(0, ODE_PATH)
-sys.path.insert(0, '../..')
-
 import torch
-from torchmd import nff
 from torch.optim import Adam
-from torchdiffeq import odeint_adjoint as odeint
-from torchmd.utils import dump_mov
+from torchmd.sovlers import odeint_adjoint as  odeint
 from nglview import show_ase, show_file, show_mdtraj
 
 from nff.nn.layers import GaussianSmearing
@@ -20,8 +13,8 @@ from ase import Atoms
 from math import sqrt
 
 from torchmd.sampler import NH_sampler, eq_NN, Noneq_NN
-
 from sklearn.datasets import make_circles, make_checkerboard, make_moons
+
 
 def plot_pes(model, Xdata, ref, t, device, fname=None):
     
@@ -68,7 +61,7 @@ def train_ebm(params, model_path):
     p_targ = params['p_targ']
     t_len = int( tau / dt )
 
-    h = eq_NN(tau=tau, device=DEVICE, k_0=1.0).to(DEVICE)
+    h = Noneq_NN(tau=tau, device=DEVICE, k_0=1.0).to(DEVICE)
 
     f_x = NH_sampler(h, 
                 torch.Tensor([1.0]), 
@@ -80,30 +73,29 @@ def train_ebm(params, model_path):
                 
                 dim=2).to(DEVICE)
 
-    optimizer = torch.optim.Adam(list( h.parameters() ), lr=5e-4)
-
-    final_t = torch.Tensor([tau] * B).to(DEVICE)
-    t_0 = torch.Tensor([0.0] * B).to(DEVICE)
+    optimizer = torch.optim.Adam(list( h.parameters() ), lr=7e-4)
 
     loss_run = []
 
     for epoch in range(5000):
         
-        batch, _= make_circles(n_samples=B, noise=0.1, factor=0.5)
+        B_sampled = 512
+
+        batch, _= make_circles(n_samples=B_sampled, noise=0.05, factor=0.5)
 
         batch = torch.Tensor(batch).to(DEVICE)
-        data_nll = h(batch, final_t)
-        
-        B_sampled = 128
-        
         sample_batch, _= make_circles(n_samples=B_sampled, noise=0.1, factor=0.5)
 
         # sample from normal distribution and deform 
         p_v = torch.empty(B_sampled, 3).normal_(mean=0,std=1)
-        q = torch.Tensor(sample_batch) # torch.empty(B_sampled, 2).normal_(mean=0,std=0.5) 
+        q = torch.empty(B_sampled, 2).normal_(mean=0,std=1.0) 
         p = torch.empty(B_sampled, 2).normal_(mean=0,std=p_targ)
         W = torch.zeros(B_sampled, 1).to(DEVICE)
         Q = torch.zeros(B_sampled, 1).to(DEVICE)
+
+
+        final_t = torch.Tensor([tau] * B_sampled).to(DEVICE)
+        t_0 = torch.Tensor([0.0] * B_sampled).to(DEVICE)
 
         pq = torch.cat((p, q, p_v), dim=1).to(DEVICE)
         pq.requires_grad= True
@@ -112,9 +104,10 @@ def train_ebm(params, model_path):
         
         if time_dependent:
             x, W_traj, Q_traj = odeint(f_x, (pq, W, Q), t, method='rk4')
+            data_nll = h.E(batch, final_t)
+
             logZ = -torch.log( torch.exp(-W_traj[-1].reshape(-1)).mean() )
-            loss = -logZ + data_nll.mean()  + 0.05 * ( (data_nll).pow(2).mean() + (sample_nll).pow(2).mean() )  \
-                    + 0.05 * (W_traj[-1]).pow(2).mean()
+            loss = -logZ + data_nll.mean()
         else:       
             x = odeint(f_x, pq, t, method='rk4')
             sample_nll = h(x[10:][::5, :, 2:4].reshape(-1, 2), final_t)
@@ -130,9 +123,9 @@ def train_ebm(params, model_path):
         print(loss.item())
 
         if epoch % 10 == 0:
-            plot_pes(h, 
-                     x[::5, ::4, dim: dim*2].reshape(-1, dim), 
-                     batch[::4], 
+            plot_pes(h.E, 
+                     x[-1, ::2, dim: dim*2].reshape(-1, dim), 
+                     batch[::2], 
                      tau, 
                      device=DEVICE,
                      fname=model_path + "{}.png".format(epoch))
@@ -142,11 +135,11 @@ def train_ebm(params, model_path):
 
 params = {}
 
-params['time_dependent'] = False
+params['time_dependent'] = True
 params['DEVICE'] = 1
 params['num_chains']= 3
 params['B'] = 4096
-params['tau'] = 10.0
+params['tau'] = 5.0
 params['dt'] = 0.1
 params['dim'] = 2
 params['p_targ'] = 1.0
