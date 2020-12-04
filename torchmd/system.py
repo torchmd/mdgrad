@@ -14,6 +14,15 @@ def check_system(object):
         raise TypeError("input should be a torchmd.system.System")
 
 class System(Atoms):
+
+    """Object that contains system information. Inherited from ase.Atoms
+    
+    Attributes:
+        device (int or str): torch device "cpu" or an integer
+        dim (int): dimension of the system 
+        props (dict{}): additional properties 
+    """
+
     def __init__(
         self,
         *args,
@@ -39,14 +48,6 @@ class System(Atoms):
         ], axis=1)
 
         return nxyz
-
-    # def add_potential(self, model):
-    #     self.model = model 
-
-    # def compute_force_virial(self, xyz):
-    #     u = self.model(xyz)
-    #     f = -compute_grad(inputs=xyz, output=u)
-    #     return f 
     
     def get_cell_len(self):
         return np.diag( self.get_cell() )
