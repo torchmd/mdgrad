@@ -16,20 +16,17 @@ params = vars(parser.parse_args())
 i = 0
 
 assignments = {
-  "anneal_freq": 17,
-  "anneal_rate": 8.123308705790908,
-  "cutoff": 4.282285152799321,
-  "epsilon": 0.022418593690728312,
-  "gaussian_width": 0.125,
-  "lr": 0.00002788550012566861,
-  "mse_weight": 0,
-  "n_atom_basis": "mid",
-  "n_convolutions": 3,
+  "cutoff": 7.5,
+  "epsilon": 0.010,
+  "gaussian_width": 0.1,
+  "lr": 0.0001,
+  "mse_weight": 4.0,
+  "n_atom_basis": "tiny",
+  "n_convolutions": 2,
   "n_filters": "high",
-  "nbins": 120,
-  "opt_freq": 20,
-  "sigma": 1.9581522427812932,
-  "start_T": 379.19160932066393
+  "nbins": 119,
+  "opt_freq": 56,
+  "sigma": 2.5888283843240973
 }
 
 sys_params = {
@@ -39,7 +36,7 @@ sys_params = {
 'data': params['data'],
 'val': params['val'],
 'size': 4,
-'anneal_flag': "True",
+'anneal_flag': 'False',
 'pair_flag': params['pair']
 }
 
