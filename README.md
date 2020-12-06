@@ -3,15 +3,15 @@
   <img src="assets/logo.jpg" width="200">
 </p> 
 
-PyTorch code for End-to-end differetiable molecular simulations. More docs and tutorials are comings. This repo is also under heavy development 
+PyTorch code for End-to-end differetiable molecular simulations. More docs and tutorials are comings. This repo is also under heavy development, more contribution is welcomed.  
 
 This repo features the following [demos](https://github.com/wwang2/torchmd/tree/master/demo):
 
-Differentiable folding of a polymer 
+1. Differentiable folding of a polymer 
 
-Learning interactions of pair correlation function
+2. Learning interactions from observables (pair correlation function, velocity auto-correlations
 
-Quantum isomerization of a minimal retinal model 
+3. Quantum isomerization of a minimal retinal model 
 
 Paper: 
 
