@@ -3,6 +3,12 @@
   <img src="assets/logo.jpg" width="200">
 </p> 
 
+Wang, W., Axelrod, S., & Gómez-Bombarelli, R. (2020). Differentiable Molecular Simulations for Control and Learning. https://arxiv.org/abs/2003.00868
+
+<p align="center">
+  <img src="assets/schematic.jpg" width="400">
+</p>
+
 PyTorch code for End-to-end differetiable molecular simulations. More docs and tutorials are comings. This repo is also under heavy development, more contribution is welcomed.  
 
 This repo features the following [demos](https://github.com/wwang2/torchmd/tree/master/demo):
@@ -49,18 +55,10 @@ v_t, q_t, pv_t = sim.simulate(steps=50, frequency=50, dt=0.01) #v_t: velocity  q
 obs = rdf(system, nbins=100, r_range=(0.75, 2.5))
 _, _, g = obs(q_t)
 
-You will find out g can be backpropagated for gradient cumulation
+# You will find out g can be backpropagated for gradient cumulation, give it a try!
 ```
 
-Paper: 
-
-Wang, W., Axelrod, S., & Gómez-Bombarelli, R. (2020). Differentiable Molecular Simulations for Control and Learning. ArXiv. Retrieved from https://arxiv.org/abs/2003.00868
-
-<p align="center">
-  <img src="assets/schematic.jpg" width="400">
-</p>
-
-### Applications
+### DEMO
 
 #### End-to-End Fitting for Macroscopic/Coarse-Grained Observable 
 Backpropagating through the trajectory to train a GNN that reproduces a target pair distribution function.
