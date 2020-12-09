@@ -25,6 +25,35 @@ MLPPARAMS = {'D_in': 1,
               'act': 'relu',
               'D_out': 1}
 
+class SplineOverlap(torch.nn.Module):
+    '''
+        https://journals.aps.org/pre/abstract/10.1103/PhysRevE.80.031105
+    '''
+    
+    def __init__(self, K, V0, device, n_splines=200, rmax=10.):
+        super(SplineOverlap, self).__init__()
+        
+        import scipy
+        def overlap(x, K, V0):
+            return V0 * ( 1 / (np.pi * ((K * x)**2))) * scipy.special.jn(1, (K * x)/2 ) ** 2
+        
+        try: 
+            from torchcubicspline import(natural_cubic_spline_coeffs, 
+                             NaturalCubicSpline)
+        except:
+            raise NotImplementedError("install torch cubic spline with pip" +
+                "install git+https://github.com/patrick-kidger/torchcubicspline.git")
+            
+        x = torch.linspace(0, rmax, n_splines).to(device)
+        targ = torch.Tensor( overlap(np.linspace(0.5, rmax, n_splines), K, V0) ).reshape(-1, 1).to(device)
+        
+        self.coeffs = natural_cubic_spline_coeffs(x, targ)
+        self.spline = NaturalCubicSpline(self.coeffs)
+        
+    def forward(self, x):
+        return self.spline.evaluate(x)
+        
+
 class pairMLP(torch.nn.Module):
     def __init__(self, n_gauss, r_start, r_end, n_layers, n_width, nonlinear ):
         super(pairMLP, self).__init__()
