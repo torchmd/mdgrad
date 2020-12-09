@@ -24,6 +24,9 @@ class rdf(Observable):
         start = r_range[0]
         end = r_range[1]
 
+        # for plotting 
+        self.r_axis = np.linspace(start, end, nbins)
+
         self.device = system.device
         self.bins = torch.linspace(start, end, nbins + 1).to(self.device)
         self.smear = GaussianSmearing(
@@ -35,7 +38,13 @@ class rdf(Observable):
         ).to(self.device)
         self.cutoff = end
         # compute volume differential 
-        self.vol_bins = 4 * PI /3*(self.bins[1:]**3 - self.bins[:-1]**3).to(self.device)
+        if system.dim == 3:
+            self.vol_bins = 4 * PI /3*(self.bins[1:]**3 - self.bins[:-1]**3).to(self.device)
+            self.V = (4/3)* np.pi * (self.cutoff) ** 3
+        elif system.dim == 2:
+            self.vol_bins = PI * (self.bins[1:]**2 - self.bins[:-1]**2).to(self.device)
+            self.V = np.pi * (self.cutoff) ** 2
+
         self.nbins = nbins
         self.cutoff_boundary = self.cutoff + 5e-1
         self.index_tuple = index_tuple
@@ -52,9 +61,7 @@ class rdf(Observable):
         norm = count.sum()   # normalization factor for histogram 
         count = count / norm   # normalize 
         count = count
-                         
-        V = (4/3)* np.pi * (self.cutoff) ** 3
-        rdf =  count / (self.vol_bins / V )  
+        rdf =  count / (self.vol_bins / self.V )  
 
         return count, self.bins, rdf 
 
