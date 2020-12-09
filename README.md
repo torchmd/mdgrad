@@ -79,3 +79,7 @@ Folding a polymer with Graph Neural Networks
 #### Quantum Isomerization 
 
 We fit electric field to optimize efficiency of a quantum isomerization process [Coming]
+
+<p align="center">
+  <img src="assets/quantumyield.gif" width="300">
+</p>
