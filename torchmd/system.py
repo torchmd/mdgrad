@@ -19,7 +19,7 @@ class System(Atoms):
     
     Attributes:
         device (int or str): torch device "cpu" or an integer
-        dim (int): dimension of the system 
+        dim (int): dimension of the system (if n_dim < 3, the first n_dim columns are used for position calculation)
         props (dict{}): additional properties 
     """
 
@@ -27,13 +27,14 @@ class System(Atoms):
         self,
         *args,
         device,
+        dim=3,
         props={},
         **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.props = props
         self.device = device
-        self.dim = self.get_cell().shape[0]
+        self.dim = dim
         
     def get_nxyz(self):
         """Gets the atomic number and the positions of the atoms
@@ -63,6 +64,10 @@ class System(Atoms):
     def set_temperature(self, T):
         from ase.md.velocitydistribution import MaxwellBoltzmannDistribution 
         MaxwellBoltzmannDistribution(self, T)
+        if self.dim < 3:
+            vel =  self.get_velocities()
+            vel[:, -1] = 0.0
+            self.set_velocities(vel)
     
 
 if __name__ == "__main__":
