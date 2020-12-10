@@ -3,7 +3,10 @@
   <img src="assets/logo.jpg" width="150">
 </p> 
 
-PyTorch code for End-to-end differetiable molecular simulations. More docs and tutorials are comings. This repo is also under heavy development, more contribution is welcomed.  
+This is not just a regular simulator but a DIFFERENTIABLE simulator!
+
+PyTorch code for End-to-end differetiable molecular simulations. More docs and tutorials are comings.
+This repo is under heavy development, your contribution is very much welcomed.  
 
 ## Highlights
 
@@ -12,9 +15,9 @@ PyTorch code for End-to-end differetiable molecular simulations. More docs and t
 - Include a Graph Neural Network Module (our own SchNet implementation)
 - GPU-accelerated Neighborlist algorithm
 - End-to-End Differentiable Observable implemented - RDF, VACF
-- Good for both molecules, liquids and solids
+- Good for single molecule and condensed phase( liquids and solids )
 - Compatible with ASE for system initialization 
-- Users can write their own wrapper to interface to their favorite Force Field architecture (SchNet, DimeNet, SE3NN, LAMMPS etc.)
+- Users can write interface to their favorite Force Field architecture (SchNet, DimeNet, SE3NN, LAMMPS etc.)
 
 Wang, W., Axelrod, S., & Gómez-Bombarelli, R. (2020). Differentiable Molecular Simulations for Control and Learning. https://arxiv.org/abs/2003.00868
 
@@ -33,13 +36,10 @@ This repo features the following [demos](https://github.com/wwang2/torchmd/tree/
 ```
 # Define a box of particles 
 L = 1.6 
-atoms = FaceCenteredCubic(symbol='H',
-                          size=(3, 3, 3),
-                          latticeconstant=L,
-                          pbc=True)
+atoms = FaceCenteredCubic(symbol='H', size=(3, 3, 3), latticeconstant=L, pbc=True)
+
 # use System to wrap ase.atoms
 from torchmd.system import System 
-
 device = 'cuda:0'
 system = System(atoms, device=device)
 system.set_temperature(1.0)
@@ -66,10 +66,11 @@ v_t, q_t, pv_t = sim.simulate(steps=50, frequency=50, dt=0.01) #v_t: velocity  q
 obs = rdf(system, nbins=100, r_range=(0.75, 2.5))
 _, _, g = obs(q_t)
 
+g.sum().backward()
 # You will find out g can be backpropagated for gradient cumulation, give it a try!
 ```
 
-### DEMO
+### DEMOs
 
 #### End-to-End Fitting for Macroscopic/Coarse-Grained Observable 
 Backpropagating through the trajectory to train a GNN that reproduces a target pair distribution function.
@@ -89,7 +90,7 @@ Folding a polymer with Graph Neural Networks
 
 #### Quantum Isomerization 
 
-We fit electric field to optimize efficiency of a quantum isomerization process
+We fit electric field to optimize efficiency of a quantum isomerization process for retinal molecule
 
 <p align="center">
   <img src="assets/quantumyield.gif" width="300">
@@ -97,7 +98,7 @@ We fit electric field to optimize efficiency of a quantum isomerization process
 
 ### TODO 
 
-- Imeplement Foward Sensitivity solver
+- Imeplement Forward Sensitivity solver
 - More thermostats (Parrinello-Rahman dynamics, etc.) 
 - Interface to LAMMPS so that this tool can be used as a plug-in for LAMMPS simulations 
 - Write interface to SE3NN, DimeNET, etc.
