@@ -272,7 +272,19 @@ pair_data_dict = {
         "cell": FaceCenteredCubic
         }, 
 
-        }
+    'overalp_0.9766_T0.07':{
+        'rdf_fn': '../stripe_data/overalp_0.9766_k4.7896_V01000_0.07.csv' ,
+        'rho': 0.9766,
+        'T': 0.07,
+        'dim': 2,  
+        'start': 0.5, 
+        'end': 8.0,
+        'size': 25,
+        'element': "H",
+        'ref': 'https://aip.scitation.org/doi/pdf/10.1063/5.0021475'
+        }, 
+
+    }
 
 exp_rdf_data_dict = {
     'Si_2.293_100K': { 'fn': '../data/a-Si/100K_2.293.csv' ,
