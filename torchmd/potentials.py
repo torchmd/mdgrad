@@ -3,6 +3,7 @@ from torch.nn import Sequential, Linear, ReLU, LeakyReLU, ModuleDict
 
 from nff.nn.layers import GaussianSmearing
 from torch import nn
+import numpy as np
 
 nlr_dict =  {
     'ReLU': nn.ReLU(), 
@@ -30,7 +31,7 @@ class SplineOverlap(torch.nn.Module):
         https://journals.aps.org/pre/abstract/10.1103/PhysRevE.80.031105
     '''
     
-    def __init__(self, K, V0, device, n_splines=200, rmax=10.):
+    def __init__(self, K, V0, device, n_splines=500, rmax=15., rmin=0.05):
         super(SplineOverlap, self).__init__()
         
         import scipy
@@ -43,16 +44,16 @@ class SplineOverlap(torch.nn.Module):
         except:
             raise NotImplementedError("install torch cubic spline with pip" +
                 "install git+https://github.com/patrick-kidger/torchcubicspline.git")
-            
-        x = torch.linspace(0, rmax, n_splines).to(device)
-        targ = torch.Tensor( overlap(np.linspace(0.5, rmax, n_splines), K, V0) ).reshape(-1, 1).to(device)
+        
+        x = torch.linspace(rmin, rmax, n_splines).to(device)
+        targ = torch.Tensor( overlap(np.linspace(rmin, rmax, n_splines), K, V0) ).reshape(-1, 1).to(device)
         
         self.coeffs = natural_cubic_spline_coeffs(x, targ)
         self.spline = NaturalCubicSpline(self.coeffs)
         
     def forward(self, x):
         return self.spline.evaluate(x)
-        
+
 
 class pairMLP(torch.nn.Module):
     def __init__(self, n_gauss, r_start, r_end, n_layers, n_width, nonlinear ):
