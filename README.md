@@ -1,15 +1,26 @@
 # torchmd
 <p align="left">
-  <img src="assets/logo.jpg" width="200">
+  <img src="assets/logo.jpg" width="150">
 </p> 
+
+PyTorch code for End-to-end differetiable molecular simulations. More docs and tutorials are comings. This repo is also under heavy development, more contribution is welcomed.  
+
+## Highlights
+
+- Reverse-mode automatic differentiation through ODE Solver (O(1) backprop)
+- solvers supported: 4th order Runge-Kutta and Velocity Verlet 
+- Include a Graph Neural Network Module (our own SchNet implementation)
+- GPU-accelerated Neighborlist algorithm
+- End-to-End Differentiable Observable implemented - RDF, VACF
+- Good for both molecules, liquids and solids
+- Compatible with ASE for system initialization 
+- Users can write their own wrapper to interface to their favorite Force Field architecture (SchNet, DimeNet, SE3NN, LAMMPS etc.)
 
 Wang, W., Axelrod, S., & Gómez-Bombarelli, R. (2020). Differentiable Molecular Simulations for Control and Learning. https://arxiv.org/abs/2003.00868
 
 <p align="center">
   <img src="assets/schematic.jpg" width="400">
 </p>
-
-PyTorch code for End-to-end differetiable molecular simulations. More docs and tutorials are comings. This repo is also under heavy development, more contribution is welcomed.  
 
 This repo features the following [demos](https://github.com/wwang2/torchmd/tree/master/demo):
 
@@ -78,8 +89,15 @@ Folding a polymer with Graph Neural Networks
 
 #### Quantum Isomerization 
 
-We fit electric field to optimize efficiency of a quantum isomerization process [Coming]
+We fit electric field to optimize efficiency of a quantum isomerization process
 
 <p align="center">
   <img src="assets/quantumyield.gif" width="300">
 </p>
+
+### TODO 
+
+- Imeplement Foward Sensitivity solver
+- More thermostats (Parrinello-Rahman dynamics, etc.) 
+- Interface to LAMMPS so that this tool can be used as a plug-in for LAMMPS simulations 
+- Write interface to SE3NN, DimeNET, etc.
