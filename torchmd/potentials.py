@@ -31,7 +31,7 @@ class SplineOverlap(torch.nn.Module):
         https://journals.aps.org/pre/abstract/10.1103/PhysRevE.80.031105
     '''
     
-    def __init__(self, K, V0, device, n_splines=500, rmax=15., rmin=0.05):
+    def __init__(self, K, V0, device, n_splines=600, rmax=15., rmin=0.00):
         super(SplineOverlap, self).__init__()
         
         import scipy
