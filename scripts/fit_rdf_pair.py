@@ -65,7 +65,7 @@ def plot_vacf(vacf_sim, vacf_target, fn, path, dt=0.01, save_data=False):
 
 def plot_rdf( g_sim, rdf_target, fn, path, start, nbins, save_data=False, end=2.5):
 
-    bins = np.linspace(start, cutoff, nbins)
+    bins = np.linspace(start, end, nbins)
 
     plt.plot(bins, g_sim , label='simulation', linewidth=4, alpha=0.6)
     plt.plot(bins, rdf_target , label='target', linewidth=2,linestyle='--', c='black')
