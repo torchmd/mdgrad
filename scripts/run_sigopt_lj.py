@@ -9,6 +9,7 @@ parser.add_argument("-device", type=int, default=0)
 parser.add_argument("-data", type=str, nargs='+')
 parser.add_argument("-val", type=str, nargs='+')
 parser.add_argument("-id", type=int, default=None)
+parser.add_argument("-cutoff", type=float, default=2.5)
 parser.add_argument("--dry_run", action='store_true', default=False)
 params = vars(parser.parse_args())
 
@@ -66,7 +67,8 @@ while experiment.progress.observation_count < experiment.observation_budget:
     'n_sim': n_sim,
     'data': params['data'],
     'val': params['val'],
-    't_range': 50
+    't_range': 50,
+    'cutoff': params['cutoff']
     }
 
     value = fit_lj(assignments=suggestion.assignments, 
