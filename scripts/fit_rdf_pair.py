@@ -197,7 +197,7 @@ def get_sim(system, model, data_str):
 def plot_pair(fn, path, model, prior, device, end=2.5): 
 
     pair_true = LennardJones(1.0, 1.0).to(device)
-    x = torch.linspace(0.85, end, 50)[:, None].to(device)
+    x = torch.linspace(0.1, end, 50)[:, None].to(device)
     
     u_fit = (model(x) + prior(x)).detach().cpu().numpy()
     u_fit = u_fit = u_fit - u_fit[-1] 
@@ -206,11 +206,12 @@ def plot_pair(fn, path, model, prior, device, end=2.5):
               u_fit, 
               label='fit', linewidth=4, alpha=0.6)
     
-    plt.plot( x.detach().cpu().numpy(), 
-              pair_true(x).detach().cpu().numpy(),
-               label='truth', 
-               linewidth=2,linestyle='--', c='black')
+    # plt.plot( x.detach().cpu().numpy(), 
+    #           pair_true(x).detach().cpu().numpy(),
+    #            label='truth', 
+    #            linewidth=2,linestyle='--', c='black')
 
+    plt.ylim(-4, 6)
     plt.legend()      
     plt.show()
     plt.savefig(path + '/potential_{}.jpg'.format(fn), bbox_inches='tight')
