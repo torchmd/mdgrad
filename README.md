@@ -102,3 +102,4 @@ We fit electric field to optimize efficiency of a quantum isomerization process 
 - More thermostats (Parrinello-Rahman dynamics, etc.) 
 - Interface to LAMMPS so that this tool can be used as a plug-in for LAMMPS simulations 
 - Write interface to SE3NN, DimeNET, etc.
+- Better loggers for observables
