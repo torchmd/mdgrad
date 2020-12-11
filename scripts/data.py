@@ -5,15 +5,23 @@ from scipy import interpolate
 
 from ase.lattice.cubic import FaceCenteredCubic, Diamond
 
-def get_exp_rdf(data, nbins, r_range, obs):
+def get_exp_rdf(data, nbins, r_range, obs, dim=3):
     # load RDF data 
-    f = interpolate.interp1d(data[:,0], data[:,1])
+    if data.shape[0] == 2:
+        f = interpolate.interp1d(data[0], data[1])
+    elif data.shape[1] == 2:
+        f = interpolate.interp1d(data[:,0], data[:,1])
+
     start = r_range[0]
     end = r_range[1]
     xnew = np.linspace(start, end, nbins)
 
     # make sure the rdf data is normalized
-    V = (4/3)* np.pi * (end ** 3 - start ** 3)
+    if dim == 3:
+        V = (4/3)* np.pi * (end ** 3 - start ** 3)
+    elif dim == 2:
+        V = np.pi * (end ** 2- start ** 2)
+
     g_obs = torch.Tensor(f(xnew)).to(obs.device)
     g_obs_norm = ((g_obs.detach() * obs.vol_bins).sum()).item()
     g_obs = g_obs * (V/g_obs_norm)
@@ -272,17 +280,19 @@ pair_data_dict = {
         "cell": FaceCenteredCubic
         }, 
 
-    'overalp_0.9766_T0.07':{
-        'rdf_fn': '../stripe_data/overalp_0.9766_k4.7896_V01000_0.07.csv' ,
+    'overalp_0.9766_T0.07':
+        {
+        'rdf_fn': '../data/stripe_data/overalp_0.9766_k4.7896_V01000_0.07.csv' ,
         'rho': 0.9766,
         'T': 0.07,
         'dim': 2,  
         'start': 0.5, 
-        'end': 8.0,
+        'end': 7.5,
         'size': 25,
         'element': "H",
+        'cufoff': 8.0,
         'ref': 'https://aip.scitation.org/doi/pdf/10.1063/5.0021475'
-        }, 
+        }
 
     }
 
