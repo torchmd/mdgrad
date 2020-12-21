@@ -124,7 +124,7 @@ def get_system(data_str, device, size):
         
         print("2D system")
         print("Number of atoms:{}".format(positions.shape[0]))
-        print("Cell dim: {}".format(cell))
+        print("Cell dim: \n {}".format(cell))
 
         atoms = Atoms(numbers=[1.] * positions.shape[0], positions=positions, cell=cell, pbc=True)
         system = System(atoms, device=device, dim=2)
@@ -227,8 +227,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     nbins = assignments['nbins']
     tau = assignments['opt_freq']
+    cutoff = assignments['cutoff']
 
-    cutoff = sys_params['cutoff']
     t_range = sys_params['t_range']
 
     rdf_start = 0.75
