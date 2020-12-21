@@ -1,0 +1,16 @@
+{
+  "epsilon": 0.11092731761843175,
+  "gaussian_width": 0.053902449335745575,
+  "lr": 0.001303657772957264,
+  "n_layers": 2,
+  "n_width": 94,
+  "nbins": 97,
+  "nonlinear": "CELU",
+  "opt_freq": 48,
+  "power": 11,
+  "rdf_weight": 0.529400111979138,
+  "sigma": 0.9919059447880693,
+  "train_vacf": "False",
+  "vacf_weight": 0.7738991662608367,
+  "cutoff": 8.0
+}
