@@ -51,7 +51,7 @@ def plot_vacf(vacf_sim, vacf_target, fn, path, dt=0.01, save_data=False):
 
     plt.plot(t_range, vacf_sim, label='simulation', linewidth=4, alpha=0.6, )
 
-    if vacf_target:
+    if vacf_target is not None:
         plt.plot(t_range, vacf_target, label='target', linewidth=2,linestyle='--', c='black' )
 
     plt.legend()
@@ -354,7 +354,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             vacf_sim = vacf_obs_list[j](v_t)
 
             if data_str in data_str_list:
-                if vacf_target_list[j]:
+                if vacf_target_list[j] is None:
                     loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
                 else:
                     loss_vacf += 0.0
@@ -364,7 +364,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())
 
             if i % 20 ==0 :
-                if vacf_target_list[j]:
+                if vacf_target_list[j] is None:
                     vacf_target = vacf_target_list[j][:t_range].detach().cpu().numpy()
                 else:
                     vacf_target = None
@@ -426,18 +426,18 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         for i in range(sys_params['n_sim']):
             v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=0.01)
 
-        trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device)
-        vels = torch.Tensor( np.stack( sim.log['velocities'])).to(system.device)
+        trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device).detach()
+        vels = torch.Tensor( np.stack( sim.log['velocities'])).to(system.device).detach()
 
         # get targets
-        if vacf_target_list[j]:
+        if vacf_target_list[j] is not None:
             vacf_target = vacf_target_list[j][:t_range].detach().cpu().numpy()
         else:
             vacf_target = None
         rdf_target = rdf_target_list[j].detach().cpu().numpy()
  
-        _, _, g_sim = rdf_obs_list[j](trajs)
-        vacf_sim = vacf_obs_list[j](vels)
+        _, _, g_sim = rdf_obs_list[j](trajs[::5])
+        vacf_sim = vacf_obs_list[j](vels[::5])
 
         plot_vacf(vacf_sim.detach().cpu(), vacf_target, 
             fn=data_str + "_{}".format("final"), 
