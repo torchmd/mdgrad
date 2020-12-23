@@ -104,7 +104,7 @@ def get_observer(system, data_tag, nbins):
     obs = rdf(system, nbins, (start, end) )
 
     # get experimental rdf 
-    count_obs, g_obs = get_exp_rdf(data, nbins, (start, end), obs)
+    count_obs, g_obs = get_exp_rdf(data, nbins, (start, end), obs.device)
 
     return xnew, g_obs, obs
 
@@ -313,12 +313,11 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
         for i in range(n_sim):
             _, q_t, _ = sim.simulate(steps=100, frequency=25)
-
-        sim_trajs = torch.Tensor(np.array(sim_trajs)).to(device)
+            
         sim_trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device)
 
         # compute equilibrate rdf with finer bins 
-        test_nbins = 128
+        test_nbins = 80
 
         x, g_obs, obs = get_observer(system_list[j], data_tag, test_nbins)
 
