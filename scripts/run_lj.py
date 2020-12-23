@@ -56,7 +56,8 @@ else:
     "train_vacf": "True",
     "lr": 0.002,
     "sigma": 0.9,
-    "vacf_weight": 0.41
+    "vacf_weight": 0.41,
+    "cutoff": 2.5
   }
 
 if assignments['train_vacf'] == 'False':
