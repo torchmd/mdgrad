@@ -7,6 +7,20 @@ import numpy as np
 from torchmd.system import check_system
 from torchmd.topology import generate_nbr_list, get_offsets, generate_angle_list
 
+def generate_vol_bins(start, end, nbins, dim):
+    bins = torch.linspace(start, end, nbins + 1)
+    
+    # compute volume differential 
+    if dim == 3:
+        Vbins = 4 * np.pi /3*(bins[1:]**3 - bins[:-1]**3)
+        V = (4/3)* np.pi * (end) ** 3
+    elif dim == 2:
+        Vbins = np.pi * (bins[1:]**2 - bins[:-1]**2)
+        V = np.pi * (end) ** 2
+        
+    return V, torch.Tensor(Vbins), bins
+
+
 class Observable(torch.nn.Module):
     def __init__(self, system):
         super(Observable, self).__init__()
@@ -23,30 +37,26 @@ class rdf(Observable):
 
         start = r_range[0]
         end = r_range[1]
-
-        # for plotting 
-        self.r_axis = np.linspace(start, end, nbins)
-
         self.device = system.device
-        self.bins = torch.linspace(start, end, nbins + 1).to(self.device)
+
+        V, vol_bins, bins = generate_vol_bins(start, end, nbins, dim=system.dim)
+
+        self.V = V
+        self.vol_bins = vol_bins.to(self.device)
+        self.r_axis = np.linspace(start, end, nbins)
+        self.device = system.device
+        self.bins = bins
+
         self.smear = GaussianSmearing(
             start=start,
-            stop=self.bins[-1],
+            stop=bins[-1],
             n_gaussians=nbins,
             width=width,
             trainable=False
         ).to(self.device)
-        self.cutoff = end
-        # compute volume differential 
-        if system.dim == 3:
-            self.vol_bins = 4 * PI /3*(self.bins[1:]**3 - self.bins[:-1]**3).to(self.device)
-            self.V = (4/3)* np.pi * (self.cutoff) ** 3
-        elif system.dim == 2:
-            self.vol_bins = PI * (self.bins[1:]**2 - self.bins[:-1]**2).to(self.device)
-            self.V = np.pi * (self.cutoff) ** 2
 
         self.nbins = nbins
-        self.cutoff_boundary = self.cutoff + 5e-1
+        self.cutoff_boundary = end + 5e-1
         self.index_tuple = index_tuple
         
     def forward(self, xyz):

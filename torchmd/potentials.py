@@ -5,6 +5,8 @@ from nff.nn.layers import GaussianSmearing
 from torch import nn
 import numpy as np
 
+from scipy import special
+
 nlr_dict =  {
     'ReLU': nn.ReLU(), 
     'ELU': nn.ELU(),
@@ -36,7 +38,7 @@ class SplineOverlap(torch.nn.Module):
         
         import scipy
         def overlap(x, K, V0):
-            return V0 * ( 1 / (np.pi * ((K * x)**2))) * scipy.special.jn(1, (K * x)/2 ) ** 2
+            return V0 * ( 1 / (np.pi * ((K * x)**2))) * special.jn(1, (K * x)/2 ) ** 2
         
         try: 
             from torchcubicspline import(natural_cubic_spline_coeffs, 

@@ -82,7 +82,6 @@ if params['vacf_weight']:
     print("chaging default vacf_weight from {} to {}".format(assignments['vacf_weight'], params['vacf_weight']))
     assignments['vacf_weight'] = params['vacf_weight']
 
-
 sys_params = {
 'dt': 0.01,
 'size': 4,

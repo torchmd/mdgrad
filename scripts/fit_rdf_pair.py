@@ -150,7 +150,7 @@ def lattice_2d(rho, size):
 
     return positions, cell
 
-def get_observer(system, data_str, nbins, t_range):
+def get_observer(system, data_str, nbins, t_range, rdf_start):
 
     rdf_data_path = pair_data_dict[data_str]['rdf_fn']
     rdf_data = np.loadtxt(rdf_data_path, delimiter=',')
@@ -162,9 +162,7 @@ def get_observer(system, data_str, nbins, t_range):
     else:
         vacf_target = None
 
-    # define the equation of motion to propagate 
-    rdf_start = pair_data_dict[data_str]['start']
-    rdf_end = pair_data_dict[data_str]['end']
+    rdf_end = pair_data_dict[data_str].get("end", None)
 
     xnew = np.linspace(rdf_start , rdf_end, nbins)
         # initialize observable function 
@@ -172,7 +170,7 @@ def get_observer(system, data_str, nbins, t_range):
 
     # get experimental rdf 
     dim = pair_data_dict[data_str].get("dim", 3) 
-    _, rdf_target = get_exp_rdf(rdf_data, nbins, (rdf_start, rdf_end), obs, dim=dim)
+    _, rdf_target = get_exp_rdf(rdf_data, nbins, (rdf_start, rdf_end), obs.device, dim=dim)
 
     vacf_obs = vacf(system, t_range=t_range) 
 
@@ -231,7 +229,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     t_range = sys_params['t_range']
 
-    rdf_start = 0.75
+    rdf_start = assignments.get("rdf_start", 0.75)
 
     data_str_list = sys_params['data']
 
@@ -298,7 +296,11 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     rdf_bins_list = []
 
     for i, data_str in enumerate(data_str_list + val_str_list):
-        x, rdf_target, rdf_obs, vacf_target, vacf_obs = get_observer(system_list[i], data_str, nbins, t_range=t_range)
+        x, rdf_target, rdf_obs, vacf_target, vacf_obs = get_observer(system_list[i],
+                                                                     data_str, 
+                                                                     nbins, 
+                                                                     t_range=t_range,
+                                                                     rdf_start=rdf_start)
         rdf_bins_list.append(x)
 
         rdf_obs_list.append(rdf_obs)
@@ -392,9 +394,9 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         else:
             loss = assignments['rdf_weight'] * loss_rdf
 
-        # save potential file
-        if np.array(loss_log[-10:]).mean(0).sum() <=  0.01: 
-            np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
+        # # save potential file
+        # if np.array(loss_log[-10:]).mean(0).sum() <=  0.005: 
+        #     np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
 
         loss.backward()
 
@@ -412,32 +414,43 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         if current_lr <= 5.0e-6:
             print("training converged")
             break
+    # save potentials         
+    if np.array(loss_log[-10:]).mean(0).sum() <=  0.005: 
+        np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
 
     for j, sim in enumerate(sim_list):
 
+        #simulate with no optimization
         data_str = (data_str_list + val_str_list)[j]
 
+        for i in range(sys_params['n_sim']):
+            v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=0.01)
+
+        trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device)
+        vels = torch.Tensor( np.stack( sim.log['velocities'])).to(system.device)
+
+        # get targets
         if vacf_target_list[j]:
             vacf_target = vacf_target_list[j][:t_range].detach().cpu().numpy()
         else:
             vacf_target = None
-
         rdf_target = rdf_target_list[j].detach().cpu().numpy()
+ 
+        _, _, g_sim = rdf_obs_list[j](trajs)
+        vacf_sim = vacf_obs_list[j](vels)
 
-        plot_vacf(np.array(obs_log[data_str]['vacf'])[-10:].mean(0), vacf_target, 
+        plot_vacf(vacf_sim.detach().cpu(), vacf_target, 
             fn=data_str + "_{}".format("final"), 
             path=model_path,
             save_data=True)
 
-        plot_rdf(np.array(obs_log[data_str]['rdf'])[-10:].mean(0), rdf_target, 
+        plot_rdf(g_sim.detach().cpu(), rdf_target, 
             fn=data_str + "_{}".format("final"),
              path=model_path, 
              start=rdf_start, 
              nbins=nbins,
              save_data=True,
              end=cutoff)
-
-        # save rdf data 
 
     # save loss curve 
     plt.plot(np.array( loss_log)[:, 0], label='vacf', alpha=0.7)
@@ -448,5 +461,5 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     plt.show()
     plt.close()
 
-
     return np.array(loss_log[-10:]).mean(0).sum()
+

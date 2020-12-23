@@ -4,8 +4,9 @@ import numpy as np
 from scipy import interpolate
 
 from ase.lattice.cubic import FaceCenteredCubic, Diamond
+from torchmd.observable import generate_vol_bins
 
-def get_exp_rdf(data, nbins, r_range, obs, dim=3):
+def get_exp_rdf(data, nbins, r_range, device, dim=3):
     # load RDF data 
     if data.shape[0] == 2:
         f = interpolate.interp1d(data[0], data[1])
@@ -15,19 +16,17 @@ def get_exp_rdf(data, nbins, r_range, obs, dim=3):
     start = r_range[0]
     end = r_range[1]
     xnew = np.linspace(start, end, nbins)
+        
+    # generate volume bins 
+    V, vol_bins, _ = generate_vol_bins(start, end, nbins, dim=dim)
+    vol_bins = vol_bins.to(device)
 
-    # make sure the rdf data is normalized
-    if dim == 3:
-        V = (4/3)* np.pi * (end ** 3 - start ** 3)
-    elif dim == 2:
-        V = np.pi * (end ** 2- start ** 2)
-
-    g_obs = torch.Tensor(f(xnew)).to(obs.device)
-    g_obs_norm = ((g_obs.detach() * obs.vol_bins).sum()).item()
+    g_obs = torch.Tensor(f(xnew)).to(device)
+    g_obs_norm = ((g_obs.detach() * vol_bins).sum()).item()
     g_obs = g_obs * (V/g_obs_norm)
-    count_obs = g_obs * obs.vol_bins / V
+    count_obs = g_obs * vol_bins / V
 
-    return count_obs, g_obs
+    return xnew, g_obs
 
 def exp_angle_data(nbins, angle_range, fn='../data/water_angle_pccp.csv'):
     angle_data = np.loadtxt(fn, delimiter=',')
