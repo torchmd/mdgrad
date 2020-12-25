@@ -3,6 +3,10 @@
   <img src="assets/logo.jpg" width="150">
 </p> 
 
+<p align="left">
+  <img src="assets/fold.gif" width="200">
+</p>
+
 This is not just a regular simulator but a DIFFERENTIABLE simulator!
 
 PyTorch code for End-to-end differetiable molecular simulations. More docs and tutorials are comings.
