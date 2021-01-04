@@ -260,7 +260,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
             v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=int(tau))
 
-            
+
             if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
                 return 5 - (i / n_epochs) * 5
 
@@ -326,7 +326,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
         x, g_obs, obs = get_observer(system_list[j], data_tag, test_nbins)
 
-        _, bins, g = obs(sim_trajs[::5]) # compute simulated rdf
+        _, bins, g = obs(sim_trajs[::20]) # compute simulated rdf
 
         # compute equilibrated rdf 
         loss_js = JS_rdf(g_obs, g)
