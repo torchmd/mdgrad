@@ -1,13 +1,14 @@
 
 import argparse
 from sigopt import Connection
-from gnn_rdf_amorphous import *
+from fit_rdf_gnn import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-logdir", type=str)
 parser.add_argument("-device", type=int, default=0)
 parser.add_argument("-id", type=int, default=None)
-parser.add_argument("-data", type=str, nargs='+', default='water')
+parser.add_argument("-data", type=str, nargs='+')
+parser.add_argument("-val", type=str, nargs='+')
 parser.add_argument("-size", type=int, default=4)
 parser.add_argument("--dry_run", action='store_true', default=False)
 parser.add_argument("--pair", action='store_true', default=False)
@@ -53,10 +54,6 @@ if params['pair']:
             dict(name='cutoff', type='double', bounds=dict(min=3.0, max=4.0)),
             dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
-            dict(name='anneal_rate', type='double', bounds=dict(min=3, max=10)),
-            dict(name='start_T', type='double', bounds=dict(min=300, max=500)),
-            dict(name='anneal_freq', type='int', bounds=dict(min=1, max=20)),
-            dict(name='minimize_freq', type='int', bounds=dict(min=10, max=500))
         ]
 
 else:
@@ -72,11 +69,15 @@ else:
             dict(name='cutoff', type='double', bounds=dict(min=3.0, max=4.0)),
             dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
-            dict(name='anneal_rate', type='double', bounds=dict(min=3, max=10)),
-            dict(name='start_T', type='double', bounds=dict(min=300, max=500)),
-            dict(name='anneal_freq', type='int', bounds=dict(min=1, max=20)),
-            dict(name='minimize_freq', type='int', bounds=dict(min=10, max=500))
         ]
+
+if params['anneal']:
+    parameters += [
+            dict(name='start_T', type='double', bounds=dict(min=300, max=500)),
+            dict(name='anneal_rate', type='double', bounds=dict(min=3, max=10)),
+            dict(name='anneal_freq', type='int', bounds=dict(min=1, max=20))
+            ]
+
 
 if params['id'] == None:
     experiment = conn.experiments().create(
@@ -98,11 +99,11 @@ while experiment.progress.observation_count < experiment.observation_budget:
 
     sys_params = {
     'size': params['size'],
-    'tmax': tmax,
     'dt': 1.0,
     'n_epochs': n_epochs,
     'n_sim': n_sim,
     'data': params['data'],
+    'val': params['val'],
     'anneal_flag': params['anneal'],
     'pair_flag': params['pair']
     }
