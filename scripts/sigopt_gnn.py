@@ -21,15 +21,13 @@ print(params['data'])
 if params['dry_run']:
     token = 'FSDXBSGDUZUQEDGDCYPCXFTRXFNYBVXVACKZQUWNSOKGKGFN'
     n_obs = 2
-    tmax = 200
     n_epochs = 2
     n_sim = 2
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
     n_obs = 1000
-    tmax = 25000
     n_epochs = 1000
-    n_sim = 50
+    n_sim = 200
 
 logdir = params['logdir']
 
@@ -41,17 +39,17 @@ if params['pair']:
 
     parameters = [
             dict(name='n_width', type='int', bounds=dict(min=32, max=128)),
-            dict(name='n_layers', type='int', bounds=dict(min=0, max=4)),
+            dict(name='n_layers', type='int', bounds=dict(min=0, max=3)),
             dict(name='nonlinear', type='categorical', categorical_values=['ReLU', 'ELU', 'Tanh', 
                                                                             'LeakyReLU', 'ReLU6', 
                                                                             'SELU', 'CELU', 'Tanhshrink']),
-            dict(name='gaussian_width', type='double', bounds=dict(min=0.05, max=0.25)),
+            dict(name='gaussian_width', type='double', bounds=dict(min=0.025, max=0.25)),
             dict(name='power', type='int', bounds=dict(min=6, max=12)),
             dict(name='sigma', type='double', bounds=dict(min=1.0, max=1.5)),
             dict(name='epsilon', type='double', bounds=dict(min=0.0025, max=0.025)),
             dict(name='opt_freq', type='int', bounds=dict(min=10, max=80)),
             dict(name='lr', type='double', bounds=dict(min=1.1e-7, max=5e-4)),
-            dict(name='cutoff', type='double', bounds=dict(min=3.0, max=4.0)),
+            dict(name='cutoff', type='double', bounds=dict(min=3.0, max=6.0)),
             dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
         ]
@@ -61,12 +59,12 @@ else:
             dict(name='n_atom_basis', type='categorical',categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='n_filters', type='categorical', categorical_values=["tiny", "low", "mid", "high"]),
             dict(name='gaussian_width', type='double', bounds=dict(min=0.05, max=0.25)),
-            dict(name='n_convolutions', type='int', bounds=dict(min=1, max=5)),
+            dict(name='n_convolutions', type='int', bounds=dict(min=1, max=2)),
             dict(name='sigma', type='double', bounds=dict(min=1.0, max=1.5)),
             dict(name='epsilon', type='double', bounds=dict(min=0.0025, max=0.025)),
             dict(name='opt_freq', type='int', bounds=dict(min=10, max=80)),
             dict(name='lr', type='double', bounds=dict(min=1.1e-7, max=5e-4)),
-            dict(name='cutoff', type='double', bounds=dict(min=3.0, max=4.0)),
+            dict(name='cutoff', type='double', bounds=dict(min=3.0, max=6.0)),
             dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=1.0)),
             dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
         ]
