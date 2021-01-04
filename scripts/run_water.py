@@ -16,34 +16,32 @@ params = vars(parser.parse_args())
 i = 0
 
 assignments = {
-  "cutoff": 7.5,
+  "cutoff": 6.0,
   "epsilon": 0.010,
-  "gaussian_width": 0.1,
+  "gaussian_width": 0.5, #0.1,
   "lr": 0.0001,
   "mse_weight": 4.0,
   "n_atom_basis": "tiny",
   "n_convolutions": 2,
   "n_filters": "high",
-  "nbins": 119,
+  "nbins": 64, #119,
   "opt_freq": 56,
   "sigma": 2.6
 }
 
-assignments = {
-  "cutoff": 7.495446445532104,
-  "epsilon": 0.010419107274105301,
-  "gaussian_width": 0.09428836476711633,
-  "lr": 0.0001,
-  "mse_weight": 4.06718828005474,
-  "n_atom_basis": "tiny",
-  "n_convolutions": 2,
-  "n_filters": "high",
-  "nbins": 119,
-  "opt_freq": 56,
-  "sigma": 2.5888283843240973
-}
-
-
+# assignments = {
+#   "cutoff": 7.495446445532104,
+#   "epsilon": 0.010419107274105301,
+#   "gaussian_width": 0.09428836476711633,
+#   "lr": 0.0001,
+#   "mse_weight": 4.06718828005474,
+#   "n_atom_basis": "tiny",
+#   "n_convolutions": 2,
+#   "n_filters": "high",
+#   "nbins": 119,
+#   "opt_freq": 56,
+#   "sigma": 2.5888283843240973
+# }
 
 sys_params = {
 'dt': 1.0,
@@ -51,7 +49,7 @@ sys_params = {
 'n_sim': params['nsim'],
 'data': params['data'],
 'val': params['val'],
-'size': 3,
+'size': 4,
 'anneal_flag': 'False',
 'pair_flag': params['pair']
 }
