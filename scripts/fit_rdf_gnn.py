@@ -9,6 +9,7 @@ from ase import units
 from data import exp_rdf_data_dict, get_exp_rdf, get_unit_len
 from plot import *
 from scripts import * 
+import os
 import json
 
 import math 
@@ -317,7 +318,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         sim_trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device)
 
         # compute equilibrate rdf with finer bins 
-        test_nbins = 80
+        test_nbins = 128
 
         x, g_obs, obs = get_observer(system_list[j], data_tag, test_nbins)
 
