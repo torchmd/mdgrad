@@ -304,18 +304,56 @@ def plot_ke(v, target_mometum):
 #         rdf =  count / (self.vol_bins / self.V ) 
         
 #         self.update_log(rdf)
-#         return rdf    
+#         return rdf
+    
+#     def plot(self, fname, save=False):
+        
+#         plt.plot(self.r_axis, 
+#                  self.log[-1], 
+#                  label='simulation', 
+#                  linewidth=4, alpha=0.6)
+        
+#         plt.plot(self.r_axis,
+#                  self.data.detach().cpu().numpy(), 
+#                  label='target', 
+#                  linewidth=2, linestyle='--', c='black')
+
+#         plt.xlabel("$\AA$")
+#         plt.ylabel("g(r)")
+        
+#         plt.show()
+        
+#         if save:
+#             plt.savefig(fname, bbox_inches='tight')
+            
+#         plt.close()
+
 
 # class vacf(Observable):
 #     def __init__(self, system, t_range, tag, data, loss_func):
 #         super(vacf, self).__init__(system, tag, data, loss_func)
 #         self.t_window = [i for i in range(1, t_range, 1)]
+#         self.t_lim = [i for i in range(0, t_range, 1)]
 
 #     def forward(self, vel):
 #         vacf = [(vel * vel).mean()[None]]
 #         # can be implemented in parrallel
 #         vacf += [ (vel[t:] * vel[:-t]).mean()[None] for t in self.t_window]
-        
+#         vacf = torch.stack(vacf).reshape(-1)
 #         self.update_log(vacf)
 
-#         return torch.stack(vacf).reshape(-1)
+#         return vacf
+    
+#     def plot(self, fname, save=False):
+        
+#         plt.plot(self.t_lim, self.log[-1], label='simulation', linewidth=4, alpha=0.6, )
+
+#         if self.data is not None:
+#             plt.plot(self.t_lim, self.data.detach().cpu().numpy(), label='target', linewidth=2,linestyle='--', c='black' )
+
+#         plt.legend()
+
+#         if save:
+#             plt.savefig(fname, bbox_inches='tight')
+#         plt.show()
+#         plt.close()
