@@ -235,6 +235,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     data_str_list = sys_params['data']
 
+    # merge paramset 
     if sys_params['val']:
         val_str_list = sys_params['val']
     else:
@@ -243,8 +244,13 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     print(json.dumps(assignments, indent=1))
 
     model_path = '{}/{}'.format(project_name, suggestion_id)
-
     os.makedirs(model_path)
+
+    # merge paramset 
+    paramset = {**sys_params, **assignments}
+    # dump paramset 
+    with open(model_path + '/paramset.json', 'w') as fp:
+        json.dump(paramset, fp)
 
     print("Training for {} epochs".format(n_epochs))
 
