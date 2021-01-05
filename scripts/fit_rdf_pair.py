@@ -18,6 +18,7 @@ from torchmd.observable import rdf, vacf
 from torchmd.md import Simulations
 from data import pair_data_dict
 from plot import *
+import matplotlib.pyplot as plt
 
 import json 
 import matplotlib
@@ -185,7 +186,8 @@ def get_sim(system, model, data_str):
             Q=50.0, 
             T=T,
             num_chains=5, 
-            adjoint=True).to(system.device)
+            adjoint=True,
+            topology_update_freq=2).to(system.device)
 
     # define simulator with 
     sim = Simulations(system, diffeq)
@@ -195,7 +197,7 @@ def get_sim(system, model, data_str):
 def plot_pair(fn, path, model, prior, device, end=2.5): 
 
     pair_true = LennardJones(1.0, 1.0).to(device)
-    x = torch.linspace(0.1, end, 50)[:, None].to(device)
+    x = torch.linspace(0.1, end, 200)[:, None].to(device)
     
     u_fit = (model(x) + prior(x)).detach().cpu().numpy()
     u_fit = u_fit = u_fit - u_fit[-1] 
@@ -222,14 +224,14 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     n_epochs = sys_params['n_epochs'] 
     n_sim = sys_params['n_sim'] 
     size = sys_params['size']
+    cutoff = sys_params['cutoff']
+    t_range = sys_params['t_range']
 
     nbins = assignments['nbins']
     tau = assignments['opt_freq']
-    cutoff = assignments['cutoff']
 
-    t_range = sys_params['t_range']
-
-    rdf_start = assignments.get("rdf_start", 0.75)
+    rdf_start = assignments.get("rdf_start", 0.5)
+    skip = sys_params['skip']
 
     data_str_list = sys_params['data']
 
@@ -313,8 +315,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                   'min', 
-                                                  min_lr=5e-6, 
-                                                  verbose=True, factor = 0.5, patience= 20,
+                                                  min_lr=1e-5, 
+                                                  verbose=True, factor = 0.5, patience= 15,
                                                   threshold=5e-5)
 
     # Set up simulations 
@@ -350,11 +352,11 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
                 return 5 - (i / n_epochs) * 5
 
-            _, _, g_sim = rdf_obs_list[j](q_t)
+            _, _, g_sim = rdf_obs_list[j](q_t[::skip])
             vacf_sim = vacf_obs_list[j](v_t)
 
             if data_str in data_str_list:
-                if vacf_target_list[j] is None:
+                if vacf_target_list[j] is not None:
                     loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
                 else:
                     loss_vacf += 0.0
@@ -364,7 +366,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())
 
             if i % 20 ==0 :
-                if vacf_target_list[j] is None:
+                if vacf_target_list[j] is not None:
                     vacf_target = vacf_target_list[j][:t_range].detach().cpu().numpy()
                 else:
                     vacf_target = None
