@@ -8,7 +8,7 @@ from ase import Atoms
 from ase import units
 import numpy as np 
 from nff.utils.scatter import compute_grad
-from torchmd.topology import generate_nbr_list, get_offsets, generate_angle_list
+from torchmd.topology import generate_nbr_list, get_offsets, generate_angle_list, compute_dis
 
 '''
     basic ideas for parallelization 
@@ -111,6 +111,8 @@ class GNNPotentials(GeneralInteraction):
         self.ex_pairs = ex_pairs
         self.to(self.device)
 
+        self._reset_topology(torch.Tensor(system.get_positions()).to(system.device))
+
     def _reset_topology(self, xyz):
         """Summary
         
@@ -130,7 +132,7 @@ class GNNPotentials(GeneralInteraction):
         Returns:
             TYPE: Description
         """
-        self._reset_topology(xyz)
+        #self._reset_topology(xyz)
         results = self.gnn(self.inputs, xyz)
         return results['energy']
 
@@ -162,6 +164,19 @@ class PairPotentials(GeneralInteraction):
         self.index_tuple = index_tuple
         self.ex_pairs = ex_pairs
 
+        nbr_list, offsets = generate_nbr_list(
+                                       torch.Tensor(
+                                            system.get_positions()
+                                                ).to(system.device), 
+                                       self.cutoff, 
+                                       self.cell, 
+                                       index_tuple=self.index_tuple, 
+                                       ex_pairs=self.ex_pairs)
+
+        self.nbr_list = nbr_list.detach().to('cpu')
+        self.offsets = offsets.detach().to(system.device)
+
+
     def _reset_topology(self, xyz):
         """Summary
         
@@ -171,14 +186,17 @@ class PairPotentials(GeneralInteraction):
         Returns:
             TYPE: Description
         """
-        nbr_list, pair_dis, _ = generate_nbr_list(xyz, 
+        nbr_list, pair_dis, offsets = generate_nbr_list(xyz, 
                                                self.cutoff, 
                                                self.cell, 
                                                index_tuple=self.index_tuple, 
                                                ex_pairs=self.ex_pairs, 
                                                get_dis=True)
 
-        return nbr_list, pair_dis, _
+        self.nbr_list = nbr_list.detach().to('cpu')
+        self.offsets = offsets.detach().to(xyz.device)
+
+        return nbr_list, pair_dis, offsets
 
     def forward(self, xyz):
         """Summary
@@ -189,9 +207,13 @@ class PairPotentials(GeneralInteraction):
         Returns:
             TYPE: Description
         """
-        nbr_list, pair_dis, _ = self._reset_topology(xyz)
+        #nbr_list, pair_dis, _ = self._reset_topology(xyz)
+
+        # directly compute distances 
         # compute pair energy 
-        energy = self.model(pair_dis[..., None]).sum()
+
+        pair_dis = compute_dis(xyz, self.nbr_list, self.offsets, self.cell)
+        energy = self.model(pair_dis).sum()
         return energy
 
 
@@ -273,6 +295,11 @@ class Stack(torch.nn.Module):
         """
         super().__init__()
         self.models = ModuleDict(model_dict)
+
+    def _reset_topology(self, x):
+
+        for i, key in enumerate(self.models.keys()):
+            self.models[key]._reset_topology(x)
         
     def forward(self, x):
         """Summary

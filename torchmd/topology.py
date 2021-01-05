@@ -1,6 +1,17 @@
 import torch
 import numpy as np
 
+
+def compute_dis(xyz, nbr_list, offsets, cell): 
+    '''
+        compute distance give nbr_list and periodic boundary condition
+    '''
+    e = (xyz[nbr_list[:, 0]] - xyz[nbr_list[:, 1]] -
+             offsets.matmul(cell)).pow(2).sum(1).sqrt()[:, None]
+
+    return e
+
+
 def generate_pair_index(N, index_tuple):
 
     import itertools
@@ -59,9 +70,9 @@ def generate_nbr_list(xyz, cutoff, cell, index_tuple=None, ex_pairs=None, get_di
     nbr_list = torch.nonzero( torch.triu(mask.to(torch.long)), as_tuple=False)
 
     if get_dis:
-        return nbr_list, dis_sq[mask].sqrt(), offsets 
+        return nbr_list, dis_sq[mask].sqrt(), offsets[nbr_list[:, 0], nbr_list[:, 1], :]
     else:
-        return nbr_list, offsets
+        return nbr_list, offsets[nbr_list[:, 0], nbr_list[:, 1], :]
 
 def get_offsets(vecs, cell, device):
     

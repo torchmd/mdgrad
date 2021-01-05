@@ -109,7 +109,7 @@ class NVE(torch.nn.Module):
         system (torchmd.System): system object
     """
     
-    def __init__(self, potentials, system, adjoint=True):
+    def __init__(self, potentials, system, adjoint=True, topology_update_freq=1):
         super().__init__()
         self.model = potentials 
         self.system = system
@@ -118,6 +118,15 @@ class NVE(torch.nn.Module):
         self.dim = system.dim
         self.adjoint = adjoint
         self.state_keys = ['velocities', 'positions']
+
+        self.topology_update_freq = topology_update_freq
+        self.update_count = 0
+
+    def update_topology(self, q):
+
+        if self.update_count % self.topology_update_freq == 0:
+            self.model._reset_topology(q)
+        self.update_count += 1
         
     def forward(self, t, state):
         # pq are the canonical momentum and position variables
@@ -130,7 +139,8 @@ class NVE(torch.nn.Module):
                 q.requires_grad = True
             
             p = v * self.mass[:, None]
-            
+
+            self.update_topology(q)
             u = self.model(q)
             f = -compute_grad(inputs=q, output=u.sum(-1))
             dvdt = f
@@ -160,14 +170,14 @@ class NoseHooverChain(torch.nn.Module):
         N_dof (int): total number of degree of freedoms
         state_keys (list): keys of state variables "positions", "velocity" etc. 
         system (torchmd.System): system object
-        num_chains (TYPE): number of chains 
-        Q (TYPE): Heat bath mass
-        T (TYPE): Temperature
-        target_ke (TYPE): target Kinetic energy 
-        traj (list): Description
+        num_chains (int): number of chains 
+        Q (float): Heat bath mass
+        T (float): Temperature
+        target_ke (float): target Kinetic energy 
     """
     
-    def __init__(self, potentials, system, T, num_chains=2, Q=1.0, adjoint=True):
+    def __init__(self, potentials, system, T, num_chains=2, Q=1.0, adjoint=True
+                ,topology_update_freq=1):
         super().__init__()
         self.model = potentials 
         self.system = system
@@ -184,6 +194,15 @@ class NoseHooverChain(torch.nn.Module):
         self.dim = system.dim
         self.adjoint = adjoint
         self.state_keys = ['velocities', 'positions', 'baths']
+        self.topology_update_freq = topology_update_freq
+        self.update_count = 0
+
+    def update_topology(self, q):
+
+        if self.update_count % self.topology_update_freq == 0:
+            self.model._reset_topology(q)
+        self.update_count += 1
+
 
     def update_T(self, T):
         self.T = T 
@@ -202,6 +221,8 @@ class NoseHooverChain(torch.nn.Module):
             p = v * self.mass[:, None]
 
             sys_ke = 0.5 * (p.pow(2) / self.mass[:, None]).sum() 
+            
+            self.update_topology(q)           
             
             u = self.model(q)
             f = -compute_grad(inputs=q, output=u.sum(-1))
