@@ -214,10 +214,108 @@ def var_K(N_atoms, avg_momentum):
     """
     return (2 * ((0.5 * 3 * N_atoms * avg_momentum **2 ) ** 2)/(3 * N_atoms) ) ** (1/2)
 
-
 def plot_ke(v, target_mometum):
     target = 0.5 * Natoms * 3 * (target_mometum **2)
     particle_ke = 0.5 * (v.reshape(-1, Natoms, 3).pow(2) / f_x.mass[:, None])
     sys_ke = particle_ke.sum(-1).sum(-1)
     plt.plot(sys_ke.detach().cpu().numpy())
     plt.plot([i for i in range(sys_ke.shape[0])], [target for i in range(sys_ke.shape[0])] )
+
+
+# New Observable function packed with data and plotting 
+
+# class Observable(torch.nn.Module):
+#     def __init__(self, system, tag, data, loss_func):
+#         super(Observable, self).__init__()
+#         #check_system(system)
+#         self.device = system.device
+#         self.volume = system.get_volume()
+#         self.cell = torch.Tensor( system.get_cell()).diag().to(self.device)
+#         self.natoms = system.get_number_of_atoms()
+
+#         self.tag = tag 
+#         self.data = data.to(system.device) # n-dim array
+#         self.loss_func = loss_func
+#         self.log = []
+    
+#     def get_loss(self, x):
+#         return self.loss_func(self(x), self.data) 
+    
+#     def update_log(self, results):
+#         self.log.append(results.detach().cpu().numpy())
+        
+#     def save_log(self, path):
+#         np.savetxt(path, np.array(self.log))
+    
+#     def forward(self):
+#         pass 
+        
+
+# class rdf(Observable):
+#     def __init__(self, 
+#                  system, 
+#                  nbins, 
+#                  r_range, 
+#                  data,
+#                  tag,
+#                  loss_func,
+#                  index_tuple=None, 
+#                  width=None):
+        
+#         super(rdf, self).__init__(system, tag, data, loss_func)
+#         PI = np.pi
+
+#         start = r_range[0]
+#         end = r_range[1]
+#         self.device = system.device
+
+#         V, vol_bins, bins = generate_vol_bins(start, end, nbins, dim=system.dim)
+
+#         self.V = V
+#         self.vol_bins = vol_bins.to(self.device)
+#         self.r_axis = np.linspace(start, end, nbins)
+#         self.device = system.device
+#         self.bins = bins
+
+#         self.smear = GaussianSmearing(
+#             start=start,
+#             stop=bins[-1],
+#             n_gaussians=nbins,
+#             width=width,
+#             trainable=False
+#         ).to(self.device)
+
+#         self.nbins = nbins
+#         self.cutoff_boundary = end + 5e-1
+#         self.index_tuple = index_tuple
+        
+#     def forward(self, xyz):
+
+#         nbr_list, pair_dis, _ = generate_nbr_list(xyz, 
+#                                                self.cutoff_boundary, 
+#                                                self.cell, 
+#                                                index_tuple=self.index_tuple, 
+#                                                get_dis=True)
+
+#         count = self.smear(pair_dis.reshape(-1).squeeze()[..., None]).sum(0) 
+#         norm = count.sum()   # normalization factor for histogram 
+#         count = count / norm   # normalize 
+#         count = count
+#         rdf =  count / (self.vol_bins / self.V ) 
+        
+#         self.update_log(rdf)
+#         return rdf    
+
+# class vacf(Observable):
+#     def __init__(self, system, t_range, tag, data, loss_func):
+#         super(vacf, self).__init__(system, tag, data, loss_func)
+#         self.t_window = [i for i in range(1, t_range, 1)]
+
+#     def forward(self, vel):
+#         vacf = [(vel * vel).mean()[None]]
+#         # can be implemented in parrallel
+#         vacf += [ (vel[t:] * vel[:-t]).mean()[None] for t in self.t_window]
+        
+#         self.update_log(vacf)
+
+#         return torch.stack(vacf).reshape(-1)
