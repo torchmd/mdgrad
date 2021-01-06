@@ -444,8 +444,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             vacf_target = None
         rdf_target = rdf_target_list[j].detach().cpu().numpy()
  
-        _, _, g_sim = rdf_obs_list[j](trajs[::5])
-        vacf_sim = vacf_obs_list[j](vels[::5])
+        _, _, g_sim = rdf_obs_list[j](trajs[::10])
+        vacf_sim = vacf_obs_list[j](vels[::10])
 
         plot_vacf(vacf_sim.detach().cpu(), vacf_target, 
             fn=data_str + "_{}".format("final"), 
