@@ -291,7 +291,7 @@ pair_data_dict = {
         'element': "H",
         'cufoff': 16.0,
         'ref': 'https://aip.scitation.org/doi/pdf/10.1063/5.0021475'
-        }
+        },
 
     'overalp_0.9766_T0.07_cut12':
         {
