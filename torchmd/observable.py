@@ -357,3 +357,39 @@ def plot_ke(v, target_mometum):
 #             plt.savefig(fname, bbox_inches='tight')
 #         plt.show()
 #         plt.close()
+
+# from scripts.data import exp_rdf_data_dict, pair_data_dict, get_exp_rdf
+# from torchmd.observable import generate_vol_bins
+
+# rdfparams = {"system": system,
+#  "nbins": 100,
+#  "r_range": (0.25, 7.5)}
+
+# tag ='H20_298K_redd'
+
+# def L2(x1, x2):
+#     return (x1 - x2).pow(2).mean()
+
+# # example rdf data 
+# rdfdata = np.loadtxt(exp_rdf_data_dict[tag]['fn'], delimiter=',')
+# rdfdata = get_exp_rdf(rdfdata, 100, (0.25, 7.5), device=system.device)
+
+# # example vacf data
+
+# vacfparams = {'system': system, 
+#               't_range': 60}
+
+# vacfdata = np.loadtxt(pair_data_dict['lj_0.9_1.2']['vacf_fn'])
+# t_axis =  np.linspace(0.0,  vacfdata.shape[0], vacfdata.shape[0] ) * 0.01
+# vacfdata = np.transpose( np.concatenate((t_axis, vacfdata)).reshape(2, -1) )
+
+# obs = rdf(system, nbins=100, r_range=(0.25, 8), 
+#           data=rdfdata[1], loss_func=L2, tag=tag) 
+
+
+# vacf_obs = vacf(system, t_range=60, 
+#                 data=torch.Tensor(vacfdata[:, 1]), 
+#                 tag='lj_0.9_1.2', 
+#                 loss_func=L2)
+
+# obs.get_loss(q_t[::10])
