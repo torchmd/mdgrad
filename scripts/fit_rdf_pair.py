@@ -177,7 +177,7 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
 
     return xnew, rdf_target, obs, vacf_target, vacf_obs
 
-def get_sim(system, model, data_str):
+def get_sim(system, model, data_str, topology_update_freq=1):
 
     T = pair_data_dict[data_str]['T']
 
@@ -187,31 +187,37 @@ def get_sim(system, model, data_str):
             T=T,
             num_chains=5, 
             adjoint=True,
-            topology_update_freq=2).to(system.device)
+            topology_update_freq=topology_update_freq).to(system.device)
 
     # define simulator with 
     sim = Simulations(system, diffeq)
 
     return sim
 
-def plot_pair(fn, path, model, prior, device, end=2.5): 
+def plot_pair(fn, path, model, prior, device, end=2.5, target_pot=None): 
 
-    pair_true = LennardJones(1.0, 1.0).to(device)
-    x = torch.linspace(0.1, end, 200)[:, None].to(device)
+    if target_pot is None:
+        target_pot = LennardJones(1.0, 1.0)
+    else:
+        target_pot = target_pot
+
+    x = torch.linspace(0.1, end, 250)[:, None].to(device)
     
     u_fit = (model(x) + prior(x)).detach().cpu().numpy()
-    u_fit = u_fit = u_fit - u_fit[-1] 
+    u_fit = u_fit - u_fit[-1] 
+
+    u_target = target_pot(x.detach().cpu()).squeeze()
 
     plt.plot( x.detach().cpu().numpy(), 
               u_fit, 
               label='fit', linewidth=4, alpha=0.6)
     
-    # plt.plot( x.detach().cpu().numpy(), 
-    #           pair_true(x).detach().cpu().numpy(),
-    #            label='truth', 
-    #            linewidth=2,linestyle='--', c='black')
+    plt.plot( x.detach().cpu().numpy(), 
+              u_target.detach().cpu().numpy(),
+               label='truth', 
+               linewidth=2,linestyle='--', c='black')
 
-    plt.ylim(-4, 6)
+    plt.ylim(-2, 4.0)
     plt.legend()      
     plt.show()
     plt.savefig(path + '/potential_{}.jpg'.format(fn), bbox_inches='tight')
@@ -235,6 +241,9 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     data_str_list = sys_params['data']
 
+    # Get the grounth truth pair potentials
+    target_pot = pair_data_dict[data_str_list[0]].get("target_pot", None)
+
     # merge paramset 
     if sys_params['val']:
         val_str_list = sys_params['val']
@@ -250,7 +259,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     paramset = {**sys_params, **assignments}
     # dump paramset 
     with open(model_path + '/paramset.json', 'w') as fp:
-        json.dump(paramset, fp)
+        json.dump(paramset, fp, indent=4)
 
     print("Training for {} epochs".format(n_epochs))
 
@@ -279,9 +288,11 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         pairNN = PairPotentials(system_list[i], NN,
                     cutoff=cutoff,
+                    nbr_list_device='cpu'
                     ).to(device)
         prior = PairPotentials(system_list[i], pair,
                         cutoff=2.5,
+                    nbr_list_device='cpu'
                         ).to(device)
 
         model = Stack({'pairnn': pairNN, 'pair': prior})
@@ -389,12 +400,13 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                      nbins=nbins,
                      end=cutoff)
 
-            if i % 20 ==0 :
+            if i % 10 ==0 :
                 potential = plot_pair( path=model_path,
                              fn=str(i),
                               model=sim.integrator.model.models['pairnn'].model, 
                               prior=sim.integrator.model.models['pair'].model, 
                               device=device,
+                              target_pot=target_pot,
                               end=cutoff)
 
         if assignments['train_vacf'] == "True":
@@ -443,16 +455,24 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         else:
             vacf_target = None
         rdf_target = rdf_target_list[j].detach().cpu().numpy()
- 
-        _, _, g_sim = rdf_obs_list[j](trajs[::10])
-        vacf_sim = vacf_obs_list[j](vels[::10])
+        
 
-        plot_vacf(vacf_sim.detach().cpu(), vacf_target, 
+        # loop over to ocmpute observables 
+        all_g_sim = []
+        for i in range(len(trajs)):
+            _, _, g_sim = rdf_obs_list[j](trajs[[i]])
+            all_g_sim.append(g_sim.detach().cpu().numpy())
+
+        all_g_sim = np.array(all_g_sim).mean(0)
+        vacf_sim = vacf_obs_list[j](vels).detach().cpu().numpy()
+
+        # plot observables 
+        plot_vacf(vacf_sim, vacf_target, 
             fn=data_str + "_{}".format("final"), 
             path=model_path,
             save_data=True)
 
-        plot_rdf(g_sim.detach().cpu(), rdf_target, 
+        plot_rdf(all_g_sim, rdf_target, 
             fn=data_str + "_{}".format("final"),
              path=model_path, 
              start=rdf_start, 
