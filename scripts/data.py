@@ -6,6 +6,8 @@ from scipy import interpolate
 from ase.lattice.cubic import FaceCenteredCubic, Diamond
 from torchmd.observable import generate_vol_bins
 
+from torchmd.potentials import ExcludedVolume, LennardJones, SplineOverlap
+
 def get_exp_rdf(data, nbins, r_range, device, dim=3):
     # load RDF data 
     if data.shape[0] == 2:
@@ -304,6 +306,7 @@ pair_data_dict = {
         'size': 25,
         'element': "H",
         'cufoff': 12.0,
+        'target_pot': SplineOverlap(K=4.7896, V0=1000, device="cpu")
         }
     }
 
