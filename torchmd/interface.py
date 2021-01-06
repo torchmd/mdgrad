@@ -148,7 +148,7 @@ class PairPotentials(GeneralInteraction):
         model (TYPE): Description
     """
     
-    def __init__(self, system, pair_model, cutoff=2.5, index_tuple=None, ex_pairs=None):
+    def __init__(self, system, pair_model, cutoff=2.5, index_tuple=None, ex_pairs=None, nbr_list_device=None):
         """Summary
         
         Args:
@@ -159,6 +159,12 @@ class PairPotentials(GeneralInteraction):
             ex_pairs (None, optional): Description
         """
         super().__init__(system)
+
+        if nbr_list_device == None:
+            self.nbr_list_device = system.device
+        else:
+            self.nbr_list_device = nbr_list_device
+
         self.model = pair_model
         self.cutoff = cutoff
         self.index_tuple = index_tuple
@@ -167,9 +173,9 @@ class PairPotentials(GeneralInteraction):
         nbr_list, offsets = generate_nbr_list(
                                        torch.Tensor(
                                             system.get_positions()
-                                                ).to(system.device), 
+                                                ).to(self.nbr_list_device), 
                                        self.cutoff, 
-                                       self.cell, 
+                                       self.cell.to(self.nbr_list_device), 
                                        index_tuple=self.index_tuple, 
                                        ex_pairs=self.ex_pairs)
 
@@ -186,9 +192,9 @@ class PairPotentials(GeneralInteraction):
         Returns:
             TYPE: Description
         """
-        nbr_list, pair_dis, offsets = generate_nbr_list(xyz, 
+        nbr_list, pair_dis, offsets = generate_nbr_list(xyz.to(self.nbr_list_device), 
                                                self.cutoff, 
-                                               self.cell, 
+                                               self.cell.to(self.nbr_list_device), 
                                                index_tuple=self.index_tuple, 
                                                ex_pairs=self.ex_pairs, 
                                                get_dis=True)
