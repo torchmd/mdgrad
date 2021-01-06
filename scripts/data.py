@@ -289,10 +289,22 @@ pair_data_dict = {
         'end': 7.5,
         'size': 23,
         'element': "H",
-        'cufoff': 11.5,
+        'cufoff': 16.0,
         'ref': 'https://aip.scitation.org/doi/pdf/10.1063/5.0021475'
         }
 
+    'overalp_0.9766_T0.07_cut12':
+        {
+        'rdf_fn': '../data/stripe_data/overalp_0.9766_k4.7896_V01000_0.07_cutoff12.0.csv',
+        'rho': 0.9766,
+        'T': 0.07,
+        'dim': 2,  
+        'start': 0.0, 
+        'end': 7.5,
+        'size': 25,
+        'element': "H",
+        'cufoff': 12.0,
+        }
     }
 
 exp_rdf_data_dict = {
