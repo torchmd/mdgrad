@@ -287,9 +287,9 @@ pair_data_dict = {
         'dim': 2,  
         'start': 0.5, 
         'end': 7.5,
-        'size': 25,
+        'size': 23,
         'element': "H",
-        'cufoff': 12.5,
+        'cufoff': 11.5,
         'ref': 'https://aip.scitation.org/doi/pdf/10.1063/5.0021475'
         }
 
