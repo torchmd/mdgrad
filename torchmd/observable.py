@@ -162,12 +162,6 @@ class vacf(Observable):
 
         return torch.stack(vacf).reshape(-1)
 
-def compute_virial(q, model):
-    u = model(q)
-    f = -compute_grad(inputs=q, output=u)
-    virial = (f * q).sum(-1).sum(-1)
-    
-    return virial 
 
 def compute_angle(xyz, angle_list, cell, N):
     
@@ -201,25 +195,6 @@ def compute_dihe(xyz, dihes):
     cos_phi = 1.0*((cross1*cross2).sum(-1)/norm)
     
     return cos_phi 
-
-def var_K(N_atoms, avg_momentum):
-    """compute variances of kinetic energy 
-    
-    Args:
-        N_atoms (TYPE): Description
-        avg_momentum (TYPE): Description
-    
-    Returns:
-        TYPE: Description
-    """
-    return (2 * ((0.5 * 3 * N_atoms * avg_momentum **2 ) ** 2)/(3 * N_atoms) ) ** (1/2)
-
-def plot_ke(v, target_mometum):
-    target = 0.5 * Natoms * 3 * (target_mometum **2)
-    particle_ke = 0.5 * (v.reshape(-1, Natoms, 3).pow(2) / f_x.mass[:, None])
-    sys_ke = particle_ke.sum(-1).sum(-1)
-    plt.plot(sys_ke.detach().cpu().numpy())
-    plt.plot([i for i in range(sys_ke.shape[0])], [target for i in range(sys_ke.shape[0])] )
 
 
 # New Observable function packed with data and plotting 
