@@ -69,8 +69,9 @@ while experiment.progress.observation_count < experiment.observation_budget:
     'val': params['val'],
     't_range': 50,
     'cutoff': params['cutoff'],
-    'skip': 5,
-    'topology_update_freq': 5
+    'skip': 10,
+    'topology_update_freq': 10,
+    'nbr_list_device': params['device']
     }
 
     value = fit_lj(assignments=suggestion.assignments, 
