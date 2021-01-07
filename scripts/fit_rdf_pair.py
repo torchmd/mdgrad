@@ -288,11 +288,11 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         pairNN = PairPotentials(system_list[i], NN,
                     cutoff=cutoff,
-                    nbr_list_device='cpu'
+                    nbr_list_device=sys_params['nbr_list_device']
                     ).to(device)
         prior = PairPotentials(system_list[i], pair,
                         cutoff=2.5,
-                    nbr_list_device='cpu'
+                    nbr_list_device=sys_params['nbr_list_device']
                         ).to(device)
 
         model = Stack({'pairnn': pairNN, 'pair': prior})
@@ -431,7 +431,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         current_lr = optimizer.param_groups[0]["lr"]
 
-        if current_lr <= 5.0e-6:
+        if current_lr <= 1e-5:
             print("training converged")
             break
     # save potentials         
