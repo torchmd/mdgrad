@@ -21,7 +21,7 @@ print(params['data'])
 if params['dry_run']:
     token = 'FSDXBSGDUZUQEDGDCYPCXFTRXFNYBVXVACKZQUWNSOKGKGFN'
     n_obs = 2
-    n_epochs = 2
+    n_epochs = 10
     n_sim = 2
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
@@ -102,9 +102,13 @@ while experiment.progress.observation_count < experiment.observation_budget:
     'n_sim': n_sim,
     'data': params['data'],
     'val': params['val'],
-    'anneal_flag': params['anneal'],
-    'pair_flag': params['pair']
+    'pair_flag': params['pair'],
+    'topology_update_freq': 1
     }
+    if params['anneal']:
+        sys_params['anneal_flag'] = 'True'
+    else:
+        sys_params['anneal_flag'] = 'False'
 
     value = fit_rdf(assignments=suggestion.assignments, 
                             i=i, 

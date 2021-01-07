@@ -75,7 +75,7 @@ def get_system(data_tag, device, size):
 
     return system 
 
-def get_sim(system, model, data_tag):
+def get_sim(system, model, data_tag, topology_update_freq):
 
     T = exp_rdf_data_dict[data_tag]['T']
 
@@ -84,7 +84,8 @@ def get_sim(system, model, data_tag):
             Q=50.0, 
             T=T * units.kB,
             num_chains=5, 
-            adjoint=True).to(system.device)
+            adjoint=True,
+            topology_update_freq=topology_update_freq).to(system.device)
 
     # define simulator with 
     sim = Simulations(system, diffeq)
@@ -101,16 +102,17 @@ def get_observer(system, data_tag, nbins):
     end = exp_rdf_data_dict[data_tag]['end']
 
     xnew = np.linspace(start, end, nbins)
-    # initialize observable function 
-    obs = rdf(system, nbins, (start, end) )
 
+    obs = rdf(system, nbins, (start, end))
     # get experimental rdf 
     count_obs, g_obs = get_exp_rdf(data, nbins, (start, end), obs.device)
 
+    # initialize observable function 
     return xnew, g_obs, obs
 
 def get_temp(T_start, T_equil, n_epochs, i, anneal_rate):
     return (T_start - T_equil) * np.exp( - i * (1/n_epochs) * anneal_rate) + T_equil
+
 
 
 def get_gnn_potential(assignments,  sys_params):
@@ -149,7 +151,7 @@ def get_pair_potential(assignments, sys_params):
 
     return net, prior
 
-def build_simulators(data_list, system_list, net, prior, cutoff, pair_flag): 
+def build_simulators(data_list, system_list, net, prior, cutoff, pair_flag, topology_update_freq=1): 
     model_list = []
     for i, data_tag in enumerate(data_list):
         prior = PairPotentials(system_list[i], prior,
@@ -170,7 +172,8 @@ def build_simulators(data_list, system_list, net, prior, cutoff, pair_flag):
 
     sim_list = [get_sim(system_list[i], 
                         model_list[i], 
-                        data_tag) for i, data_tag in enumerate(data_list)]
+                        data_tag,
+                        topology_update_freq) for i, data_tag in enumerate(data_list)]
 
     return sim_list
 
@@ -216,7 +219,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         net, prior = get_gnn_potential(assignments, sys_params)
 
     sim_list = build_simulators(all_sys, system_list, net, prior, 
-                                cutoff=cutoff, pair_flag=sys_params["pair_flag"])
+                                cutoff=cutoff, pair_flag=sys_params["pair_flag"],
+                                topology_update_freq=sys_params['topology_update_freq'])
 
     g_target_list = []
     obs_list = []
@@ -265,11 +269,13 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                 return 5 - (i / n_epochs) * 5
 
             _, bins, g = obs_list[j](q_t[::5])
-            
+        
+        # Can we refactored 
+        #---------------------------------------------------------------------
             # only optimize on data that needs training 
             if data_tag in train_list:
                 loss_js += JS_rdf(g_target_list[j], g)
-                loss_mse += assignments['mse_weight'] * (g- g_target_list[j]).pow(2).mean() 
+                loss_mse += assignments['mse_weight'] * (g - g_target_list[j]).pow(2).mean() 
 
             if i % 20 == 0:
                 plot_rdfs(bins_list[j], g_target_list[j], g, "{}_{}".format(data_tag, i),
@@ -281,6 +287,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                                   model=net, 
                                   prior=pair, 
                                   device=device)
+
+        #--------------------------------------------------------------------------------
 
         loss = loss_js + loss_mse 
         loss.backward()

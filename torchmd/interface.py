@@ -120,7 +120,6 @@ class GNNPotentials(GeneralInteraction):
             xyz (TYPE): Description
         """
         self.inputs['nbr_list'], offsets = generate_nbr_list(xyz, self.cutoff, self.cell, ex_pairs=self.ex_pairs)
-        offsets = offsets[self.inputs['nbr_list'][:,0], self.inputs['nbr_list'][:,1], :]
         self.inputs['offsets'] = offsets
 
     def forward(self, xyz): 
