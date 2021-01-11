@@ -303,7 +303,7 @@ pair_data_dict = {
         'dim': 2,  
         'start': 0.0, 
         'end': 6.0,
-        'size': 25,
+        'size': 24,
         'element': "H",
         'cufoff': 12.0,
         'target_pot': SplineOverlap(K=4.7896, V0=1000, device="cpu")
