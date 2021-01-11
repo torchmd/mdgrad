@@ -168,7 +168,6 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
     xnew = np.linspace(rdf_start , rdf_end, nbins)
         # initialize observable function 
     obs = rdf(system, nbins, (rdf_start , rdf_end) )
-
     # get experimental rdf 
     dim = pair_data_dict[data_str].get("dim", 3) 
     _, rdf_target = get_exp_rdf(rdf_data, nbins, (rdf_start, rdf_end), obs.device, dim=dim)
@@ -239,6 +238,9 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     rdf_start = assignments.get("rdf_start", 0.5)
     skip = sys_params['skip']
 
+    nbr_list_device = sys_params.get("nbr_list_device", device)
+    topology_update_freq = sys_params.get("topology_update_freq", 1)
+
     data_str_list = sys_params['data']
 
     # Get the grounth truth pair potentials
@@ -288,11 +290,11 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         pairNN = PairPotentials(system_list[i], NN,
                     cutoff=cutoff,
-                    nbr_list_device=sys_params['nbr_list_device']
+                    nbr_list_device=nbr_list_device
                     ).to(device)
         prior = PairPotentials(system_list[i], pair,
                         cutoff=2.5,
-                    nbr_list_device=sys_params['nbr_list_device']
+                    nbr_list_device=nbr_list_device
                         ).to(device)
 
         model = Stack({'pairnn': pairNN, 'pair': prior})
@@ -301,7 +303,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
     sim_list = [get_sim(system_list[i], 
                         model_list[i], 
-                        data_str) for i, data_str in enumerate(data_str_list + val_str_list)]
+                        data_str,
+                        topology_update_freq=topology_update_freq) for i, data_str in enumerate(data_str_list + val_str_list)]
 
     from torchmd.observable import rdf, vacf
 
@@ -333,7 +336,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                   'min', 
                                                   min_lr=1e-5, 
-                                                  verbose=True, factor = 0.5, patience= 15,
+                                                  verbose=True, factor = 0.5, patience= 10,
                                                   threshold=5e-5)
 
     # Set up simulations 
@@ -359,7 +362,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             data_str = (data_str_list + val_str_list)[j]
 
             # Simulate 
-            v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=0.01)
+            v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=sys_params['dt'])
 
             if data_str in val_str_list:
                 v_t = v_t.detach()
@@ -398,7 +401,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                      path=model_path, 
                      start=rdf_start, 
                      nbins=nbins,
-                     end=cutoff)
+                     end=rdf_obs_list[j].r_axis[-1])
 
             if i % 10 ==0 :
                 potential = plot_pair( path=model_path,
@@ -447,6 +450,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=0.01)
 
         trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device).detach()
+
+        # this is very wrong.... but I don't need it now
         vels = torch.Tensor( np.stack( sim.log['velocities'])).to(system.device).detach()
 
         # get targets
@@ -478,7 +483,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
              start=rdf_start, 
              nbins=nbins,
              save_data=True,
-             end=cutoff)
+             end=rdf_obs_list[j].r_axis[-1])
 
     # save loss curve 
     plt.plot(np.array( loss_log)[:, 0], label='vacf', alpha=0.7)
