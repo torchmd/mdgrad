@@ -12,6 +12,12 @@ This is not just a regular simulator but a DIFFERENTIABLE simulator!
 PyTorch code for End-to-end differetiable molecular simulations. More docs and tutorials are comings.
 This repo is under heavy development, your contribution is very much welcomed.  
 
+
+<p align="center">
+  <img src="assets/rdf_inv.png" width="350">
+</p>
+
+
 ## Highlights
 
 - Reverse-mode automatic differentiation through ODE Solver (O(1) backprop)
