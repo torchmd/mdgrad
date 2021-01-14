@@ -15,18 +15,19 @@ import json
 
 from torchmd.md import Isomerization
 from torchmd.sovlers import odeint_adjoint as odeint
+import argparse
 
+    
 # time conversion
 FS_TO_EV = 41.341 / 27.2 
 # time step
-DT = 2 * pi / 2.8 / 30
+DT = 2 * pi / 2.8 / 60
 # max time
 TMAX = 1500 * FS_TO_EV
 # TMAX = 1 * FS_TO_EV
 
-NUM_EPOCHS = 50
+NUM_EPOCHS = 60
 # NUM_EPOCHS = 5
-
 
 # pulse duration
 TAU =  10 * FS_TO_EV 
@@ -34,12 +35,6 @@ TAU =  10 * FS_TO_EV
 W0 = 2.4
 # pulse time
 TP = 3 * TAU
-DEVICE = 2
-
-# files for saving
-YIELD_FILE = 'isom_results/q_yields.json'
-FIELD_FILE = 'isom_results/e_fields.json'
-T_YIELD_FILE = 'isom_results/t_dep_yields.json'
 
 def make_quants():
 
@@ -179,55 +174,76 @@ def objective(expec_t, look_back=20000):
 
     return obj
 
-def main():
-
-    quant_dic = make_quants()
-    e_field, t, t_grid_et = initialize_Et()
-    max_e_t = max(t_grid_et)
-
-    # initialize the ode
-    ode = Isomerization(dipole=quant_dic["dipole"], e_field=e_field, ham=quant_dic["ham"],
-                    max_e_t=max_e_t, device=DEVICE).to(DEVICE)
-
-    # define optimizer 
-    trainable_params = filter(lambda p: p.requires_grad, ode.parameters())
-    optimizer = torch.optim.Adam(trainable_params, lr=1e-2)
-
-    q_yields = []
-    e_fields = []
-    t_yields = []
-
-    for i in range(NUM_EPOCHS):
-
-        print("simulation epoch {}".format(i))
-        psi_0 = quant_dic['psi_0'].to(DEVICE)
-        psi_t = odeint(ode, psi_0, t, method='rk4')
-        q_yield = calc_yield(psi_t, quant_dic["prod_op"].to(DEVICE), quant_dic["reac_op"].to(DEVICE))
-
-        loss = objective(q_yield)
-
-        loss.backward()
-        print("Average quantum yield is {}".format(-loss.item()))
-
-        q_yields.append(-loss.item())
-        e_fields.append(ode.e_field.cpu().detach().numpy().tolist())
-        t_dep_yield = [item.item() for item in q_yield]
-        t_yields.append(t_dep_yield)
-
-        with open(YIELD_FILE, 'w') as f:
-            json.dump(q_yields, f)
-        with open(T_YIELD_FILE, 'w') as f:
-            json.dump(t_yields, f)
-        with open(FIELD_FILE, 'w') as f:
-            json.dump(e_fields, f)
-
-
-        optimizer.step()
-        optimizer.zero_grad()
 
 if __name__ == "__main__":
 
-    if os.path.exists("isom_results/") == False:
-        os.makedirs("isom_results/")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-logdir", type=str)
+    parser.add_argument("-lr", type=float)
+    parser.add_argument("-device", type=int)
+    parser.add_argument("--adam", action='store_true', default=False)
+    params = vars(parser.parse_args())
+    print(params)
+
+    DEVICE = params['device']
+
+    # files for saving
+    YIELD_FILE = '{}/q_yields.json'.format(params['logdir'])
+    FIELD_FILE = '{}/e_fields.json'.format(params['logdir'])
+    T_YIELD_FILE = '{}/t_dep_yields.json'.format(params['logdir'])
+
+    if os.path.exists(params['logdir']) == False:
+        os.makedirs(params['logdir'])
+
+
+    def main():
+
+        quant_dic = make_quants()
+        e_field, t, t_grid_et = initialize_Et()
+        max_e_t = max(t_grid_et)
+
+        # initialize the ode
+        ode = Isomerization(dipole=quant_dic["dipole"], e_field=e_field, ham=quant_dic["ham"],
+                        max_e_t=max_e_t, device=DEVICE).to(DEVICE)
+
+        # define optimizer 
+        trainable_params = filter(lambda p: p.requires_grad, ode.parameters())
+
+        if params['adam']:
+            optimizer = torch.optim.Adam(trainable_params, lr=params['lr'])
+        else:
+            optimizer = torch.optim.SGD(trainable_params, lr=params['lr'])
+
+        q_yields = []
+        e_fields = []
+        t_yields = []
+
+        for i in range(NUM_EPOCHS):
+
+            print("simulation epoch {}".format(i))
+            psi_0 = quant_dic['psi_0'].to(DEVICE)
+            psi_t = odeint(ode, psi_0, t, method='rk4')
+            q_yield = calc_yield(psi_t, quant_dic["prod_op"].to(DEVICE), quant_dic["reac_op"].to(DEVICE))
+
+            loss = objective(q_yield)
+
+            loss.backward()
+            print("Average quantum yield is {}".format(-loss.item()))
+
+            q_yields.append(-loss.item())
+            e_fields.append(ode.e_field.cpu().detach().numpy().tolist())
+            t_dep_yield = [item.item() for item in q_yield]
+            t_yields.append(t_dep_yield)
+
+            with open(YIELD_FILE, 'w') as f:
+                json.dump(q_yields, f)
+            with open(T_YIELD_FILE, 'w') as f:
+                json.dump(t_yields, f)
+            with open(FIELD_FILE, 'w') as f:
+                json.dump(e_fields, f)
+
+
+            optimizer.step()
+            optimizer.zero_grad()
 
     main()
