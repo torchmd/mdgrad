@@ -302,7 +302,7 @@ pair_data_dict = {
         'T': 0.07,
         'dim': 2,  
         'start': 0.0, 
-        'end': 6.0,
+        'end': 9.0,
         'size': 24,
         'element': "H",
         'cufoff': 12.0,

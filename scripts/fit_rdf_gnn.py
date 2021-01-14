@@ -41,7 +41,7 @@ def JS_rdf(g_obs, g):
 
     return loss_js
 
-def plot_rdfs(bins, target_g, simulated_g, fname, path, pname=None):
+def plot_rdfs(bins, target_g, simulated_g, fname, path, pname=None, save=True):
     plt.title("epoch {}".format(pname))
     plt.plot(bins, simulated_g.detach().cpu().numpy() , linewidth=4, alpha=0.6, label='sim.' )
     plt.plot(bins, target_g.detach().cpu().numpy(), linewidth=2,linestyle='--', c='black', label='exp.')
@@ -50,6 +50,10 @@ def plot_rdfs(bins, target_g, simulated_g, fname, path, pname=None):
     plt.savefig(path + '/{}.jpg'.format(fname), bbox_inches='tight')
     plt.show()
     plt.close()
+
+    if save:
+        data = np.vstack((bins, simulated_g.detach().cpu().numpy()))
+        np.savetxt(path + '/{}.csv'.format(fname), data, delimiter=',')
 
 
 def get_system(data_tag, device, size):
@@ -241,8 +245,8 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                   'min', 
                                                   min_lr=0.9e-7, 
-                                                  verbose=True, factor = 0.5, patience=15,
-                                                  threshold=5e-5)
+                                                  verbose=True, factor = 0.5, patience=25,
+                                                  threshold=1e-5)
 
     for i in range(0, n_epochs):
 
@@ -322,27 +326,29 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             save_traj(system_list[j], train_traj, model_path + '/{}_val.xyz'.format(data_tag), skip=10)
 
         # Inference 
-        sim_trajs = []
 
         for i in range(n_sim):
             _, q_t, _ = sim.simulate(steps=100, frequency=25)
             
-        sim_trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device)
+        trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device)
 
-        # compute equilibrate rdf with finer bins 
         test_nbins = 128
-
         x, g_obs, obs = get_observer(system_list[j], data_tag, test_nbins)
 
-        _, bins, g = obs(sim_trajs[::20]) # compute simulated rdf
+        all_g_sim = []
+        for i in range(len(trajs)):
+            _, _, g_sim = obs(trajs[[i]])
+            all_g_sim.append(g_sim.detach().cpu().numpy())
+
+        all_g_sim = np.array(all_g_sim).mean(0)
 
         # compute equilibrated rdf 
-        loss_js = JS_rdf(g_obs, g)
+        loss_js = JS_rdf(g_obs, torch.Tensor(all_g_sim).to(device))
 
-        save_traj(system_list[j], sim_trajs.detach().cpu().numpy(),  
+        save_traj(system_list[j], np.stack( sim.log['positions']),  
             model_path + '/{}_sim.xyz'.format(data_tag), skip=1)
 
-        plot_rdfs(x, g_obs, g, "{}_final".format(data_tag), model_path, pname='final')
+        plot_rdfs(x, g_obs, torch.Tensor(all_g_sim), "{}_final".format(data_tag), model_path, pname='final')
 
         total_loss += loss_js.item()
 
