@@ -154,7 +154,8 @@ def calc_yield(psi_t, prod_op, reac_op):
 
 
         # def1
-        pC_g = pg + 2 * ((reac_op[0, 1:].reshape(-1) * psi_r[1:]).sum() * psi_r[0] + (reac_op[0, 1:].reshape(-1) * psi_i[1:]).sum())
+        pC_g = pg + 2 * ((reac_op[0, 1:].reshape(-1) * psi_r[1:]).sum() * psi_r[0] + \
+                        (reac_op[0, 1:].reshape(-1) * psi_i[1:]).sum())
         y2 = (expec_r + expec_i) / ((expec_r + expec_i) + (expec_rC + expec_iC) - pC_g)
 
         # def2 
@@ -194,6 +195,7 @@ if __name__ == "__main__":
     parser.add_argument("-logdir", type=str)
     parser.add_argument("-lr", type=float)
     parser.add_argument("-device", type=int)
+    parser.add_argument("-nepochs", type=int, default=40)
     parser.add_argument("--adam", action='store_true', default=False)
     params = vars(parser.parse_args())
     print(params)
@@ -235,7 +237,7 @@ if __name__ == "__main__":
         y2_traj = []
         y3_traj = []
 
-        for i in range(NUM_EPOCHS):
+        for i in range(params['nepochs']):
 
             print("simulation epoch {}".format(i))
             psi_0 = quant_dic['psi_0'].to(DEVICE)
