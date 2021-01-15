@@ -125,7 +125,10 @@ def calc_yield(psi_t, prod_op, reac_op):
 
     # dimension of the Hilbert space
     dim = int(len(psi_t[-1])/2)
-    expec_t = []
+
+    y1_t = []
+    y2_t = []
+    y3_t = []
 
     # loop over times
     for i in range(len(psi_t)):
@@ -147,11 +150,21 @@ def calc_yield(psi_t, prod_op, reac_op):
 
         # subtract the part that remained in the ground state
         pg = psi_r[0]**2 + psi_i[0] **2
-        y = (expec_r + expec_i) / ((expec_r + expec_i) + (expec_rC + expec_iC) - pg)
+        y1 = (expec_r + expec_i) / ((expec_r + expec_i) + (expec_rC + expec_iC) - pg)
 
-        expec_t.append(y)
 
-    return expec_t
+        # def1
+        pC_g = pg + 2 * ((reac_op[0, 1:].reshape(-1) * psi_r[1:]).sum() * psi_r[0] + (reac_op[0, 1:].reshape(-1) * psi_i[1:]).sum())
+        y2 = (expec_r + expec_i) / ((expec_r + expec_i) + (expec_rC + expec_iC) - pC_g)
+
+        # def2 
+        y3 = (expec_r + expec_i) / (1 - pg)
+
+        y1_t.append(y1)
+        y2_t.append(y2)
+        y3_t.append(y3)
+
+    return y1_t, y2_t, y3_t
 
 
 def objective(expec_t, look_back=20000):
@@ -190,7 +203,9 @@ if __name__ == "__main__":
     # files for saving
     YIELD_FILE = '{}/q_yields.json'.format(params['logdir'])
     FIELD_FILE = '{}/e_fields.json'.format(params['logdir'])
-    T_YIELD_FILE = '{}/t_dep_yields.json'.format(params['logdir'])
+    Y1_FILE = '{}/t_dep_yields1.json'.format(params['logdir'])
+    Y2_FILE = '{}/t_dep_yields2.json'.format(params['logdir'])
+    Y3_FILE = '{}/t_dep_yields3.json'.format(params['logdir'])
 
     if os.path.exists(params['logdir']) == False:
         os.makedirs(params['logdir'])
@@ -216,29 +231,40 @@ if __name__ == "__main__":
 
         q_yields = []
         e_fields = []
-        t_yields = []
+        y1_traj = []
+        y2_traj = []
+        y3_traj = []
 
         for i in range(NUM_EPOCHS):
 
             print("simulation epoch {}".format(i))
             psi_0 = quant_dic['psi_0'].to(DEVICE)
             psi_t = odeint(ode, psi_0, t, method='rk4')
-            q_yield = calc_yield(psi_t, quant_dic["prod_op"].to(DEVICE), quant_dic["reac_op"].to(DEVICE))
+            y1_t, y2_t, y3_t = calc_yield(psi_t, quant_dic["prod_op"].to(DEVICE), quant_dic["reac_op"].to(DEVICE))
 
-            loss = objective(q_yield)
+            loss = objective(y1_t)
 
             loss.backward()
             print("Average quantum yield is {}".format(-loss.item()))
 
             q_yields.append(-loss.item())
             e_fields.append(ode.e_field.cpu().detach().numpy().tolist())
-            t_dep_yield = [item.item() for item in q_yield]
-            t_yields.append(t_dep_yield)
+
+            # save different yields 
+            y1_traj.append([item.item() for item in y1_t])
+            y2_traj.append([item.item() for item in y2_t])
+            y3_traj.append([item.item() for item in y3_t])
 
             with open(YIELD_FILE, 'w') as f:
                 json.dump(q_yields, f)
-            with open(T_YIELD_FILE, 'w') as f:
-                json.dump(t_yields, f)
+
+            with open(Y1_FILE, 'w') as f:
+                json.dump(y1_traj, f)
+            with open(Y2_FILE, 'w') as f:
+                json.dump(y2_traj, f)
+            with open(Y3_FILE, 'w') as f:
+                json.dump(y3_traj, f)
+
             with open(FIELD_FILE, 'w') as f:
                 json.dump(e_fields, f)
 
