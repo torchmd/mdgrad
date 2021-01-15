@@ -235,7 +235,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     nbins = assignments['nbins']
     tau = assignments['opt_freq']
 
-    rdf_start = assignments.get("rdf_start", 0.5)
+    rdf_start = assignments.get("rdf_start", 0.6)
     skip = sys_params['skip']
 
     nbr_list_device = sys_params.get("nbr_list_device", device)
@@ -372,7 +372,19 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
                 return 5 - (i / n_epochs) * 5
 
-            _, _, g_sim = rdf_obs_list[j](q_t[::skip])
+            #_, _, g_sim = rdf_obs_list[j](q_t[::skip])
+
+            # save memory by computing it in serial
+            n_frames = q_t[::skip].shape[0] 
+            for idx in range(n_frames):
+                if idx == 0:
+                    _, _, g_sim = rdf_obs_list[j](q_t[::skip][[idx]])
+                else:
+                    g_sim += rdf_obs_list[j](q_t[::skip][[idx]])[2]
+
+            g_sim = g_sim / n_frames
+
+            # compute vacf 
             vacf_sim = vacf_obs_list[j](v_t)
 
             if data_str in data_str_list:
@@ -385,7 +397,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             obs_log[data_str]['rdf'].append(g_sim.detach().cpu().numpy())
             obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())
 
-            if i % 20 ==0 :
+            if i % 5 ==0 :
                 if vacf_target_list[j] is not None:
                     vacf_target = vacf_target_list[j][:t_range].detach().cpu().numpy()
                 else:
@@ -403,7 +415,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                      nbins=nbins,
                      end=rdf_obs_list[j].r_axis[-1])
 
-            if i % 10 ==0 :
+            if i % 5 ==0 :
                 potential = plot_pair( path=model_path,
                              fn=str(i),
                               model=sim.integrator.model.models['pairnn'].model, 

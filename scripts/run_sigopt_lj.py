@@ -18,7 +18,7 @@ params = vars(parser.parse_args())
 if params['dry_run']:
     token = 'FSDXBSGDUZUQEDGDCYPCXFTRXFNYBVXVACKZQUWNSOKGKGFN'
     n_obs = 2
-    n_epochs = 4
+    n_epochs = 10
     n_sim = 2
 else:
     token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
@@ -42,6 +42,7 @@ if params['id'] == None:
             dict(name='power', type='int', bounds=dict(min=9, max=12)),
             dict(name='opt_freq', type='int', bounds=dict(min=15, max=50)),
             dict(name='lr', type='double', bounds=dict(min=1.0e-4, max=5e-3)),
+            dict(name='rdf_start', type='double', bounds=dict(min=0.5, max=0.7)),
             dict(name='rdf_weight', type='double', bounds=dict(min=0.1, max=1.0)),
             dict(name='vacf_weight', type='double', bounds=dict(min=0.1, max=1.0)),
             dict(name='nbins', type='int', bounds=dict(min=64, max=128)),
