@@ -289,10 +289,11 @@ pair_data_dict = {
         'dim': 2,  
         'start': 0.5, 
         'end': 7.5,
-        'size': 23,
+        'size': 25,
         'element': "H",
-        'cufoff': 16.0,
-        'ref': 'https://aip.scitation.org/doi/pdf/10.1063/5.0021475'
+        'cufoff': 8.0,
+        'ref': 'https://aip.scitation.org/doi/pdf/10.1063/5.0021475',
+        'target_pot': SplineOverlap(K=4.7896, V0=1000, device="cpu")
         },
 
     'overalp_0.9766_T0.07_cut12':
