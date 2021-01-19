@@ -24,7 +24,7 @@ FS_TO_EV = 41.341 / 27.2
 DT = 2 * pi / 2.8 / 60
 # max time
 TMAX = 1500 * FS_TO_EV
-# TMAX = 1 * FS_TO_EV
+#TMAX = 1 * FS_TO_EV
 
 NUM_EPOCHS = 60
 # NUM_EPOCHS = 5
@@ -129,6 +129,7 @@ def calc_yield(psi_t, prod_op, reac_op):
     y1_t = []
     y2_t = []
     y3_t = []
+    y4_t = []
 
     # loop over times
     for i in range(len(psi_t)):
@@ -161,11 +162,30 @@ def calc_yield(psi_t, prod_op, reac_op):
         # def2 
         y3 = (expec_r + expec_i) / (1 - pg)
 
+
+        # def3 
+        # projector onto excited state
+        proj_exc = torch.diag(torch.ones(dim)).to(psi_r.device)
+        proj_exc[0, 0] = 0
+        # product operator in excited state
+        prod_op_exc = torch.matmul(proj_exc, torch.matmul(prod_op,
+                                                          proj_exc))
+        # reactant operator in excited state
+        reac_op_exc = torch.matmul(proj_exc, torch.matmul(reac_op,
+                                                          proj_exc))
+        expec_r = (psi_r * (torch.matmul(prod_op_exc, psi_r))).sum().reshape(-1)
+        expec_i = (psi_i * (torch.matmul(prod_op_exc, psi_i))).sum().reshape(-1)
+        # <reactant>
+        expec_rC = (psi_r * (torch.matmul(reac_op_exc, psi_r))).sum().reshape(-1)
+        expec_iC = (psi_i * (torch.matmul(reac_op_exc, psi_i))).sum().reshape(-1)
+        y4 = (expec_r + expec_i) / ((expec_r + expec_i) + (expec_rC + expec_iC))
+
         y1_t.append(y1)
         y2_t.append(y2)
         y3_t.append(y3)
+        y4_t.append(y4)
 
-    return y1_t, y2_t, y3_t
+    return y1_t, y2_t, y3_t, y4_t
 
 
 def objective(expec_t, look_back=20000):
@@ -208,6 +228,7 @@ if __name__ == "__main__":
     Y1_FILE = '{}/t_dep_yields1.json'.format(params['logdir'])
     Y2_FILE = '{}/t_dep_yields2.json'.format(params['logdir'])
     Y3_FILE = '{}/t_dep_yields3.json'.format(params['logdir'])
+    Y4_FILE = '{}/t_dep_yields4.json'.format(params['logdir'])
 
     if os.path.exists(params['logdir']) == False:
         os.makedirs(params['logdir'])
@@ -236,13 +257,14 @@ if __name__ == "__main__":
         y1_traj = []
         y2_traj = []
         y3_traj = []
+        y4_traj = []
 
         for i in range(params['nepochs']):
 
             print("simulation epoch {}".format(i))
             psi_0 = quant_dic['psi_0'].to(DEVICE)
             psi_t = odeint(ode, psi_0, t, method='rk4')
-            y1_t, y2_t, y3_t = calc_yield(psi_t, quant_dic["prod_op"].to(DEVICE), quant_dic["reac_op"].to(DEVICE))
+            y1_t, y2_t, y3_t, y4_t = calc_yield(psi_t, quant_dic["prod_op"].to(DEVICE), quant_dic["reac_op"].to(DEVICE))
 
             loss = objective(y1_t)
 
@@ -256,6 +278,7 @@ if __name__ == "__main__":
             y1_traj.append([item.item() for item in y1_t])
             y2_traj.append([item.item() for item in y2_t])
             y3_traj.append([item.item() for item in y3_t])
+            y4_traj.append([item.item() for item in y4_t])
 
             with open(YIELD_FILE, 'w') as f:
                 json.dump(q_yields, f)
@@ -266,6 +289,8 @@ if __name__ == "__main__":
                 json.dump(y2_traj, f)
             with open(Y3_FILE, 'w') as f:
                 json.dump(y3_traj, f)
+            with open(Y4_FILE, 'w') as f:
+                json.dump(y4_traj, f)
 
             with open(FIELD_FILE, 'w') as f:
                 json.dump(e_fields, f)
