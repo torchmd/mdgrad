@@ -173,11 +173,7 @@ def calc_yield(psi_t, prod_op, reac_op):
         # reactant operator in excited state
         reac_op_exc = torch.matmul(proj_exc, torch.matmul(reac_op,
                                                           proj_exc))
-        expec_r = (psi_r * (torch.matmul(prod_op_exc, psi_r))).sum().reshape(-1)
-        expec_i = (psi_i * (torch.matmul(prod_op_exc, psi_i))).sum().reshape(-1)
-        # <reactant>
-        expec_rC = (psi_r * (torch.matmul(reac_op_exc, psi_r))).sum().reshape(-1)
-        expec_iC = (psi_i * (torch.matmul(reac_op_exc, psi_i))).sum().reshape(-1)
+        # <reactant
         y4 = (expec_r + expec_i) / ((expec_r + expec_i) + (expec_rC + expec_iC))
 
         y1_t.append(y1)
