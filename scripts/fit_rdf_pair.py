@@ -236,7 +236,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     tau = assignments['opt_freq']
 
     rdf_start = assignments.get("rdf_start", 0.6)
-    skip = sys_params['skip']
+    skip = 1
+    N = 1
 
     nbr_list_device = sys_params.get("nbr_list_device", device)
     topology_update_freq = sys_params.get("topology_update_freq", 1)
@@ -375,12 +376,12 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             #_, _, g_sim = rdf_obs_list[j](q_t[::skip])
 
             # save memory by computing it in serial
-            n_frames = q_t[::skip].shape[0] 
+            n_frames = q_t[-N:].shape[0] 
             for idx in range(n_frames):
                 if idx == 0:
-                    _, _, g_sim = rdf_obs_list[j](q_t[::skip][[idx]])
+                    _, _, g_sim = rdf_obs_list[j](q_t[-N:][[idx]])
                 else:
-                    g_sim += rdf_obs_list[j](q_t[::skip][[idx]])[2]
+                    g_sim += rdf_obs_list[j](q_t[-N:][[idx]])[2]
 
             g_sim = g_sim / n_frames
 
@@ -392,7 +393,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                     loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
                 else:
                     loss_vacf += 0.0
-                loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean() + JS_rdf(g_sim, rdf_target_list[j])
+                loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean()#+ JS_rdf(g_sim, rdf_target_list[j])
 
             obs_log[data_str]['rdf'].append(g_sim.detach().cpu().numpy())
             obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())

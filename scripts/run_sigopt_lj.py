@@ -40,7 +40,7 @@ if params['id'] == None:
             dict(name='sigma', type='double', bounds=dict(min=0.8, max=1.1)),
             dict(name='epsilon', type='double', bounds=dict(min=0.05, max=0.5)),
             dict(name='power', type='int', bounds=dict(min=9, max=12)),
-            dict(name='opt_freq', type='int', bounds=dict(min=15, max=50)),
+            dict(name='opt_freq', type='int', bounds=dict(min=15, max=200)),
             dict(name='lr', type='double', bounds=dict(min=1.0e-4, max=5e-3)),
             dict(name='rdf_start', type='double', bounds=dict(min=0.5, max=0.7)),
             dict(name='rdf_weight', type='double', bounds=dict(min=0.1, max=1.0)),
