@@ -21,7 +21,7 @@ import argparse
 # time conversion
 FS_TO_EV = 41.341 / 27.2 
 # time step
-DT = 2 * pi / 2.8 / 60
+DT = 2 * pi / 2.8 / 30
 # max time
 TMAX = 1500 * FS_TO_EV
 #TMAX = 1 * FS_TO_EV
