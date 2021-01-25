@@ -235,9 +235,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     nbins = assignments['nbins']
     tau = assignments['opt_freq']
 
-    rdf_start = assignments.get("rdf_start", 0.6)
+    rdf_start = assignments.get("rdf_start", 0.75)
     skip = 1
-    N = 1
 
     nbr_list_device = sys_params.get("nbr_list_device", device)
     topology_update_freq = sys_params.get("topology_update_freq", 1)
@@ -376,12 +375,13 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             #_, _, g_sim = rdf_obs_list[j](q_t[::skip])
 
             # save memory by computing it in serial
-            n_frames = q_t[-N:].shape[0] 
+            skip = 5
+            n_frames = q_t[::skip].shape[0] 
             for idx in range(n_frames):
                 if idx == 0:
-                    _, _, g_sim = rdf_obs_list[j](q_t[-N:][[idx]])
+                    _, _, g_sim = rdf_obs_list[j](q_t[::skip][[idx]])
                 else:
-                    g_sim += rdf_obs_list[j](q_t[-N:][[idx]])[2]
+                    g_sim += rdf_obs_list[j](q_t[::skip][[idx]])[2]
 
             g_sim = g_sim / n_frames
 
