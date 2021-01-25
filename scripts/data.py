@@ -6,7 +6,7 @@ from scipy import interpolate
 from ase.lattice.cubic import FaceCenteredCubic, Diamond
 from torchmd.observable import generate_vol_bins
 
-from torchmd.potentials import ExcludedVolume, LennardJones, SplineOverlap
+from torchmd.potentials import ExcludedVolume, LennardJones, SplineOverlap, LJFamily
 
 def get_exp_rdf(data, nbins, r_range, device, dim=3):
     # load RDF data 
@@ -308,7 +308,139 @@ pair_data_dict = {
         'element': "H",
         'cufoff': 12.0,
         'target_pot': SplineOverlap(K=4.7896, V0=1000, device="cpu")
-        }
+        },
+
+       "lj_rep_6_attr4_rho0.5_T1.0_dt0.01": {
+          "vacf_fn": "../data/LJfam_data/rdf_6_4_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/LJfam_data/vacf_6_4_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.75,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "cell": FaceCenteredCubic,
+          "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=4, rep_pow=6) 
+       },
+
+       "lj_rep_8_attr4_rho0.5_T1.0_dt0.01": {
+          "vacf_fn": "../data/LJfam_data/rdf_8_4_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/LJfam_data/vacf_8_4_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.75,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "cell": FaceCenteredCubic,
+          "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=4, rep_pow=8) 
+       },
+       "lj_rep_10_attr4_rho0.5_T1.0_dt0.01": {
+          "vacf_fn": "../data/LJfam_data/rdf_10_4_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/LJfam_data/vacf_10_4_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.75,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "cell": FaceCenteredCubic,
+          "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=4, rep_pow=10) 
+       },
+       "lj_rep_12_attr4_rho0.5_T1.0_dt0.01": {
+          "vacf_fn": "../data/LJfam_data/rdf_12_4_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/LJfam_data/vacf_12_4_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.75,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "cell": FaceCenteredCubic,
+          "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=4, rep_pow=12) 
+       },
+       "lj_rep_8_attr6_rho0.5_T1.0_dt0.01": {
+          "vacf_fn": "../data/LJfam_data/rdf_8_6_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/LJfam_data/vacf_8_6_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.75,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "cell": FaceCenteredCubic,
+          "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=6, rep_pow=8) 
+       },
+       "lj_rep_10_attr6_rho0.5_T1.0_dt0.01": {
+          "vacf_fn": "../data/LJfam_data/rdf_10_6_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/LJfam_data/vacf_10_6_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.75,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "cell": FaceCenteredCubic,
+          "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=6, rep_pow=10) 
+       },
+       "lj_rep_12_attr6_rho0.5_T1.0_dt0.01": {
+          "vacf_fn": "../data/LJfam_data/rdf_12_6_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/LJfam_data/vacf_12_6_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.75,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "cell": FaceCenteredCubic,
+          "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=6, rep_pow=12) 
+       },
+       "lj_rep_10_attr8_rho0.5_T1.0_dt0.01": {
+          "vacf_fn": "../data/LJfam_data/rdf_10_8_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/LJfam_data/vacf_10_8_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.75,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "cell": FaceCenteredCubic,
+          "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=8, rep_pow=10) 
+       },
+       "lj_rep_12_attr8_rho0.5_T1.0_dt0.01": {
+          "vacf_fn": "../data/LJfam_data/rdf_12_8_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/LJfam_data/vacf_12_8_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.75,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "cell": FaceCenteredCubic,
+          "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=8, rep_pow=12) 
+       },
+       "lj_rep_12_attr10_rho0.5_T1.0_dt0.01": {
+          "vacf_fn": "../data/LJfam_data/rdf_12_10_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/LJfam_data/vacf_12_10_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.75,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "cell": FaceCenteredCubic,
+          "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=10, rep_pow=12) 
+       }
     }
 
 exp_rdf_data_dict = {
