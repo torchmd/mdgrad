@@ -28,6 +28,20 @@ MLPPARAMS = {'D_in': 1,
               'act': 'relu',
               'D_out': 1}
 
+class LJFamily(torch.nn.Module):
+    def __init__(self, sigma=1.0, epsilon=1.0, attr_pow=6,  rep_pow=12):
+        super(LJFamily, self).__init__()
+        self.sigma = torch.nn.Parameter(torch.Tensor([sigma]))
+        self.epsilon = torch.nn.Parameter(torch.Tensor([epsilon]))
+        self.attr_pow = attr_pow
+        self.rep_pow = rep_pow 
+
+    def LJ(self, r, sigma, epsilon):
+        return 4 * epsilon * ((sigma/r)**self.rep_pow - (sigma/r)**self.attr_pow)
+
+    def forward(self, x):
+        return self.LJ(x, self.sigma, self.epsilon)
+
 class SplineOverlap(torch.nn.Module):
     '''
         https://journals.aps.org/pre/abstract/10.1103/PhysRevE.80.031105
