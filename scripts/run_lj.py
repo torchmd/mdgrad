@@ -17,6 +17,8 @@ parser.add_argument("-sigma", type=float)
 parser.add_argument("-lr", type=float)
 parser.add_argument("-cutoff", type=float)
 parser.add_argument("-vacf_weight", type=float)
+parser.add_argument("-dt", type=float)
+parser.add_argument("-update_freq", type=int)
 
 parser.add_argument("-name", type=str)
 parser.add_argument("-data", type=str, nargs='+')
@@ -60,6 +62,20 @@ else:
     "cutoff": 2.5
   }
 
+sys_params = {
+'dt': params['dt'],
+'size': 4,
+'n_epochs': n_epochs,
+'n_sim': n_sim,
+'data': params['data'],
+'val': params['val'],
+'t_range': 50, 
+'skip': 5,
+'cutoff': assignments['cutoff'],
+'nbr_list_device': 'cpu',
+'topology_update_freq': params['update_freq']
+}
+
 if assignments['train_vacf'] == 'False':
     assignments['vacf_weight'] = 0.0
 
@@ -77,21 +93,11 @@ if params['lr']:
 
 if params['cutoff']:
     print("chaging default cutoff from {} to {}".format(assignments['cutoff'], params['cutoff']))
-    assignments['cutoff'] = params['cutoff']
+    sys_params['cutoff'] = params['cutoff']
 
 if params['vacf_weight']:
     print("chaging default vacf_weight from {} to {}".format(assignments['vacf_weight'], params['vacf_weight']))
     assignments['vacf_weight'] = params['vacf_weight']
-
-sys_params = {
-'dt': 0.01,
-'size': 4,
-'n_epochs': n_epochs,
-'n_sim': n_sim,
-'data': params['data'],
-'val': params['val'],
-'t_range': 50, # should I make this a variable
-}
 
 print(assignments)
 
