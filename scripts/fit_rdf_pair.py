@@ -459,13 +459,19 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         #simulate with no optimization
         data_str = (data_str_list + val_str_list)[j]
 
+        all_vacf_sim = []
+
         for i in range(sys_params['n_sim']):
             v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=0.01)
 
-        trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device).detach()
+            # compute VACF 
+            vacf_sim = vacf_obs_list[j](v_t).detach().cpu().numpy()
+            all_vacf_sim.append(vacf_sim)
 
-        # this is very wrong.... but I don't need it now
-        vels = torch.Tensor( np.stack( sim.log['velocities'])).to(system.device).detach()
+
+        all_vacf_sim = np.array(all_vacf_sim).mean(0)
+        
+        trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device).detach()
 
         # get targets
         if vacf_target_list[j] is not None:
@@ -482,10 +488,10 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             all_g_sim.append(g_sim.detach().cpu().numpy())
 
         all_g_sim = np.array(all_g_sim).mean(0)
-        vacf_sim = vacf_obs_list[j](vels).detach().cpu().numpy()
+        
 
         # plot observables 
-        plot_vacf(vacf_sim, vacf_target, 
+        plot_vacf(all_vacf_sim, vacf_target, 
             fn=data_str + "_{}".format("final"), 
             path=model_path,
             save_data=True)
