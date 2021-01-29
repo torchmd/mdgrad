@@ -6,7 +6,7 @@ from scipy import interpolate
 from ase.lattice.cubic import FaceCenteredCubic, Diamond
 from torchmd.observable import generate_vol_bins
 
-from torchmd.potentials import ExcludedVolume, LennardJones, SplineOverlap, LJFamily
+from torchmd.potentials import ExcludedVolume, LennardJones, SplineOverlap, LJFamily, ModifiedMorse
 
 def get_exp_rdf(data, nbins, r_range, device, dim=3):
     # load RDF data 
@@ -440,7 +440,177 @@ pair_data_dict = {
           "N_unitcell": 4,
           "cell": FaceCenteredCubic,
           "target_pot":  LJFamily(epsilon=1.0, sigma=1.0, attr_pow=10, rep_pow=12) 
+       },
+
+       "morse_a_12_phi1.0_rho0.3_T1.0_dt0.01": {
+          "tag": "morse_a_12_phi1.0_rho0.3_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_12_1.0_rho0.3_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_12_1.0_rho0.3_T1.0_dt0.01.csv",
+          "rho": 0.3,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=12, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_10_phi1.0_rho0.3_T1.0_dt0.01": {
+          "tag": "morse_a_10_phi1.0_rho0.3_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_10_1.0_rho0.3_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_10_1.0_rho0.3_T1.0_dt0.01.csv",
+          "rho": 0.3,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=10, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_8_phi1.0_rho0.3_T1.0_dt0.01": {
+          "tag": "morse_a_8_phi1.0_rho0.3_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_8_1.0_rho0.3_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_8_1.0_rho0.3_T1.0_dt0.01.csv",
+          "rho": 0.3,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=8, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_6_phi1.0_rho0.3_T1.0_dt0.01": {
+          "tag": "morse_a_6_phi1.0_rho0.3_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_6_1.0_rho0.3_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_6_1.0_rho0.3_T1.0_dt0.01.csv",
+          "rho": 0.3,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=6, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_12_phi1.0_rho0.5_T1.0_dt0.01": {
+          "tag": "morse_a_12_phi1.0_rho0.5_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_12_1.0_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_12_1.0_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=12, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_10_phi1.0_rho0.5_T1.0_dt0.01": {
+          "tag": "morse_a_10_phi1.0_rho0.5_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_10_1.0_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_10_1.0_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=10, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_8_phi1.0_rho0.5_T1.0_dt0.01": {
+          "tag": "morse_a_8_phi1.0_rho0.5_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_8_1.0_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_8_1.0_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=8, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_6_phi1.0_rho0.5_T1.0_dt0.01": {
+          "tag": "morse_a_6_phi1.0_rho0.5_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_6_1.0_rho0.5_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_6_1.0_rho0.5_T1.0_dt0.01.csv",
+          "rho": 0.5,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=6, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_12_phi1.0_rho0.75_T1.0_dt0.01": {
+          "tag": "morse_a_12_phi1.0_rho0.75_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_12_1.0_rho0.75_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_12_1.0_rho0.75_T1.0_dt0.01.csv",
+          "rho": 0.75,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=12, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_10_phi1.0_rho0.75_T1.0_dt0.01": {
+          "tag": "morse_a_10_phi1.0_rho0.75_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_10_1.0_rho0.75_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_10_1.0_rho0.75_T1.0_dt0.01.csv",
+          "rho": 0.75,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=10, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_8_phi1.0_rho0.75_T1.0_dt0.01": {
+          "tag": "morse_a_8_phi1.0_rho0.75_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_8_1.0_rho0.75_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_8_1.0_rho0.75_T1.0_dt0.01.csv",
+          "rho": 0.75,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=8, phi=1),
+          "cell": FaceCenteredCubic
+       },
+       "morse_a_6_phi1.0_rho0.75_T1.0_dt0.01": {
+          "tag": "morse_a_6_phi1.0_rho0.75_T1.0_dt0.01",
+          "vacf_fn": "../data/Morse_data/rdf_6_1.0_rho0.75_T1.0_dt0.01.csv",
+          "rdf_fn": "../data/Morse_data/vacf_6_1.0_rho0.75_T1.0_dt0.01.csv",
+          "rho": 0.75,
+          "T": 1.0,
+          "start": 0.6,
+          "end": 3.3,
+          "element": "H",
+          "mass": 1.0,
+          "N_unitcell": 4,
+          "target_pot": ModifiedMorse(a=6, phi=1),
+          "cell": FaceCenteredCubic
        }
+
     }
 
 exp_rdf_data_dict = {
