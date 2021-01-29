@@ -42,6 +42,26 @@ class LJFamily(torch.nn.Module):
     def forward(self, x):
         return self.LJ(x, self.sigma, self.epsilon)
 
+class ModifiedMorse(torch.nn.Module):
+    def __init__(self, a, phi):
+        super(ModifiedMorse, self).__init__()
+        
+        self.a = a 
+        self.phi = phi 
+        
+        if phi >= 0:
+            self.A = 0
+        else:
+            self.A = np.exp(2 * a / phi) - 2 * np.exp(a / phi)
+        
+    def forward(self, r):
+        
+        exponent = self.a * (1 - r ** self.phi) / self.phi
+        
+        pot = (torch.exp( 2 * exponent  ) - 2 * torch.exp(exponent) - self.A) / (1 + self.A)
+        
+        return pot 
+
 class SplineOverlap(torch.nn.Module):
     '''
         https://journals.aps.org/pre/abstract/10.1103/PhysRevE.80.031105
