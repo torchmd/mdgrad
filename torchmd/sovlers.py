@@ -39,40 +39,54 @@ def verlet_update(func, t, dt, y):
 
         return tuple((v_step_full, q_step_full))
     
-    elif len(y) == NUM_VAR * 2 + 2: # integrator in the backward call 
+    elif len(y) == NUM_VAR * 2 + 2: # integrator in the backward call
 
-        dydt_0 = func(t, y) # func is the automatically generated ODE for adjoints 
+        v_full, x_full = y[0], y[1]
+
+        dv, dx, v_ad, x_ad, vjp_t, vjp_params= func(t, y)  # compute dy, and vjps 
+
+        v_step_half = 1/2 * dv * dt 
+        v_half = v_full + v_step_half
+        x_step_full = v_half * dt 
+        x_0 = x_full + x_step_full
+
+        x_ad_full = x_ad
+        v_ad_full = v_ad
+
+        #print(v_ad, x_ad)
+
+
+
+        # func is the automatically generated ODE for adjoints 
         # dydt_0 variable name is a bit confusing(it even confused me after 3 months of writing this snippit),
         # I need to change to the right adjoint definition -> dLdv, dLdq or v_hat and q_t  
 
         # more importantly are there better way to integrate the adjoint state other than midpoint integration 
-        
-        v_step_half = 1/2 * dydt_0[0] * dt 
+
         #vadjoint_step_half = 1/2 * dydt_0[0 + 3] * dt # update adjoint state 
         
-        q_step_full = (y[0] + v_step_half) * dt 
+        # func returns the infiniesmal changes of different states 
+        dvad_half = v_ad *  dt  #  dydt_0[2] * 0.5 * dt # update adjoint state 
+
+        dLdt_half = vjp_t  * dt 
+        dLdpar_half = vjp_params * 0.5 * dt # par_adjoint 
+
+        #x_ad_half = x_ad * dt * 0.5
         
-        # half step adjoint update 
-        vadjoint_half = dydt_0[2] * 0.5 * dt # update adjoint state 
-        qadjoint_half = dydt_0[3] * 0.5 * dt 
-        dLdt_half = dydt_0[4] * 0.5 * dt 
-        dLdpar_half = dydt_0[5] * 0.5 * dt 
-        
-        dydt_mid = func(t, (y[0] + v_step_half, y[1] + q_step_full, 
-                    y[2] + vadjoint_half, y[3] + qadjoint_half, 
+        dv, dx, v_ad, x_ad, vjp_t, vjp_params = func(t, (v_half, x_0, 
+                    y[2] + dvad_half, y[3] , 
                     y[4] + dLdt_half, y[5] + dLdpar_half
                    ))
 
-        v_step_full = v_step_half + 1/2 * dydt_mid[0] * dt 
+        v_step_full = v_step_half + dv * dt * 0.5 
         
-        # half step adjoint update 
-        vadjoint_step = dydt_mid[2] * dt # update adjoint state 
-        qadjoint_step = dydt_mid[3] * dt 
-        dLdt_step = dydt_mid[4] * dt 
-        dLdpar_step = dydt_mid[5] * dt         
+        vadjoint_step = v_ad  * dt# update adjoint state 
+        xadjoint_step = x_ad * dt #* 0.5  
+        dLdt_step = vjp_t * dt 
+        dLdpar_step = vjp_params * dt
         
-        return (v_step_full, q_step_full,
-                vadjoint_step, qadjoint_step, 
+        return (v_step_full, x_step_full,
+                vadjoint_step, xadjoint_step, 
                 dLdt_step, dLdpar_step)
     else:
         raise ValueError("received {} argumets integration, but should be {} for the forward call or {} for the backward call".format(
@@ -200,12 +214,13 @@ class OdeintAdjointMethod(torch.autograd.Function):
 
             with torch.set_grad_enabled(True):
                 t = t.to(y[0].device).detach().requires_grad_(True)
-                y = tuple(y_.detach().requires_grad_(True) for y_ in y)
+                y = tuple(y_.detach().requires_grad_(True) for y_ in y) # get state variables 
                 func_eval = func(t, y)
                 vjp_t, *vjp_y_and_params = torch.autograd.grad(
                     func_eval, (t,) + y + f_params,
                     tuple(-adj_y_ for adj_y_ in adj_y), allow_unused=True, retain_graph=True
-                )
+                ) 
+
             vjp_y = vjp_y_and_params[:n_tensors]
             vjp_params = vjp_y_and_params[n_tensors:]
 
