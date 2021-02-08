@@ -41,21 +41,21 @@ def verlet_update(func, t, dt, y):
     
     elif len(y) == NUM_VAR * 2 + 2: # integrator in the backward call
 
-        v_full, x_full = y[0], y[1]
+        v_full, x_full, vad_full, xad_full = y[0], y[1], y[2], y[3]
 
-        dv, dx, v_ad, x_ad, vjp_t, vjp_params= func(t, y)  # compute dy, and vjps 
+        dv, dx, vad_vjp, xad_vjp, vjp_t, vjp_params= func(t, y)  # compute dy, and vjps 
 
+        # Reverse integrator 
         v_step_half = 1/2 * dv * dt 
         v_half = v_full + v_step_half
         x_step_full = v_half * dt 
         x_0 = x_full + x_step_full
 
-        x_ad_full = x_ad
-        v_ad_full = v_ad
+        #print(vad_vjp, xad_vjp)
 
-        #print(v_ad, x_ad)
+        print(xad_full, vad_full,  xad_vjp, vad_vjp)
 
-
+        # So vad_vjp = xad_full?
 
         # func is the automatically generated ODE for adjoints 
         # dydt_0 variable name is a bit confusing(it even confused me after 3 months of writing this snippit),
@@ -66,22 +66,25 @@ def verlet_update(func, t, dt, y):
         #vadjoint_step_half = 1/2 * dydt_0[0 + 3] * dt # update adjoint state 
         
         # func returns the infiniesmal changes of different states 
-        dvad_half = v_ad *  dt  #  dydt_0[2] * 0.5 * dt # update adjoint state 
+        dvad_half = xad_full *  dt  #  dydt_0[2] * 0.5 * dt # update adjoint state 
+
+        xad_full = xad_vjp
+        vad_full = vad_vjp
 
         dLdt_half = vjp_t  * dt 
         dLdpar_half = vjp_params * 0.5 * dt # par_adjoint 
 
-        #x_ad_half = x_ad * dt * 0.5
+        #xad_vjp_half = xad_vjp * dt * 0.5
         
-        dv, dx, v_ad, x_ad, vjp_t, vjp_params = func(t, (v_half, x_0, 
+        dv, dx, vad_vjp, xad_vjp, vjp_t, vjp_params = func(t, (v_half, x_0, 
                     y[2] + dvad_half, y[3] , 
                     y[4] + dLdt_half, y[5] + dLdpar_half
                    ))
 
         v_step_full = v_step_half + dv * dt * 0.5 
         
-        vadjoint_step = v_ad  * dt# update adjoint state 
-        xadjoint_step = x_ad * dt #* 0.5  
+        vadjoint_step = vad_full * dt# update adjoint state 
+        xadjoint_step = xad_vjp * dt 
         dLdt_step = vjp_t * dt 
         dLdpar_step = vjp_params * dt
         
