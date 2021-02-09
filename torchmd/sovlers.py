@@ -53,8 +53,6 @@ def verlet_update(func, t, dt, y):
 
         #print(vad_vjp, xad_vjp)
 
-        print(xad_full, vad_full,  xad_vjp, vad_vjp)
-
         # So vad_vjp = xad_full?
 
         # func is the automatically generated ODE for adjoints 
@@ -66,30 +64,39 @@ def verlet_update(func, t, dt, y):
         #vadjoint_step_half = 1/2 * dydt_0[0 + 3] * dt # update adjoint state 
         
         # func returns the infiniesmal changes of different states 
-        dvad_half = xad_full *  dt  #  dydt_0[2] * 0.5 * dt # update adjoint state 
 
-        xad_full = xad_vjp
+        #xad_full_tmp = xad_vjp
+        #vad_full = vad_full
+
+        dvad_half = xad_full * dt #* 0.5 # alternatively dvad_half = dvad_half = xad_full *  dt
+        vad_half = vad_full + dvad_half 
+
+
+        #xad_full = xad_vjp
         vad_full = vad_vjp
+
+        #print(vad_full, xad_full, vad_vjp, xad_vjp, vad_half)
 
         dLdt_half = vjp_t  * dt 
         dLdpar_half = vjp_params * 0.5 * dt # par_adjoint 
 
         #xad_vjp_half = xad_vjp * dt * 0.5
         
-        dv, dx, vad_vjp, xad_vjp, vjp_t, vjp_params = func(t, (v_half, x_0, 
-                    y[2] + dvad_half, y[3] , 
+        dv, dx, vad_vjp_half, xad_vjp_half, vjp_t, vjp_params = func(t, (v_half, x_0, 
+                    vad_half, x_full , 
                     y[4] + dLdt_half, y[5] + dLdpar_half
                    ))
 
         v_step_full = v_step_half + dv * dt * 0.5 
-        
-        vadjoint_step = vad_full * dt# update adjoint state 
-        xadjoint_step = xad_vjp * dt 
+
+        dvad_0 = vad_full * dt  # update adjoint state 
+        dxad_0 = xad_vjp_half * dt#* 0.5
+        print(vad_vjp_half, xad_vjp)
         dLdt_step = vjp_t * dt 
         dLdpar_step = vjp_params * dt
         
         return (v_step_full, x_step_full,
-                vadjoint_step, xadjoint_step, 
+                dvad_0, dxad_0, 
                 dLdt_step, dLdpar_step)
     else:
         raise ValueError("received {} argumets integration, but should be {} for the forward call or {} for the backward call".format(
