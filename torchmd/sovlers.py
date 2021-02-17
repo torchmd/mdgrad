@@ -26,7 +26,7 @@ def verlet_update(func, t, dt, y):
         a_0, v_0 = func(t, y)
 
         # update half step 
-        v_step_half = 1/2 *  a_0 * dt 
+        v_step_half = 0.5 *  a_0 * dt 
 
         # update full step in positions 
         q_step_full = (y[0] + v_step_half) * dt 
@@ -35,7 +35,7 @@ def verlet_update(func, t, dt, y):
         a_dt, v_half = func(t, (y[0] + v_step_half, y[1] + q_step_full))
 
         # full step update 
-        v_step_full = v_step_half + 1/2 * a_dt * dt
+        v_step_full = v_step_half + 0.5 * a_dt * dt
 
         return tuple((v_step_full, q_step_full))
     
@@ -43,13 +43,13 @@ def verlet_update(func, t, dt, y):
 
         v_full, x_full, vad_full, xad_full = y[0], y[1], y[2], y[3]
 
-        dv, dx, vad_vjp, xad_vjp, vjp_t, vjp_params= func(t, y)  # compute dy, and vjps 
+        dv, dx, vad_vjp_full, xad_vjp_full, vjp_t, vjp_params= func(t, y)  # compute dy, and vjps 
 
         # Reverse integrator 
         v_step_half = 1/2 * dv * dt 
-        v_half = v_full + v_step_half
+        v_half = v_full - v_step_half
         x_step_full = v_half * dt 
-        x_0 = x_full + x_step_full
+        x_0 = x_full - x_step_full
 
         #print(vad_vjp, xad_vjp)
 
@@ -68,12 +68,13 @@ def verlet_update(func, t, dt, y):
         #xad_full_tmp = xad_vjp
         #vad_full = vad_full
 
-        dvad_half = xad_full * dt #* 0.5 # alternatively dvad_half = dvad_half = xad_full *  dt
+        dxad_full = xad_vjp_full * dt * 0.5
+        dvad_half = (xad_full + dxad_full) * dt #* 0.5 # alternatively dvad_half = dvad_half = xad_full *  dt
+
         vad_half = vad_full + dvad_half 
 
-
         #xad_full = xad_vjp
-        vad_full = vad_vjp
+        #vad_full = vad_vjp_full
 
         #print(vad_full, xad_full, vad_vjp, xad_vjp, vad_half)
 
@@ -83,20 +84,20 @@ def verlet_update(func, t, dt, y):
         #xad_vjp_half = xad_vjp * dt * 0.5
         
         dv, dx, vad_vjp_half, xad_vjp_half, vjp_t, vjp_params = func(t, (v_half, x_0, 
-                    vad_half, x_full , 
+                    vad_half, xad_full + dxad_full , 
                     y[4] + dLdt_half, y[5] + dLdpar_half
                    ))
 
-        v_step_full = v_step_half + dv * dt * 0.5 
+        v_step_full = v_step_half - dv * dt * 0.5 
 
-        dvad_0 = vad_full * dt  # update adjoint state 
-        dxad_0 = xad_vjp_half * dt#* 0.5
-        print(vad_vjp_half, xad_vjp)
+        dvad_0 = vad_vjp_full * dt # update adjoint state 
+        dxad_0 = xad_vjp_half * dt * 0.5#   xad_vjp_half * dt #+  xad_vjp_full * dt * 0.5
+
         dLdt_step = vjp_t * dt 
         dLdpar_step = vjp_params * dt
         
         return (v_step_full, x_step_full,
-                dvad_0, dxad_0, 
+                (dvad_0), (dxad_0 + dxad_full), 
                 dLdt_step, dLdpar_step)
     else:
         raise ValueError("received {} argumets integration, but should be {} for the forward call or {} for the backward call".format(
@@ -252,6 +253,7 @@ class OdeintAdjointMethod(torch.autograd.Function):
             for i in range(T - 1, 0, -1):
 
                 ans_i = tuple(ans_[i] for ans_ in ans)
+
                 grad_output_i = tuple(grad_output_[i] for grad_output_ in grad_output)
                 func_i = func(t[i], ans_i)
 
