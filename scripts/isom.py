@@ -151,30 +151,48 @@ def calc_yield(psi_t, prod_op, reac_op):
 
         # subtract the part that remained in the ground state
         pg = psi_r[0]**2 + psi_i[0] **2
+
+        # def 1
         y1 = (expec_r + expec_i) / ((expec_r + expec_i) + (expec_rC + expec_iC) - pg)
 
-
-        # def1
+        # def 2
         pC_g = pg + 2 * ((reac_op[0, 1:].reshape(-1) * psi_r[1:]).sum() * psi_r[0] + \
                         (reac_op[0, 1:].reshape(-1) * psi_i[1:]).sum())
         y2 = (expec_r + expec_i) / ((expec_r + expec_i) + (expec_rC + expec_iC) - pC_g)
 
-        # def2 
+        # def 3
         y3 = (expec_r + expec_i) / (1 - pg)
 
 
-        # def3 
-        # projector onto excited state
-        proj_exc = torch.diag(torch.ones(dim)).to(psi_r.device)
-        proj_exc[0, 0] = 0
+        # def 4
+        # projector onto excited state - equivalent to taking
+        # slice at indices >=1 for the two dimensions of the
+        # operators and the one dimension of the wave function
+
         # product operator in excited state
-        prod_op_exc = torch.matmul(proj_exc, torch.matmul(prod_op,
-                                                          proj_exc))
+        prod_op_exc = prod_op[1:, 1:]
+
         # reactant operator in excited state
-        reac_op_exc = torch.matmul(proj_exc, torch.matmul(reac_op,
-                                                          proj_exc))
-        # <reactant
-        y4 = (expec_r + expec_i) / ((expec_r + expec_i) + (expec_rC + expec_iC))
+        reac_op_exc = reac_op[1:, 1:]
+
+        # wave function in excited state
+        psi_r_exc = psi_r[1:]
+        psi_i_exc = psi_i[1:]
+
+        # qy measured only relative to excited state population
+
+        # <product>
+        expec_r_exc = (psi_r_exc * (torch.matmul(prod_op_exc, psi_r_exc))).sum().reshape(-1)
+        expec_i_exc = (psi_i_exc * (torch.matmul(prod_op_exc, psi_i_exc))).sum().reshape(-1)
+
+        # <reactant>
+        expec_rC_exc = (psi_r_exc * (torch.matmul(reac_op_exc, psi_r_exc))).sum().reshape(-1)
+        expec_iC_exc = (psi_i_exc * (torch.matmul(reac_op_exc, psi_i_exc))).sum().reshape(-1)
+
+        # qy
+        y4 = (expec_r_exc + expec_i_exc) / ((expec_r_exc + expec_i_exc) + (expec_rC_exc + expec_iC_exc))
+
+
 
         y1_t.append(y1)
         y2_t.append(y2)
@@ -262,7 +280,7 @@ if __name__ == "__main__":
             psi_t = odeint(ode, psi_0, t, method='rk4')
             y1_t, y2_t, y3_t, y4_t = calc_yield(psi_t, quant_dic["prod_op"].to(DEVICE), quant_dic["reac_op"].to(DEVICE))
 
-            loss = objective(y1_t)
+            loss = objective(y4_t)
 
             loss.backward()
             print("Average quantum yield is {}".format(-loss.item()))

@@ -276,13 +276,12 @@ class Isomerization(torch.nn.Module):
     
     def forward(self, t, psi):
         with torch.set_grad_enabled(True):
-            psi.requires_grad = True      
-            
+            psi.requires_grad = True
             # real and imaginary parts of psi
             psi_R = psi[:self.dim]
             psi_I =  psi[self.dim:]
 
-            if t < self.max_e_t:
+            if t < self.max_e_t.to(t.device):
                 # find the value of E at the time closest
                 # to now
                 t_index = torch.argmin(abs(self.e_field[:, 0] - t))
