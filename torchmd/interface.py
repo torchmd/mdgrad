@@ -354,6 +354,9 @@ class BondPotentials(torch.nn.Module):
         self.k = k 
         self.ro = ro 
         self.top = top.to(self.device)
+
+    def _reset_topology(self, xyz):
+        pass 
         
     def forward(self, xyz):
         """Summary
