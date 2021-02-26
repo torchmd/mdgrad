@@ -188,30 +188,41 @@ def train(params, suggestion_id, project_name, device, n_epochs):
            'pair': pair
             }) 
 
-    from torchmd.md import NoseHooverChain, Simulations
+    from torchmd.md import NoseHooverChain, NVE, Simulations
 
-    diffeq = NoseHooverChain(FF, 
-            system,
-            Q=50.0, 
-            T=params['T'],
-            num_chains=5, 
-            adjoint=True).to(device)
+
+    if params['method'] == 'NH_verlet':
+        diffeq = NoseHooverChain(FF, 
+                system,
+                Q=50.0, 
+                T=params['T'],
+                num_chains=5, 
+                adjoint=True).to(device)
+    else:
+        diffeq = NVE(FF, 
+                system,
+                adjoint=True).to(device)
 
     tau = params['tau']
     sim = Simulations(system, diffeq, wrap=False, method=params['method'])
 
     optimizer = torch.optim.Adam(list(diffeq.parameters() ), lr=params['lr'])
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
-                                              'min', 
-                                              min_lr=5e-5, 
-                                              verbose=True, factor = 0.5, patience= 20,
-                                              threshold=5e-5)
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+    #                                           'min', 
+    #                                           min_lr=5e-5, 
+    #                                           verbose=True, factor=0.75, patience=60,
+    #                                           threshold=5e-5)
 
     loss_log = []
 
     for i in range(0, n_epochs):
+
         trajs = sim.simulate(steps=tau , frequency=int(tau), dt=params['dt'])
-        v_t, q_t, pv_t = trajs 
+
+        if params['method'] == 'NH_verlet':
+            v_t, q_t, pv_t = trajs 
+        elif params['method'] == 'verlet':
+            v_t, q_t = trajs
         
         if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
             return 55.0 
@@ -293,7 +304,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
             optimizer.step()
             optimizer.zero_grad()
 
-            scheduler.step(loss)
+            #scheduler.step(loss)
             
             print(loss.item())
             if math.isnan(loss_record.item()):
@@ -330,7 +341,7 @@ if __name__ == '__main__':
     else:
         token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
         n_obs = 1000
-        n_epochs = 500
+        n_epochs = 750
 
     logdir = params['logdir']
     #Intiailize connections 
@@ -345,17 +356,28 @@ if __name__ == '__main__':
                 dict(name='epsilon', type='double', bounds=dict(min=0.01, max=0.2)),
                 dict(name='tau', type='int', bounds=dict(min=10, max=60)),
                 dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-3)),
-                dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
+                #dict(name='T', type='double', bounds=dict(min=0.005, max=0.1)),
                 dict(name='dt', type='double', bounds=dict(min=0.005, max=0.05)),
-                dict(name='method', type='categorical', categorical_values=["NH_verlet", "rk4"]),
-                dict(name='lastframe', type='categorical', categorical_values=["True", "False"]),
-                dict(name='l_b', type='double', bounds=dict(min=0.0, max=1.0)),
-                dict(name='l_a', type='double', bounds=dict(min=0.0, max=1.0)),
-                dict(name='l_d', type='double', bounds=dict(min=0.0, max=1.0)),
-                dict(name='l_dis', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='method', type='categorical', categorical_values=["verlet", "NH_verlet"]),
+                #dict(name='lastframe', type='categorical', categorical_values=["True", "False"]),
+                dict(name='l_bond', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_bond13', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_bond14', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_bond15', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_bond16', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_angle1', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='l_dihe1', type='double', bounds=dict(min=0.0, max=1.0)),
                 dict(name='l_end2end', type='double', bounds=dict(min=0.0, max=1.0)),
-                dict(name='focus_temp', type='double', bounds=dict(min=0.01, max=1.0)),
+                # dict(name='l_b', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_a', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_d', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_dis', type='double', bounds=dict(min=0.0, max=1.0)),
+                # dict(name='l_end2end', type='double', bounds=dict(min=0.0, max=1.0)),
+                #dict(name='focus_temp', type='double', bounds=dict(min=0.01, max=1.0)),
                 dict(name='k0', type='double', bounds=dict(min=0.2, max=5.0)),
+                dict(name='cutoff', type='double', bounds=dict(min=1.2, max=5.0)),
+                dict(name='n_convolutions', type='int', bounds=dict(min=2, max=5)),
+                dict(name='T', type='double', bounds=dict(min=0.001, max=0.2)),
             ],
             observation_budget = n_obs, # how many iterations to run for the optimization
             parallel_bandwidth=10,
@@ -368,12 +390,19 @@ if __name__ == '__main__':
     while experiment.progress.observation_count < experiment.observation_budget:
 
         suggestion = conn.experiments(experiment.id).suggestions().create()
+        trainparams = suggestion.assignments
 
-        value = train(params=suggestion.assignments, 
-                                suggestion_id=suggestion.id, 
-                                device=params['device'],
-                                project_name=logdir,
-                                n_epochs=n_epochs)
+        gnn_params = {"n_atom_basis": 128,
+                  "n_filters": 128,
+                  "n_gaussians": 32}
+
+        trainparams = {**gnn_params, **trainparams}
+
+        value = train(params=trainparams, 
+                    suggestion_id=suggestion.id, 
+                    device=params['device'],
+                    project_name=logdir,
+                    n_epochs=n_epochs)
 
         print(value)
 
