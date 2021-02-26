@@ -778,8 +778,7 @@ pair_data_dict = {
       "cell": FaceCenteredCubic,
       "target_pot": ModifiedMorse(a=6, phi=1)
    },
-
-   {'morse_a_8.0_phi3.06_rho0.3_T1.0_dt0.01': 
+   'morse_a_8.0_phi3.06_rho0.3_T1.0_dt0.01': 
       {'tag': 'morse_a_8.0_phi3.06_rho0.3_T1.0_dt0.01',
       'vacf_fn': '../data/Morse_data/rdf_8.0_3.06_rho0.3_T1.0_dt0.01.csv',
       'rdf_fn': '../data/Morse_data/vacf_8.0_3.06_rho0.3_T1.0_dt0.01.csv',
@@ -816,7 +815,8 @@ pair_data_dict = {
       'element': 'H',
       'mass': 1.0,
       'N_unitcell': 4,
-      "cell": FaceCenteredCubic,},
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=7.0, phi=1.58)},
      'morse_a_6.5_phi0.81_rho0.3_T1.0_dt0.01': 
      {'tag': 'morse_a_6.5_phi0.81_rho0.3_T1.0_dt0.01',
       'vacf_fn': '../data/Morse_data/rdf_6.5_0.81_rho0.3_T1.0_dt0.01.csv',
@@ -972,7 +972,49 @@ pair_data_dict = {
       'mass': 1.0,
       'N_unitcell': 4,
       "cell": FaceCenteredCubic,
-      "target_pot": ModifiedMorse(a=5.5, phi=-0.84)}}
+      "target_pot": ModifiedMorse(a=5.5, phi=-0.84)},
+
+    'morse_a_10.0_phi5.5_rho0.3_T1.0_dt0.01': 
+    {'tag': 'morse_a_10.0_phi5.5_rho0.3_T1.0_dt0.01',
+      'vacf_fn': '../data/Morse_data/rdf_10.0_5.5_rho0.3_T1.0_dt0.01.csv',
+      'rdf_fn': '../data/Morse_data/vacf_10.0_5.5_rho0.3_T1.0_dt0.01.csv',
+      'rho': 0.3,
+      'T': 1.0,
+      'start': 0.6,
+      'end': 3.3,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4,
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=10.0, phi=5.5)},
+
+     'morse_a_10.0_phi5.5_rho0.5_T1.0_dt0.01': 
+     {'tag': 'morse_a_10.0_phi5.5_rho0.5_T1.0_dt0.01',
+      'vacf_fn': '../data/Morse_data/rdf_10.0_5.5_rho0.5_T1.0_dt0.01.csv',
+      'rdf_fn': '../data/Morse_data/vacf_10.0_5.5_rho0.5_T1.0_dt0.01.csv',
+      'rho': 0.5,
+      'T': 1.0,
+      'start': 0.6,
+      'end': 3.3,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4, 
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=10.0, phi=5.5)},
+
+     'morse_a_10.0_phi5.5_rho0.7_T1.0_dt0.01': 
+     {'tag': 'morse_a_10.0_phi5.5_rho0.7_T1.0_dt0.01',
+      'vacf_fn': '../data/Morse_data/rdf_10.0_5.5_rho0.7_T1.0_dt0.01.csv',
+      'rdf_fn': '../data/Morse_data/vacf_10.0_5.5_rho0.7_T1.0_dt0.01.csv',
+      'rho': 0.7,
+      'T': 1.0,
+      'start': 0.6,
+      'end': 3.3,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4,
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=10.0, phi=5.5)}
 
     }
 
