@@ -88,8 +88,6 @@ def verlet_update(func, t, dt, y):
                     y[4] + dLdt_half, y[5] + dLdpar_half
                    ))
 
-        print("half", dLdpar_half)
-
         v_step_full = v_step_half - dv * dt * 0.5 
 
         dvad_0 = vad_vjp_full * dt # update adjoint state 
@@ -97,9 +95,6 @@ def verlet_update(func, t, dt, y):
 
         dLdt_step = vjp_t * dt 
         dLdpar_step = vjp_params * dt * 0.5
-
-        print("full", dLdpar_step)
-
         
         return (v_step_full, x_step_full,
                 (dvad_half), (dxad_0 + dxad_full), 
