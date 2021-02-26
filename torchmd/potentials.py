@@ -4,6 +4,7 @@ from torch.nn import Sequential, Linear, ReLU, LeakyReLU, ModuleDict
 from nff.nn.layers import GaussianSmearing
 from torch import nn
 import numpy as np
+from nff.utils.scatter import compute_grad
 
 from scipy import special
 
@@ -27,6 +28,33 @@ MLPPARAMS = {'D_in': 1,
               'num_layers': 3,
               'act': 'relu',
               'D_out': 1}
+
+class Harmonic1D(torch.nn.Module):
+
+    def __init__(self,  device=0,  adjoint=True):
+        super().__init__()
+        self.device = device
+        self.adjoint = adjoint
+        self.k = torch.nn.Parameter(torch.Tensor([1.0]))
+        
+    def potential(self, x):
+        return 0.5 * self.k * x.pow(2)
+        
+    def forward(self, t, state):
+        with torch.set_grad_enabled(True):        
+            
+            v = state[0]
+            q = state[1]
+            
+            if self.adjoint:
+                q.requires_grad = True
+            
+            u = self.potential(q)
+            
+            dqdt = v
+            dvdt = -compute_grad(inputs=q, output=u.sum(-1)).reshape(-1)
+            
+        return dvdt, dqdt
 
 class LJFamily(torch.nn.Module):
     def __init__(self, sigma=1.0, epsilon=1.0, attr_pow=6,  rep_pow=12):
