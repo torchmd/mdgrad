@@ -162,7 +162,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
     from torchmd.md import NoseHooverChain, NVE, Simulations
 
 
-    if params['method'] == 'NH_verlet':
+    if params['method'] == 'NH_verlet' or params['method'] == 'rk4':
         diffeq = NoseHooverChain(FF, 
                 system,
                 Q=50.0, 
@@ -190,7 +190,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
 
         trajs = sim.simulate(steps=tau , frequency=int(tau), dt=params['dt'])
 
-        if params['method'] == 'NH_verlet':
+        if params['method'] == 'NH_verlet' or params['method'] == 'rk4':
             v_t, q_t, pv_t = trajs 
         elif params['method'] == 'verlet':
             v_t, q_t = trajs
@@ -225,7 +225,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
             loss_b = (b - b_targ.to(device).squeeze()).pow(2).mean()
             loss_a = (a - a_targ.to(device).squeeze()).pow(2).mean()
             loss_d = (d - d_targ.to(device).squeeze()).pow(2).mean()
-            loss_end2end = (dis_end2end - dis_end2end_targ.to(device).squeeze()).pow(2).mean()
+            #loss_end2end = (dis_end2end - dis_end2end_targ.to(device).squeeze()).pow(2).mean()
 
             dis_diff = dis - dis_targ.to(dis.device)
 
@@ -240,7 +240,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
                     params['l_a'] * loss_a + \
                      params['l_d'] * loss_d + \
                      params['l_dis'] * loss_dis + \
-                      params['l_end2end'] * loss_end2end
+                     # params['l_end2end'] * loss_end2end
 
             loss_record = loss_b + loss_a + loss_d #+ dis_diff.pow(2).mean()
 
@@ -289,7 +289,7 @@ if __name__ == '__main__':
     else:
         token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
         n_obs = 1000
-        n_epochs = 750
+        n_epochs = 1000
 
     logdir = params['logdir']
     #Intiailize connections 
@@ -305,12 +305,12 @@ if __name__ == '__main__':
                 dict(name='tau', type='int', bounds=dict(min=10, max=60)),
                 dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-3)),
                 dict(name='dt', type='double', bounds=dict(min=0.005, max=0.05)),
-                dict(name='method', type='categorical', categorical_values=["verlet", "NH_verlet"]),
-                dict(name='l_b', type='double', bounds=dict(min=0.0, max=1.0)),
-                dict(name='l_a', type='double', bounds=dict(min=0.0, max=1.0)),
-                dict(name='l_d', type='double', bounds=dict(min=0.0, max=1.0)),
-                dict(name='l_dis', type='double', bounds=dict(min=0.0, max=1.0)),
-                dict(name='l_end2end', type='double', bounds=dict(min=0.0, max=1.0)),
+                dict(name='method', type='categorical', categorical_values=["verlet", "NH_verlet", "rk4"]),
+                dict(name='l_b', type='double', bounds=dict(min=0.01, max=1.0)),
+                dict(name='l_a', type='double', bounds=dict(min=0.01, max=1.0)),
+                dict(name='l_d', type='double', bounds=dict(min=0.01, max=1.0)),
+                dict(name='l_dis', type='double', bounds=dict(min=0.01, max=1.0)),
+                #dict(name='l_end2end', type='double', bounds=dict(min=0.0, max=0.1)),
                 # spiral hyperparam
                 dict(name='a_spiral', type='double', bounds=dict(min=0.8, max=2.0)),
                 dict(name='dz_spiral', type='double', bounds=dict(min=0.1, max=0.5)),
@@ -321,7 +321,7 @@ if __name__ == '__main__':
                 dict(name='cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
                 dict(name='loss_cutoff', type='double', bounds=dict(min=1.5, max=5.0)),
                 dict(name='n_convolutions', type='int', bounds=dict(min=2, max=5)),
-                dict(name='T', type='double', bounds=dict(min=0.001, max=0.2)),
+                dict(name='T', type='double', bounds=dict(min=0.001, max=0.15)),
             ],
             observation_budget = n_obs, # how many iterations to run for the optimization
             parallel_bandwidth=10,
