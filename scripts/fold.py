@@ -239,7 +239,7 @@ def train(params, suggestion_id, project_name, device, n_epochs):
             loss = params['l_b'] * loss_b + \
                     params['l_a'] * loss_a + \
                      params['l_d'] * loss_d + \
-                     params['l_dis'] * loss_dis + \
+                     params['l_dis'] * loss_dis
                      # params['l_end2end'] * loss_end2end
 
             loss_record = loss_b + loss_a + loss_d #+ dis_diff.pow(2).mean()
