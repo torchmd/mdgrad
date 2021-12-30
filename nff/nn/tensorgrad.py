@@ -4,7 +4,7 @@ import numpy as np
 
 import torch
 from torch.autograd import grad
-from torch.autograd.gradcheck import zero_gradients
+#from torch.autograd.gradcheck import zero_gradients
 
 
 def compute_jacobian(inputs, output, device):
