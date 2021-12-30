@@ -11,7 +11,7 @@ from ase import units, Atoms
 from torchmd.interface import GNNPotentials, PairPotentials, Stack
 from torchmd.system import System
 from torchmd.potentials import ExcludedVolume, LennardJones, LJFamily,  pairMLP
-from nff.train import get_model
+#from nff.train import get_model
 
 from torchmd.md import NoseHooverChain 
 from torchmd.observable import rdf, vacf
