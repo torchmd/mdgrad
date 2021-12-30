@@ -52,7 +52,7 @@ else:
     "n_width": 87,
     "nbins": 100,
     "nonlinear": "ELU",
-    "opt_freq": 60,
+    "opt_freq": 120, # 60
     "power": 10,
     "rdf_weight": 0.95,
     "train_vacf": "True",
@@ -69,7 +69,7 @@ sys_params = {
 'n_sim': n_sim,
 'data': params['data'],
 'val': params['val'],
-'t_range': 50, 
+'t_range': 100, # 50 
 'skip': 5,
 'cutoff': assignments['cutoff'],
 'nbr_list_device': 'cpu',
@@ -83,19 +83,19 @@ if assignments['train_vacf'] == 'False':
 if params['trainvacf']:
     assignments['train_vacf'] = 'True'
 
-if params['sigma']:
+if params['sigma'] is not None :
     print("chaging default sigma from {} to {}".format(assignments['sigma'], params['sigma']))
     assignments['sigma'] = params['sigma']
 
-if params['lr']:
+if params['lr'] is not None:
     print("chaging default lr from {} to {}".format(assignments['lr'], params['lr']))
     assignments['lr'] = params['lr']
 
-if params['cutoff']:
+if params['cutoff'] is not None:
     print("chaging default cutoff from {} to {}".format(assignments['cutoff'], params['cutoff']))
     sys_params['cutoff'] = params['cutoff']
 
-if params['vacf_weight']:
+if params['vacf_weight'] is not None:
     print("chaging default vacf_weight from {} to {}".format(assignments['vacf_weight'], params['vacf_weight']))
     assignments['vacf_weight'] = params['vacf_weight']
 

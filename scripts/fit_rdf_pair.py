@@ -10,7 +10,7 @@ from ase import units, Atoms
 
 from torchmd.interface import GNNPotentials, PairPotentials, Stack
 from torchmd.system import System
-from torchmd.potentials import ExcludedVolume, LennardJones, pairMLP
+from torchmd.potentials import ExcludedVolume, LennardJones, LJFamily,  pairMLP
 from nff.train import get_model
 
 from torchmd.md import NoseHooverChain 
@@ -60,6 +60,7 @@ def plot_vacf(vacf_sim, vacf_target, fn, path, dt=0.01, save_data=False):
 
     if save_data:
          np.savetxt(path + '/vacf_{}.txt'.format(fn), np.stack((t_range, vacf_sim)), delimiter=',' )
+         np.savetxt(path + '/vacf_{}_target.txt'.format(fn), np.stack((t_range, vacf_target)), delimiter=',' )
 
     plt.savefig(path + '/vacf_{}.pdf'.format(fn), bbox_inches='tight')
     plt.close()
@@ -76,6 +77,7 @@ def plot_rdf( g_sim, rdf_target, fn, path, start, nbins, save_data=False, end=2.
 
     if save_data:
         np.savetxt(path + '/rdf_{}.txt'.format(fn), np.stack((bins, g_sim)), delimiter=',' )
+        np.savetxt(path + '/rdf_{}_target.txt'.format(fn), np.stack((bins, rdf_target)), delimiter=',' )
 
     plt.show()
     plt.savefig(path + '/rdf_{}.pdf'.format(fn), bbox_inches='tight')
@@ -151,17 +153,69 @@ def lattice_2d(rho, size):
 
     return positions, cell
 
+
+
+def get_target_obs(system, data_str, n_sim, rdf_range, t_range, dt, skip=25):
+    
+    print("simulating {}".format(data_str))
+    device = system.device 
+    
+    target_pot = pair_data_dict[data_str]['target_pot']
+    T = pair_data_dict[data_str]['T']
+
+    pot = PairPotentials(system, target_pot, cutoff=2.5, nbr_list_device=device).to(device)
+
+    diffeq = NoseHooverChain(pot, 
+            system,
+            Q=50.0, 
+            T=T,
+            num_chains=5, 
+            adjoint=True,
+            topology_update_freq=1).to(system.device)
+
+    # define simulator with 
+    sim = Simulations(system, diffeq)
+
+    rdf_obs = rdf(system, nbins=100, r_range=rdf_range)
+    vacf_obs = vacf(system, t_range=t_range) 
+    
+    all_vacf_sim = []
+
+    for i in range(n_sim):
+        v_t, q_t, pv_t = sim.simulate(100, dt=dt, frequency=100)
+
+        if i >= skip:
+            vacf_sim = vacf_obs(v_t).detach().cpu().numpy()
+            all_vacf_sim.append(vacf_sim)
+            
+    # loop over to ocmpute observables 
+    trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device).detach()
+    all_g_sim = []
+    for i in range(len(trajs)):
+
+        if i >= skip:
+            _, _, g_sim = rdf_obs(trajs[[i]])
+            all_g_sim.append(g_sim.detach().cpu().numpy())
+
+    all_g_sim = np.array(all_g_sim).mean(0)
+    all_vacf_sim = np.array(all_vacf_sim).mean(0)
+    
+    return all_g_sim, all_vacf_sim
+
+
 def get_observer(system, data_str, nbins, t_range, rdf_start):
 
-    rdf_data_path = pair_data_dict[data_str]['rdf_fn']
-    rdf_data = np.loadtxt(rdf_data_path, delimiter=',')
+    # rdf_data_path = pair_data_dict[data_str]['rdf_fn']
+    # rdf_data = np.loadtxt(rdf_data_path, delimiter=',')
 
-    if pair_data_dict[data_str].get("vacf_fn", None):
-        vacf_data_path = pair_data_dict[data_str]['vacf_fn']
-        vacf_target = np.loadtxt(vacf_data_path, delimiter=',')[:t_range]
-        vacf_target = torch.Tensor(vacf_target).to(system.device)
-    else:
-        vacf_target = None
+    # if pair_data_dict[data_str].get("vacf_fn", None):
+    #     vacf_data_path = pair_data_dict[data_str]['vacf_fn']
+    #     vacf_target = np.loadtxt(vacf_data_path, delimiter=',')[:t_range]
+    #     vacf_target = torch.Tensor(vacf_target).to(system.device)
+    # else:
+    #     vacf_target = None
+    # get dt 
+    dt = pair_data_dict[data_str].get("dt", 0.01)
 
     rdf_end = pair_data_dict[data_str].get("end", None)
 
@@ -170,9 +224,18 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
     obs = rdf(system, nbins, (rdf_start , rdf_end) )
     # get experimental rdf 
     dim = pair_data_dict[data_str].get("dim", 3) 
+
+    # generate simulated data 
+    rdf_data, vacf_target = get_target_obs(system, data_str, 100, (rdf_start, rdf_end), nbins, skip=25, dt=dt)
+
+    vacf_target = torch.Tensor(vacf_target).to(system.device)
+    rdf_data = np.vstack( (np.linspace(rdf_start, rdf_end, nbins), rdf_data))
+
     _, rdf_target = get_exp_rdf(rdf_data, nbins, (rdf_start, rdf_end), obs.device, dim=dim)
 
     vacf_obs = vacf(system, t_range=t_range) 
+
+    # get model potential and simulate 
 
     return xnew, rdf_target, obs, vacf_target, vacf_obs
 
@@ -198,7 +261,7 @@ def plot_pair(fn, path, model, prior, device, end=2.5, target_pot=None):
     if target_pot is None:
         target_pot = LennardJones(1.0, 1.0)
     else:
-        target_pot = target_pot
+        target_pot = target_pot.to("cpu")
 
     x = torch.linspace(0.1, end, 250)[:, None].to(device)
     
@@ -235,7 +298,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     nbins = assignments['nbins']
     tau = assignments['opt_freq']
 
-    rdf_start = assignments.get("rdf_start", 0.75)
+    rdf_start = assignments.get("start", 0.75)
     skip = 1
 
     nbr_list_device = sys_params.get("nbr_list_device", device)
@@ -283,7 +346,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         "power": assignments['power']}
 
     NN = pairMLP(**mlp_parmas)
-    pair = ExcludedVolume(**lj_params)
+    pair = LJFamily(epsilon=2.0, sigma=assignments['sigma'], rep_pow=6, attr_pow=3)  # ExcludedVolume(**lj_params)
 
     model_list = []
     for i, data_str in enumerate(data_str_list + val_str_list):
@@ -318,6 +381,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     rdf_bins_list = []
 
     for i, data_str in enumerate(data_str_list + val_str_list):
+        rdf_start = pair_data_dict[data_str].get("start", 0.75)
         x, rdf_target, rdf_obs, vacf_target, vacf_obs = get_observer(system_list[i],
                                                                      data_str, 
                                                                      nbins, 
@@ -357,12 +421,16 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         loss_vacf = torch.Tensor([0.0]).to(device)
 
         # temperature annealing 
-        for j, sim in enumerate(sim_list):
+        n_train = len(data_str_list)
+        for j, sim in enumerate(sim_list[:n_train]): # only simulate config that needs training 
 
             data_str = (data_str_list + val_str_list)[j]
 
+            # get dt 
+            dt = pair_data_dict[data_str].get("dt", 0.01)
+
             # Simulate 
-            v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=sys_params['dt'])
+            v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=dt)
 
             if data_str in val_str_list:
                 v_t = v_t.detach()
@@ -370,6 +438,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                 pv_t = pv_t.detach()
 
             if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
+                print("encounter NaN")
                 return 5 - (i / n_epochs) * 5
 
             #_, _, g_sim = rdf_obs_list[j](q_t[::skip])
@@ -407,6 +476,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
                 plot_vacf(vacf_sim.detach().cpu().numpy(), vacf_target, 
                     fn=data_str + "_{}".format(i), 
+                    dt=dt,
                     path=model_path)
 
                 plot_rdf(g_sim.detach().cpu().numpy(), rdf_target, 
@@ -422,7 +492,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                               model=sim.integrator.model.models['pairnn'].model, 
                               prior=sim.integrator.model.models['pair'].model, 
                               device=device,
-                              target_pot=target_pot,
+                              target_pot=target_pot.to(device),
                               end=cutoff)
 
         if assignments['train_vacf'] == "True":
@@ -459,10 +529,12 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         #simulate with no optimization
         data_str = (data_str_list + val_str_list)[j]
 
+        dt = pair_data_dict[data_str].get("dt", 0.01)
+
         all_vacf_sim = []
 
         for i in range(sys_params['n_sim']):
-            v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=0.01)
+            v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=dt)
 
             # compute VACF 
             vacf_sim = vacf_obs_list[j](v_t).detach().cpu().numpy()
@@ -492,12 +564,13 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         # plot observables 
         plot_vacf(all_vacf_sim, vacf_target, 
-            fn=data_str + "_{}".format("final"), 
+            fn=data_str, 
             path=model_path,
+            dt=dt,
             save_data=True)
 
         plot_rdf(all_g_sim, rdf_target, 
-            fn=data_str + "_{}".format("final"),
+            fn=data_str,
              path=model_path, 
              start=rdf_start, 
              nbins=nbins,

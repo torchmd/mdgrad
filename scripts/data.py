@@ -67,7 +67,8 @@ pair_data_dict = {
                         'element': "H",
                         'mass': 1.0,
                         "N_unitcell": 4,
-                        "cell": FaceCenteredCubic
+                        "cell": FaceCenteredCubic,
+                        "target_pot": LennardJones()
                         },
 
     'lj_0.845_1.0': {
@@ -80,7 +81,8 @@ pair_data_dict = {
                     'element': "H",
                     'mass': 1.0,
                     "N_unitcell": 4,
-                    "cell": FaceCenteredCubic
+                    "cell": FaceCenteredCubic,
+                    "target_pot": LennardJones()
                     },
 
     'lj_0.845_0.75': {
@@ -93,7 +95,8 @@ pair_data_dict = {
                     'element': "H",
                     'mass': 1.0,
                     "N_unitcell": 4,
-                    "cell": FaceCenteredCubic
+                    "cell": FaceCenteredCubic,
+                    "target_pot": LennardJones()
                     },
 
     'lj_0.7_1.2': {
@@ -106,7 +109,8 @@ pair_data_dict = {
                 'element': "H",
                 'mass': 1.0,
                 "N_unitcell": 4,
-                "cell": FaceCenteredCubic
+                "cell": FaceCenteredCubic,
+                "target_pot": LennardJones()
                 },
 
     'lj_1.2_1.2': {
@@ -119,7 +123,8 @@ pair_data_dict = {
                 'element': "H",
                 'mass': 1.0,
                 "N_unitcell": 4,
-                "cell": FaceCenteredCubic
+                "cell": FaceCenteredCubic,
+                "target_pot": LennardJones()
                 },
 
     'lj_0.9_1.2': {
@@ -132,7 +137,8 @@ pair_data_dict = {
                 'element': "H",
                 'mass': 1.0,
                 "N_unitcell": 4,
-                "cell": FaceCenteredCubic
+                "cell": FaceCenteredCubic,
+                "target_pot": LennardJones()
                 },
 
     'lj_1.0_1.2': {
@@ -145,7 +151,8 @@ pair_data_dict = {
             'element': "H",
             'mass': 1.0,
             "N_unitcell": 4,
-            "cell": FaceCenteredCubic
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
 
             },
     'lj_0.5_1.2': {
@@ -158,8 +165,8 @@ pair_data_dict = {
             'element': "H",
             'mass': 1.0,
             "N_unitcell": 4,
-            "cell": FaceCenteredCubic
-
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
             }, 
 
     'lj_1.2_0.75': {
@@ -172,7 +179,8 @@ pair_data_dict = {
             'element': "H",
             'mass': 1.0,
             "N_unitcell": 4,
-            "cell": FaceCenteredCubic
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
             },
 
     'lj_1.0_0.75': {
@@ -185,7 +193,8 @@ pair_data_dict = {
             'element': "H",
             'mass': 1.0,
             "N_unitcell": 4,
-            "cell": FaceCenteredCubic
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
             },
 
     'lj_0.3_1.2': {
@@ -198,7 +207,8 @@ pair_data_dict = {
             'element': "H",
             'mass': 1.0,
             "N_unitcell": 4,
-            "cell": FaceCenteredCubic
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
             },
 
 
@@ -212,7 +222,8 @@ pair_data_dict = {
             'element': "H",
             'mass': 1.0,
             "N_unitcell": 4,
-            "cell": FaceCenteredCubic
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
             },
 
 
@@ -226,7 +237,8 @@ pair_data_dict = {
             'element': "H",
             'mass': 1.0,
             "N_unitcell": 4,
-            "cell": FaceCenteredCubic
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
             },
 
     'softsphere_0.7_1.0': {
@@ -239,7 +251,8 @@ pair_data_dict = {
             'element': "H",
             'mass': 1.0,
             "N_unitcell": 4,
-            "cell": FaceCenteredCubic
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
             }, 
 
     'yukawa_0.7_1.0': {
@@ -1014,7 +1027,116 @@ pair_data_dict = {
       'mass': 1.0,
       'N_unitcell': 4,
       "cell": FaceCenteredCubic,
-      "target_pot": ModifiedMorse(a=10.0, phi=5.5)}
+      "target_pot": ModifiedMorse(a=10.0, phi=5.5)},
+
+      # soft to hard potential 
+      # Morse(4.0, 2.2) : 1.0, 0.7, 0.5, 0.3
+     'morse_a_4.0_phi2.2_rho1.0_T1.0': 
+     {'tag': 'morse_a_4.0_phi2.2_rho1.0_T1.0',
+      'dt': 0.005,
+      'rho': 1.0,
+      'T': 1.0,
+      'start': 0.5,
+      'end': 3.0,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4,
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=4.0, phi=2.2)},
+
+    'morse_a_4.0_phi2.2_rho0.7_T1.0': 
+     {'tag': 'morse_a_4.0_phi2.2_rho0.7_T1.0',
+      'dt': 0.005,
+      'rho': 0.7,
+      'T': 1.0,
+      'start': 0.5,
+      'end': 3.0,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4,
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=4.0, phi=2.2)},
+
+    'morse_a_4.0_phi2.2_rho0.5_T1.0': 
+     {'tag': 'morse_a_4.0_phi2.2_rho0.5_T1.0',
+      'dt': 0.005,
+      'rho': 0.5,
+      'T': 1.0,
+      'start': 0.5,
+      'end': 3.0,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4,
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=4.0, phi=2.2)},
+
+    'morse_a_4.0_phi2.2_rho0.3_T1.0': 
+     {'tag': 'morse_a_4.0_phi2.2_rho0.3_T1.0',
+      'dt': 0.005,
+      'rho': 0.3,
+      'T': 1.0,
+      'start': 0.5,
+      'end': 3.0,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4,
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=4.0, phi=2.2)},
+
+
+     'morse_a_6.5_phi-0.45_rho1.0_T1.0': 
+     {'tag': 'morse_a_6.5_phi-0.45_rho1.0_T1.0',
+      'dt': 0.005,
+      'rho': 1.0,
+      'T': 1.0,
+      'start': 0.5,
+      'end': 3.0,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4,
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=6.5, phi=-0.45)},
+
+
+           'morse_a_6.5_phi-0.45_rho0.7_T1.0': 
+     {'tag': 'morse_a_6.5_phi-0.45_rho0.7_T1.0',
+      'dt': 0.005,
+      'rho': 0.7,
+      'T': 1.0,
+      'start': 0.5,
+      'end': 3.0,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4,
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=6.5, phi=-0.45)},
+
+           'morse_a_6.5_phi-0.45_rho0.5_T1.0': 
+     {'tag': 'morse_a_6.5_phi-0.45_rho0.5_T1.0',
+      'dt': 0.005,
+      'rho': 0.5,
+      'T': 1.0,
+      'start': 0.5,
+      'end': 3.0,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4,
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=6.5, phi=-0.45)},
+
+
+    'morse_a_6.5_phi-0.45_rho0.3_T1.0': 
+     {'tag': 'morse_a_6.5_phi-0.45_rho0.3_T1.0',
+      'dt': 0.005,
+      'rho': 0.3,
+      'T': 1.0,
+      'start': 0.5,
+      'end': 3.0,
+      'element': 'H',
+      'mass': 1.0,
+      'N_unitcell': 4,
+      "cell": FaceCenteredCubic,
+      "target_pot": ModifiedMorse(a=6.5, phi=-0.45)}
 
     }
 
