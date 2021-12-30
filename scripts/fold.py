@@ -106,7 +106,8 @@ def train(params, suggestion_id, project_name, device, n_epochs):
 
         return targ_dis, adj 
 
-    dis_targ, adj = get_dis_list(xyz, loss_cutoff)
+    dis_targ, adj = get_dis_list(xyz, cutoff=loss_cutoff)
+
     b_targ, a_targ, d_targ = compute_intcoord(xyz)
 
     # compute bond distances 
@@ -260,12 +261,12 @@ def train(params, suggestion_id, project_name, device, n_epochs):
 
             loss_log.append(loss_record.item())
 
-    from utils import to_mdtraj 
-    traj = to_mdtraj(system, sim.log)
-    traj.center_coordinates()
-    traj.save_xyz("{}/train.xyz".format(model_path))
+        from utils import to_mdtraj 
+        traj = to_mdtraj(system, sim.log)
+        traj.center_coordinates()
+        traj.save_xyz("{}/train.xyz".format(model_path))
 
-    np.savetxt("{}/loss.csv".format(model_path), np.array(loss_log))
+        np.savetxt("{}/loss.csv".format(model_path), np.array(loss_log))
 
     return np.array( loss_log[-10:] ).mean()
 
