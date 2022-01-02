@@ -215,7 +215,7 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
     # else:
     #     vacf_target = None
     # get dt 
-    dt = pair_data_dict[data_str].get("dt", 0.01)
+    dt = pair_data_dict[data_str]['dt']
 
     rdf_end = pair_data_dict[data_str].get("end", None)
 
@@ -427,7 +427,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             data_str = (data_str_list + val_str_list)[j]
 
             # get dt 
-            dt = pair_data_dict[data_str].get("dt", 0.01)
+            dt = pair_data_dict[data_str]["dt"]
 
             # Simulate 
             v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=dt)
@@ -500,10 +500,6 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         else:
             loss = assignments['rdf_weight'] * loss_rdf
 
-        # # save potential file
-        # if np.array(loss_log[-10:]).mean(0).sum() <=  0.005: 
-        #     np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
-
         loss.backward()
 
         optimizer.step()
@@ -529,7 +525,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         #simulate with no optimization
         data_str = (data_str_list + val_str_list)[j]
 
-        dt = pair_data_dict[data_str].get("dt", 0.01)
+        dt = pair_data_dict[data_str]["dt"]
 
         all_vacf_sim = []
 
