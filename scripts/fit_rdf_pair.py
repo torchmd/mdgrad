@@ -226,7 +226,7 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
     dim = pair_data_dict[data_str].get("dim", 3) 
 
     # generate simulated data 
-    rdf_data, vacf_target = get_target_obs(system, data_str, 100, (rdf_start, rdf_end), nbins, skip=25, dt=dt)
+    rdf_data, vacf_target = get_target_obs(system, data_str, 150, (rdf_start, rdf_end), nbins, skip=50, dt=dt)
 
     vacf_target = torch.Tensor(vacf_target).to(system.device)
     rdf_data = np.vstack( (np.linspace(rdf_start, rdf_end, nbins), rdf_data))
@@ -475,12 +475,12 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                 rdf_target = rdf_target_list[j].detach().cpu().numpy()
 
                 plot_vacf(vacf_sim.detach().cpu().numpy(), vacf_target, 
-                    fn=data_str + "_{}".format(i), 
+                    fn=data_str + "_{}".format(str(i).zfill(3)), 
                     dt=dt,
                     path=model_path)
 
                 plot_rdf(g_sim.detach().cpu().numpy(), rdf_target, 
-                    fn=data_str + "_{}".format(i),
+                    fn=data_str + "_{}".format(str(i).zfill(3)),
                      path=model_path, 
                      start=rdf_start, 
                      nbins=nbins,
@@ -488,7 +488,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
             if i % 5 ==0 :
                 potential = plot_pair( path=model_path,
-                             fn=str(i),
+                             fn=str(i).zfill(3),
                               model=sim.integrator.model.models['pairnn'].model, 
                               prior=sim.integrator.model.models['pair'].model, 
                               device=device,
