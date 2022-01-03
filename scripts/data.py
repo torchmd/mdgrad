@@ -100,8 +100,6 @@ pair_data_dict = {
                     },
 
     'lj_0.7_1.2': {
-                'rdf_fn': '../data/LJ_data/rdf_rho0.7_T1.2_dt0.01.csv' ,
-                'vacf_fn': '../data/LJ_data/vacf_rho0.7_T1.2_dt0.01.csv' ,
                 'rho': 0.7,
                 'T': 1.2, 
                 'start': 0.75, 
@@ -126,6 +124,105 @@ pair_data_dict = {
                 "cell": FaceCenteredCubic,
                 "target_pot": LennardJones()
                 },
+
+'lj_0.7_2.0': {
+            'rho': 0.7,
+            'T': 2.0, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
+
+'lj_0.7_1.8': {
+            'rho': 0.7,
+            'T': 1.8, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
+
+'lj_0.7_1.6': {
+            'rho': 0.7,
+            'T': 1.6, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
+'lj_0.7_1.4': {
+            'rho': 0.7,
+            'T': 1.4, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
+'lj_0.7_1.2': {
+            'rho': 0.7,
+            'T': 1.2, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
+'lj_0.7_1.0': {
+            'rho': 0.7,
+            'T': 1.0, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
+
+'lj_0.7_0.8': {
+            'rho': 0.7,
+            'T': 0.8, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
+'lj_0.7_0.6': {
+            'rho': 0.7,
+            'T': 0.6, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
 
     'lj_0.9_1.2': {
                 'rdf_fn': '../data/LJ_data/rdf_rho0.9_T1.2_dt0.01.csv' ,
