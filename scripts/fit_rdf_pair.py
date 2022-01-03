@@ -215,7 +215,7 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
     # else:
     #     vacf_target = None
     # get dt 
-    dt = pair_data_dict[data_str]['dt']
+    dt = pair_data_dict[data_str].get('dt', 0.01)
 
     rdf_end = pair_data_dict[data_str].get("end", None)
 
@@ -427,7 +427,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             data_str = (data_str_list + val_str_list)[j]
 
             # get dt 
-            dt = pair_data_dict[data_str]["dt"]
+            dt = pair_data_dict[data_str].get("dt", 0.01)
 
             # Simulate 
             v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=tau, dt=dt)
@@ -517,7 +517,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             print("training converged")
             break
     # save potentials         
-    if np.array(loss_log[-10:]).mean(0).sum() <=  0.005: 
+    if np.array(loss_log)[-10:, 1].mean() <=  0.005: 
         np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
 
     for j, sim in enumerate(sim_list):
@@ -525,7 +525,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         #simulate with no optimization
         data_str = (data_str_list + val_str_list)[j]
 
-        dt = pair_data_dict[data_str]["dt"]
+        dt = pair_data_dict[data_str].get("dt", 0.01)
 
         all_vacf_sim = []
 
@@ -572,6 +572,13 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
              nbins=nbins,
              save_data=True,
              end=rdf_obs_list[j].r_axis[-1])
+
+
+        # rdf_dev = np.abs(all_g_sim - rdf_target).mean()
+
+        # if rdf_dev <=  0.05: 
+        #     np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
+
 
     # save loss curve 
     plt.plot(np.array( loss_log)[:, 0], label='vacf', alpha=0.7)
