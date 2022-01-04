@@ -589,5 +589,5 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     plt.show()
     plt.close()
 
-    return np.array(loss_log[-10:]).mean(0).sum()
+    return np.array(loss_log)[-10:, 1].mean() 
 
