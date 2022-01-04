@@ -48,8 +48,8 @@ else:
   assignments = {
     "epsilon": 0.4,
     "gaussian_width": 0.10,
-    "n_layers": 2,
-    "n_width": 87,
+    "n_layers": 3,
+    "n_width": 128,
     "nbins": 100,
     "nonlinear": "ELU",
     "opt_freq": 120, # 60
