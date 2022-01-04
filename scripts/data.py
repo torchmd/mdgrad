@@ -224,6 +224,30 @@ pair_data_dict = {
             "target_pot": LennardJones()
             },
 
+'lj_0.7_0.4': {
+            'rho': 0.7,
+            'T': 0.4, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
+'lj_0.7_0.2': {
+            'rho': 0.7,
+            'T': 0.2, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
     'lj_0.9_1.2': {
                 'rdf_fn': '../data/LJ_data/rdf_rho0.9_T1.2_dt0.01.csv' ,
                 'vacf_fn': '../data/LJ_data/vacf_rho0.9_T1.2_dt0.01.csv' ,
