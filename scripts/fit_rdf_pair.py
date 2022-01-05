@@ -16,7 +16,7 @@ from torchmd.potentials import ExcludedVolume, LennardJones, LJFamily,  pairMLP
 from torchmd.md import NoseHooverChain 
 from torchmd.observable import rdf, vacf
 from torchmd.md import Simulations
-from data import pair_data_dict
+from data import pair_data_dict, exp_rdf_data_dict
 from plot import *
 import matplotlib.pyplot as plt
 
@@ -33,6 +33,7 @@ import matplotlib
 # matplotlib.rcParams["xtick.major.width"] = 2
 # matplotlib.rcParams['text.usetex'] = False
 
+pair_data_dict = pair_data_dict.update(exp_rdf_data_dict)
 
 width_dict = {'tiny': 64,
                'low': 128,
@@ -214,6 +215,7 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
     #     vacf_target = torch.Tensor(vacf_target).to(system.device)
     # else:
     #     vacf_target = None
+
     # get dt 
     dt = pair_data_dict[data_str].get('dt', 0.01)
 
@@ -222,18 +224,23 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
     xnew = np.linspace(rdf_start , rdf_end, nbins)
         # initialize observable function 
     obs = rdf(system, nbins, (rdf_start , rdf_end) )
+    vacf_obs = vacf(system, t_range=t_range) 
+
     # get experimental rdf 
     dim = pair_data_dict[data_str].get("dim", 3) 
 
-    # generate simulated data 
-    rdf_data, vacf_target = get_target_obs(system, data_str, 150, (rdf_start, rdf_end), nbins, skip=50, dt=dt)
 
-    vacf_target = torch.Tensor(vacf_target).to(system.device)
-    rdf_data = np.vstack( (np.linspace(rdf_start, rdf_end, nbins), rdf_data))
+    # generate simulated data 
+    if pair_data_dict[data_str].get("fn", None):
+        rdf_data, vacf_target = get_target_obs(system, data_str, 150, (rdf_start, rdf_end), nbins, skip=50, dt=dt)
+        vacf_target = torch.Tensor(vacf_target).to(system.device)
+        rdf_data = np.vstack( (np.linspace(rdf_start, rdf_end, nbins), rdf_data))
+    else:
+        # experimental rdfs
+        rdf_data = np.loadtxt(rdf_data_path, delimiter=',')
+        vacf_target = None
 
     _, rdf_target = get_exp_rdf(rdf_data, nbins, (rdf_start, rdf_end), obs.device, dim=dim)
-
-    vacf_obs = vacf(system, t_range=t_range) 
 
     # get model potential and simulate 
 
@@ -462,7 +469,9 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
                     loss_vacf += (vacf_sim - vacf_target_list[j][:t_range]).pow(2).mean()
                 else:
                     loss_vacf += 0.0
-                loss_rdf += (g_sim - rdf_target_list[j]).pow(2).mean()#+ JS_rdf(g_sim, rdf_target_list[j])
+
+                drdf = g_sim - rdf_target_list[j]
+                loss_rdf += (drdf).pow(2).mean()#+ JS_rdf(g_sim, rdf_target_list[j])
 
             obs_log[data_str]['rdf'].append(g_sim.detach().cpu().numpy())
             obs_log[data_str]['vacf'].append(vacf_sim.detach().cpu().numpy())
@@ -516,9 +525,12 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         if current_lr <= 1e-5:
             print("training converged")
             break
-    # save potentials         
-    if np.array(loss_log)[-10:, 1].mean() <=  0.005: 
-        np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
+
+        np.savetxt(model_path + '/loss.txt', np.array(loss_log), delimiter=',')
+    
+    # # save potentials         
+    # if np.array(loss_log)[-10:, 1].mean() <=  0.005: 
+    #     np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
 
     for j, sim in enumerate(sim_list):
 
@@ -535,7 +547,6 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
             # compute VACF 
             vacf_sim = vacf_obs_list[j](v_t).detach().cpu().numpy()
             all_vacf_sim.append(vacf_sim)
-
 
         all_vacf_sim = np.array(all_vacf_sim).mean(0)
         
@@ -557,6 +568,12 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         all_g_sim = np.array(all_g_sim).mean(0)
         
+        # compute target deviation 
+
+        rdf_dev = []
+        if data_str in data_str_list:
+            drdf = np.abs(all_g_sim - rdf_target_list[j].cpu().numpy()).mean()
+            rdf_dev.append(drdf) 
 
         # plot observables 
         plot_vacf(all_vacf_sim, vacf_target, 
@@ -576,8 +593,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
 
         # rdf_dev = np.abs(all_g_sim - rdf_target).mean()
 
-        # if rdf_dev <=  0.05: 
-        #     np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
+    np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
+    np.savetxt(model_path + '/rdf_dev.txt', np.array(rdf_dev), delimiter=',')
 
 
     # save loss curve 
