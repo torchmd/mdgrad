@@ -1,4 +1,6 @@
+import matplotlib.pyplot as plt 
 import matplotlib
+import torch 
 
 matplotlib.rcParams.update({'font.size': 25})
 matplotlib.rc('lines', linewidth=3, color='g')
@@ -11,9 +13,9 @@ matplotlib.rcParams["xtick.major.width"] = 2
 matplotlib.rcParams['text.usetex'] = False
 
 
-def plot_pair(fn, path, model, prior, device): 
+def plot_pair(fn, path, model, prior, device, start=0.5, end=2.5): 
 
-    x = torch.linspace(0.95, 2.5, 50)[:, None].to(device)
+    x = torch.linspace(start, end, 50)[:, None].to(device)
     
     u_fit = (model(x) + prior(x)).detach().cpu().numpy()
     u_fit = u_fit - u_fit[-1] 
