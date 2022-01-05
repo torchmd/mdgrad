@@ -139,6 +139,7 @@ def get_gnn_potential(assignments,  sys_params):
 
 def get_pair_potential(assignments, sys_params):
 
+    cutoff = assignments['cutoff']
     mlp_parmas = {'n_gauss': int(cutoff//assignments['gaussian_width']), 
               'r_start': 0.0,
               'r_end': cutoff, 
@@ -165,7 +166,7 @@ def build_simulators(data_list, system_list, net, prior, cutoff, pair_flag, topo
         if pair_flag:
             NN = PairPotentials(system_list[i], net,
                 cutoff=cutoff,
-                ).to(device)
+                ).to(system_list[i].device)
         else:
             NN = GNNPotentials(system_list[i], 
                             net, 
@@ -289,8 +290,9 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                     potential = plot_pair( path=model_path,
                                  fn=str(i),
                                   model=net, 
-                                  prior=pair, 
-                                  device=device)
+                                  prior=prior, 
+                                  device=device,
+                                  start=2, end=8)
 
         #--------------------------------------------------------------------------------
 
