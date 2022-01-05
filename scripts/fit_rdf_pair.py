@@ -33,7 +33,7 @@ import matplotlib
 # matplotlib.rcParams["xtick.major.width"] = 2
 # matplotlib.rcParams['text.usetex'] = False
 
-pair_data_dict = pair_data_dict.update(exp_rdf_data_dict)
+#pair_data_dict = pair_data_dict.update(exp_rdf_data_dict)
 
 width_dict = {'tiny': 64,
                'low': 128,
@@ -229,9 +229,9 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
     # get experimental rdf 
     dim = pair_data_dict[data_str].get("dim", 3) 
 
-
+    rdf_data_path = pair_data_dict[data_str].get("fn", None)
     # generate simulated data 
-    if pair_data_dict[data_str].get("fn", None):
+    if not rdf_data_path:
         rdf_data, vacf_target = get_target_obs(system, data_str, 150, (rdf_start, rdf_end), nbins, skip=50, dt=dt)
         vacf_target = torch.Tensor(vacf_target).to(system.device)
         rdf_data = np.vstack( (np.linspace(rdf_start, rdf_end, nbins), rdf_data))
