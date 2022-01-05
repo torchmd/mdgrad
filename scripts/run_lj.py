@@ -33,8 +33,8 @@ if params['dry_run']:
     n_sim = 2
 else:
     n_obs = 1000
-    n_epochs = 1000
-    n_sim = 50
+    n_epochs = 1000 # 1000
+    n_sim = 50 # 50 
 
 logdir = params['logdir']
 
@@ -69,7 +69,7 @@ sys_params = {
 'n_sim': n_sim,
 'data': params['data'],
 'val': params['val'],
-'t_range': 100, # 50 
+'t_range': 50, # 50 
 'skip': 5,
 'cutoff': assignments['cutoff'],
 'nbr_list_device': 'cpu',
