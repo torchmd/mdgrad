@@ -346,6 +346,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
         # compute equilibrated rdf 
         loss_js = JS_rdf(g_obs, torch.Tensor(all_g_sim).to(device))
+        loss_mse = (g_obs - torch.Tensor(all_g_sim).to(device)).pow(2).mean()
 
         save_traj(system_list[j], np.stack( sim.log['positions']),  
             model_path + '/{}_sim.xyz'.format(data_tag), skip=1)
@@ -356,4 +357,4 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
 
-    return loss_js.item() 
+    return loss_mse.item() 
