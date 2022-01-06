@@ -159,7 +159,7 @@ def get_pair_potential(assignments, sys_params):
 def build_simulators(data_list, system_list, net, prior, cutoff, pair_flag, topology_update_freq=1): 
     model_list = []
     for i, data_tag in enumerate(data_list):
-        prior = PairPotentials(system_list[i], prior,
+        pair = PairPotentials(system_list[i], prior,
                         cutoff=cutoff,
                         ).to(system_list[i].device)
 
@@ -172,14 +172,13 @@ def build_simulators(data_list, system_list, net, prior, cutoff, pair_flag, topo
                             net, 
                             cutoff=cutoff)
 
-        model = Stack({'nn': NN, 'pair': prior})
+        model = Stack({'nn': NN, 'pair': pair})
         model_list.append(model)
 
     sim_list = [get_sim(system_list[i], 
                         model_list[i], 
                         data_tag,
                         topology_update_freq) for i, data_tag in enumerate(data_list)]
-
     return sim_list
 
 
@@ -205,7 +204,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     train_list = sys_params['data']
 
     if sys_params['val']:
-        all_sys = train_list + val_str_list
+        all_sys = train_list + sys_params['val']
     else:
         all_sys = train_list
 
@@ -255,7 +254,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         loss_mse = torch.Tensor([0.0]).to(device)
 
         # temperature annealing 
-        for j, sim in enumerate(sim_list):
+        for j, sim in enumerate(sim_list[:len(train_list)]):
             data_tag = all_sys[j]
 
             if sys_params['anneal_flag'] == 'True' and i % assignments['anneal_freq'] == 0:
@@ -269,20 +268,18 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
             v_t, q_t, pv_t = sim.simulate(steps=tau, frequency=int(tau))
 
-
             if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
                 return 5 - (i / n_epochs) * 5
 
             _, bins, g = obs_list[j](q_t[::5])
         
-        # Can we refactored 
         #---------------------------------------------------------------------
             # only optimize on data that needs training 
             if data_tag in train_list:
                 loss_js += JS_rdf(g_target_list[j], g)
                 loss_mse += assignments['mse_weight'] * (g - g_target_list[j]).pow(2).mean() 
 
-            if i % 20 == 0:
+            if i % 10 == 0:
                 plot_rdfs(bins_list[j], g_target_list[j], g, "{}_{}".format(data_tag, i),
                              model_path, pname=i)
 
@@ -307,7 +304,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
         loss_log.append(loss_js.item() )
 
-        if optimizer.param_groups[0]["lr"] <= 1.0e-7:
+        if optimizer.param_groups[0]["lr"] <= 1.0e-5:
             print("training converged")
             break
 
@@ -315,9 +312,9 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     plt.savefig(model_path + '/loss.jpg', bbox_inches='tight')
     plt.close()
 
-    total_loss = 0.0
+    total_loss = 0.
+    rdf_devs = []
     for j, sim in enumerate(sim_list):    
-
         data_tag = all_sys[j]
 
         train_traj = sim.log['positions']
@@ -348,13 +345,17 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         loss_js = JS_rdf(g_obs, torch.Tensor(all_g_sim).to(device))
         loss_mse = (g_obs - torch.Tensor(all_g_sim).to(device)).pow(2).mean()
 
+        rdf_devs.append( (g_obs - torch.Tensor(all_g_sim).to(device)).abs().mean().item())
+
         save_traj(system_list[j], np.stack( sim.log['positions']),  
             model_path + '/{}_sim.xyz'.format(data_tag), skip=1)
 
         plot_rdfs(x, g_obs, torch.Tensor(all_g_sim), "{}_final".format(data_tag), model_path, pname='final')
 
-        total_loss += loss_js.item()
+        total_loss += loss_mse.item()
 
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
+    np.savetxt(model_path + '/potential.txt', potential)
+    np.savetxt(model_path + '/rdf_mse.txt', np.array(rdf_devs))
 
     return loss_mse.item() 
