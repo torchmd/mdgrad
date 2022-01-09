@@ -358,4 +358,4 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     np.savetxt(model_path + '/potential.txt', potential)
     np.savetxt(model_path + '/rdf_mse.txt', np.array(rdf_devs))
 
-    return loss_mse.item() 
+    return total_loss
