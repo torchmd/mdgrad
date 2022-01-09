@@ -45,23 +45,10 @@ params = vars(parser.parse_args())
 # }
 
 
-assignments = {
-    "mse_weight": 3.199742565956084,
-    "epsilon": 0.4,
-    "gaussian_width": 0.10,
-    "n_layers": 3,
-    "n_width": 128,
-    "nbins": 100,
-    "nonlinear": "ELU",
-    "opt_freq": 60, # 60
-    "power": 10,
-    "rdf_weight": 0.95,
-    "train_vacf": "True",
-    "lr": 0.002,
-    "sigma": 2.0,
-    "vacf_weight": 0.0, 
-    "cutoff": 8.0
-  }
+assignments = {"cutoff":6.167254635224594,"epsilon":1.5858519218705223,"gaussian_width":0.20182823407126177,
+                "lr":0.00048351883733428714,"mse_weight":0.12409285934040738,"n_layers":5,
+                "n_width":128,"nbins":110,"nonlinear":"LeakyReLU","opt_freq":80,"power":10,
+                "sigma":1.68}
 
 sys_params = {
 'dt': 0.5,
