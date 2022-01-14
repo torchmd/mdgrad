@@ -99,7 +99,11 @@ if params['vacf_weight'] is not None:
     print("chaging default vacf_weight from {} to {}".format(assignments['vacf_weight'], params['vacf_weight']))
     assignments['vacf_weight'] = params['vacf_weight']
 
+if params['device'] is None:
+    params['device'] = 'cpu'
+
 print(assignments)
+
 
 for i in range(params['nruns']):
 
