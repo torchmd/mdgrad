@@ -1,12 +1,12 @@
-```
-you first need to install 
 
+you first need to install 
 ```
 pip install sigopt 
 pip install matplotlib
 pip install torch
 pip install scipy
 ```
+then add the package directory to your python path
 
 To run a LJ fitting example: 
 ```
