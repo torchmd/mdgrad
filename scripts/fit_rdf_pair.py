@@ -156,7 +156,7 @@ def lattice_2d(rho, size):
 
 
 
-def get_target_obs(system, data_str, n_sim, rdf_range, t_range, dt, skip=25):
+def get_target_obs(system, data_str, n_sim, rdf_range, nbins, t_range, dt, skip=25):
     
     print("simulating {}".format(data_str))
     device = system.device 
@@ -177,7 +177,7 @@ def get_target_obs(system, data_str, n_sim, rdf_range, t_range, dt, skip=25):
     # define simulator with 
     sim = Simulations(system, diffeq)
 
-    rdf_obs = rdf(system, nbins=100, r_range=rdf_range)
+    rdf_obs = rdf(system, nbins=nbins, r_range=rdf_range)
     vacf_obs = vacf(system, t_range=t_range) 
     
     all_vacf_sim = []
@@ -232,7 +232,7 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
     rdf_data_path = pair_data_dict[data_str].get("fn", None)
     # generate simulated data 
     if not rdf_data_path:
-        rdf_data, vacf_target = get_target_obs(system, data_str, 150, (rdf_start, rdf_end), nbins, skip=50, dt=dt)
+        rdf_data, vacf_target = get_target_obs(system, data_str, 150, (rdf_start, rdf_end), nbins=nbins, t_range=t_range, skip=50, dt=dt)
         vacf_target = torch.Tensor(vacf_target).to(system.device)
         rdf_data = np.vstack( (np.linspace(rdf_start, rdf_end, nbins), rdf_data))
     else:
@@ -602,6 +602,7 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     plt.plot(np.array( loss_log)[:, 1], label='rdf', alpha=0.7)
     plt.yscale("log")
     plt.legend()
+    
     plt.savefig(model_path + '/loss.pdf', bbox_inches='tight')
     plt.show()
     plt.close()
