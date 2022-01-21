@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-
+import itertools
 
 def compute_dis(xyz, nbr_list, offsets, cell): 
     '''
@@ -13,8 +13,6 @@ def compute_dis(xyz, nbr_list, offsets, cell):
 
 
 def generate_pair_index(N, index_tuple):
-
-    import itertools
 
     mask_sel = torch.zeros(N, N)
 
