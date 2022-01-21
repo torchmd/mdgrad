@@ -4,7 +4,9 @@ from fit_rdf_pair import *
 from data import pair_data_dict
 from ase.lattice.cubic import FaceCenteredCubic
 from torchmd.potentials import ExcludedVolume, LennardJones, LJFamily,  pairMLP
-
+from datetime import datetime
+from datetime import date
+import random
 from random import shuffle 
 
 
@@ -16,8 +18,6 @@ def mix_system(system, type1_composition=0.5):
     
     '''return: system, type1_index, type2_index '''
     # generate type1 index 
-    type1_composition = 0.2
-
     n = system.get_number_of_atoms()
 
     n1 = int(n * type1_composition)
@@ -88,7 +88,7 @@ def plot_pairs(sim, pair11, pair12, pair22, fn, save=False):
     axes[2].set_ylim(-4, 5)
 
     plt.tight_layout()
-    plt.savefig("{}.pdf".format(fn))
+    plt.savefig("{}_pot.pdf".format(fn))
     plt.show()
     plt.close()
     
@@ -103,9 +103,9 @@ def plot_sim_rdfs(sim_rdf11, sim_rdf12, sim_rdf22, target_rdf11, target_rdf12, t
 
     r_range = np.linspace(*rdf_range, sim_rdf11.shape[-1])
 
-    axes[0].plot(r_range, sim_rdf11.detach().cpu())
-    axes[1].plot(r_range, sim_rdf22.detach().cpu())
-    axes[2].plot(r_range, sim_rdf12.detach().cpu())
+    axes[0].plot(r_range, sim_rdf11)
+    axes[1].plot(r_range, sim_rdf22)
+    axes[2].plot(r_range, sim_rdf12)
 
     axes[0].plot(r_range, target_rdf11)
     axes[1].plot(r_range, target_rdf22)
@@ -158,8 +158,8 @@ def run(params):
     atom2_index = torch.LongTensor(atom2_index)
     
     # Define potentials for the ground truth 
-    pair11 = LennardJones(epsilon=1.0, sigma=0.75)
-    pair22 = LennardJones(epsilon=1.0, sigma=1.375)
+    pair11 = LennardJones(epsilon=1.0, sigma=0.9)
+    pair22 = LennardJones(epsilon=1.0, sigma=1.1)
     pair12 = LennardJones(epsilon=1.0, sigma=1.0)
     
     atom1_index = torch.LongTensor(list(range(0, 128)))
@@ -179,7 +179,6 @@ def run(params):
     
     target_model = Stack({'pot11': pot_11, 'pot22': pot_22, 'pot12': pot_12})
     
-    n_sim = 50
     rdf_range = (0.6, 3.3)
     
     # define 
@@ -205,9 +204,15 @@ def run(params):
     # loop over to compute observables 
     trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device).detach()
 
-    xrange, target_rdf11 = collect_equilibrium_rdf(trajs[:], rdf11)
-    xrange, target_rdf12 = collect_equilibrium_rdf(trajs[:], rdf12)
-    xrange, target_rdf22 = collect_equilibrium_rdf(trajs[:], rdf22)
+
+    if trajs.shape[0] > 10:
+        skip = trajs.shape[0] // 3
+    else:  
+        skip = 0 
+
+    xrange, target_rdf11 = collect_equilibrium_rdf(trajs[skip:], rdf11)
+    xrange, target_rdf12 = collect_equilibrium_rdf(trajs[skip:], rdf12)
+    xrange, target_rdf22 = collect_equilibrium_rdf(trajs[skip:], rdf22)
 
     # combine save rdf 
     save_rdf(target_rdf11, rdf_range, f"{model_path}/rdf11")
@@ -255,13 +260,19 @@ def run(params):
             topology_update_freq=10).to(system.device)
 
     # reinsitialize system
-    system = System(atoms, device=device)
-    system.set_temperature(T)
+    # system = System(atoms, device=device)
+    # system.set_temperature(T)
     sim = Simulations(system, diffeq)
 
     # try simulating 
     optimizer = torch.optim.Adam(list(pairmlp11.parameters()) + list(pairmlp22.parameters()) + \
                                  list(pairmlp12.parameters()), lr=params['lr'])
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                              'min', 
+                                              min_lr=0.9e-7, 
+                                              verbose=True, factor = 0.5, patience=50,
+                                              threshold=1e-5)
 
     target_rdf11_torch = torch.Tensor(target_rdf11).to(device)
     target_rdf12_torch = torch.Tensor(target_rdf12).to(device)
@@ -289,13 +300,15 @@ def run(params):
         optimizer.zero_grad()
 
         if i % 5 == 0:
-            plot_pairs(sim, pair11, pair12, pair22, fn=f'{model_path}/{i}')
-            plot_sim_rdfs(sim_rdf11, sim_rdf12, sim_rdf22, 
+            plot_pairs(sim, pair11, pair12, pair22, fn=f'{model_path}/{str(i).zfill(3)}')
+            plot_sim_rdfs(sim_rdf11.detach().cpu(), sim_rdf12.detach().cpu(), sim_rdf22.detach().cpu(), 
                           target_rdf11, target_rdf12, target_rdf22, 
                           rdf_range,
-                          f'{model_path}/{i}')
+                          f'{model_path}/{str(i).zfill(3)}')
 
         print(loss.item())
+
+        scheduler.step(loss)
         
         
     n_equi = 10
@@ -326,6 +339,11 @@ def run(params):
     save_rdf(target_rdf12, (0.5, 2.5), f'{model_path}/pair12_target')
     save_rdf(target_rdf22, (0.5, 2.5), f'{model_path}/pair22_target')
 
+    plot_sim_rdfs(equi_rdf11, equi_rdf12, equi_rdf22, 
+                  target_rdf11, target_rdf12, target_rdf22, 
+                  rdf_range,
+                  f'{model_path}/{str(i).zfill(3)}')
+
     # compute loss 
     rdf_dev = np.abs(equi_rdf11 - target_rdf11).mean() + np.abs(equi_rdf12 - target_rdf12).mean() + \
                 np.abs(equi_rdf22 - target_rdf22).mean()
@@ -336,9 +354,11 @@ def run(params):
 
 if __name__ == "__main__": 
 
+    now = datetime.now()
+    dt_string = now.strftime("%m-%d-%H-%M-%S") + str(random.randint(0, 100))
     # run 
-    params = {'logdir': './multi_test', 'device': 2, 'nepochs': 500, 'size': 4, 'T': 1.2, 'rho':0.8, 'x':0.5, 'lr': 1e-4, 
-              'gaussian_width': 0.25, 'n_width': 128, 'n_layers': 4, 'nonlinear': 'Tanh'}
+    params = {'logdir': './multi_test', 'subjob':"test" + dt_string, 'device': 2, 'nepochs': 500, 'n_sim': 800, 'size': 4, 'T': 1.2, 'rho':0.8, 'x':0.5, 'lr': 1e-3, 
+              'gaussian_width': 0.25, 'n_width': 128, 'n_layers': 4, 'nonlinear': 'Tanh', 'sigma':0.9}
 
     rdf_dev = run(params)
 

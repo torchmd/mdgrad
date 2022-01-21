@@ -15,13 +15,9 @@ params = vars(parser.parse_args())
 if params['dry_run']:
     token = 'GMBSZWXFWPHHUCXSDYLLCBBCBTKZUBVCBQRMCMXEFNEYGCFY'
     n_obs = 2
-    n_epochs = 10
-    n_sim = 2
 else:
     token = 'JGTKFUYDJMOKBMDFXICMGNEFBXOOSIPAVSGUWPSMJCVDWYMA'
     n_obs = 1000
-    n_epochs = 1000
-    n_sim = 50
 
 logdir = params['logdir']
 
@@ -53,17 +49,17 @@ while experiment.progress.observation_count < experiment.observation_budget:
 
     suggestion = conn.experiments(experiment.id).suggestions().create()
 
-    sys_params = {'size': 4, 'T': 1.2, 'rho':0.8, 'x':0.5, 'n_sim': 50}
+    sys_params = {'size': 4, 'T': 1.2, 'rho':0.8, 'x':0.5, 'n_sim': 800}
 
     exp_params = {**params, **suggestion.assignments, **sys_params} 
     exp_params['subjob'] = suggestion.id
 
-    value, failed = run(exp_params)
-    print(value)
-
     if params['dry_run']:
         exp_params['nepochs'] = 1
         exp_params['n_sim'] = 1 
+
+    value, failed = run(exp_params)
+    print(value)
 
     if failed:
         conn.experiments(experiment.id).observations().create(
