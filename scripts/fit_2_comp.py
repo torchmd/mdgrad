@@ -31,6 +31,8 @@ def mix_system(system, type1_composition=0.5):
 
     system.set_atomic_numbers(z)
 
+    system.set_masses([1.] * system.get_global_number_of_atoms())
+
     return system, idx1, idx2
 
 def collect_equilibrium_rdf(trajs, rdf_func): 
@@ -49,20 +51,20 @@ def save_rdf(rdf, rdf_range, fn):
     
 # plot and save potentials and got to bed 
 
-def save_rdf(rdf, rrange, fn):
-    nbins = rdf.shape[-1]
-    xbins = np.linspace(*rrange, nbins)
-    pack_rdf = np.stack((xbins, rdf))
-    np.savetxt("{}_equi_rdf.txt".format(fn), pack_rdf, delimiter=',')
-    return pack_rdf
+# def save_rdf(rdf, rrange, fn):
+#     nbins = rdf.shape[-1]
+#     xbins = np.linspace(*rrange, nbins)
+#     pack_rdf = np.stack((xbins, rdf))
+#     np.savetxt("{}_equi_rdf.txt".format(fn), pack_rdf, delimiter=',')
+#     return pack_rdf
 
-def plot_pairs(sim, pair11, pair12, pair22, fn, save=False):
+def plot_pairs(sim, pair11, pair12, pair22, fn, save=False, nbins=100):
 
     fig, axes = plt.subplots(ncols=3, figsize=(10, 3))
 
     device = sim.device
 
-    rrange = torch.linspace(0.5, 2.5, 100).to(device)
+    rrange = torch.linspace(0.5, 2.5, nbins).to(device)
 
     prior = sim.integrator.model.models['prior'].model(rrange[..., None]) 
     u11_fit = sim.integrator.model.models['mlppot11'].model(rrange[..., None])+ prior 
@@ -88,14 +90,14 @@ def plot_pairs(sim, pair11, pair12, pair22, fn, save=False):
     axes[2].set_ylim(-4, 5)
 
     plt.tight_layout()
-    plt.savefig("{}_pot.pdf".format(fn))
+    plt.savefig(f'{fn}_pot.pdf')
     plt.show()
     plt.close()
     
     if save: 
-        np.savetxt('{}_pot11.txt', u11_fit.detach().cpu().numpy(), delimiter=',')
-        np.savetxt('{}_pot22.txt', u22_fit.detach().cpu().numpy(), delimiter=',')
-        np.savetxt('{}_pot12.txt', u12_fit.detach().cpu().numpy(), delimiter=',')
+        np.savetxt(f'{fn}_pot11.csv', u11_fit.detach().cpu().numpy(), delimiter=',')
+        np.savetxt(f'{fn}_pot22.csv', u22_fit.detach().cpu().numpy(), delimiter=',')
+        np.savetxt(f'{fn}_pot12.csv', u12_fit.detach().cpu().numpy(), delimiter=',')
         
     
 def plot_sim_rdfs(sim_rdf11, sim_rdf12, sim_rdf22, target_rdf11, target_rdf12, target_rdf22, rdf_range, fn):
@@ -112,7 +114,7 @@ def plot_sim_rdfs(sim_rdf11, sim_rdf12, sim_rdf22, target_rdf11, target_rdf12, t
     axes[2].plot(r_range, target_rdf12)
 
     plt.tight_layout()
-    plt.savefig("{}_rdf.pdf".format(fn))
+    plt.savefig(fn)
     plt.show()
     plt.close()
 # potential = plot_pair( path="./",
@@ -300,11 +302,11 @@ def run(params):
         optimizer.zero_grad()
 
         if i % 5 == 0:
-            plot_pairs(sim, pair11, pair12, pair22, fn=f'{model_path}/{str(i).zfill(3)}')
+            plot_pairs(sim, pair11, pair12, pair22, fn=f'{model_path}/{str(i).zfill(3)}_pot.pdf')
             plot_sim_rdfs(sim_rdf11.detach().cpu(), sim_rdf12.detach().cpu(), sim_rdf22.detach().cpu(), 
                           target_rdf11, target_rdf12, target_rdf22, 
                           rdf_range,
-                          f'{model_path}/{str(i).zfill(3)}')
+                          f'{model_path}/{str(i).zfill(3)}_rdf.pdf')
 
         print(loss.item())
 
@@ -342,7 +344,7 @@ def run(params):
     plot_sim_rdfs(equi_rdf11, equi_rdf12, equi_rdf22, 
                   target_rdf11, target_rdf12, target_rdf22, 
                   rdf_range,
-                  f'{model_path}/{str(i).zfill(3)}')
+                  f'{model_path}/final_rdf.pdf')
 
     # compute loss 
     rdf_dev = np.abs(equi_rdf11 - target_rdf11).mean() + np.abs(equi_rdf12 - target_rdf12).mean() + \
