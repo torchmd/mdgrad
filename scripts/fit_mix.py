@@ -94,7 +94,8 @@ def run_mix(params):
               'r_end': params['cutoff'], 
               'n_width': params['n_width'],
               'n_layers': params['n_layers'],
-              'nonlinear': params['nonlinear']}
+              'nonlinear': params['nonlinear'],
+              'res': params['res']}
 
 
     # # Define prior potential
@@ -131,6 +132,8 @@ def run_mix(params):
                                               threshold=1e-5)
 
     print(f"start training for {params['nepochs']} epochs")
+
+    loss_log = []
     for i in range(params['nepochs']): 
 
         loss = torch.Tensor([0.0]).to(device)
@@ -164,9 +167,19 @@ def run_mix(params):
         optimizer.zero_grad()
 
         print(loss.item())
+        loss_log.append(loss.item())
 
         scheduler.step(loss)
 
+
+    # save loss log 
+
+    loss_log = np.array(loss_log)
+    np.savetxt(f"{model_path}/loss_log.txt" ,loss_log)
+    plt.plot(loss_log)
+    plt.savefig(f"{model_path}/loss_log.pdf")
+    plt.show()
+    plt.close()
 
     # run equilibrabtion 
 
@@ -226,6 +239,7 @@ if __name__ == '__main__':
     parser.add_argument("-n_width", type=int, default=128)
     parser.add_argument("-n_layers", type=int, default=2)
     parser.add_argument("-nonlinear", type=str, default='SELU')
+    parser.add_argument("--res", action='store_true', default=False)
 
 
     params = vars(parser.parse_args())
