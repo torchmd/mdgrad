@@ -120,7 +120,7 @@ class SplineOverlap(torch.nn.Module):
 
 
 class pairMLP(torch.nn.Module):
-    def __init__(self, n_gauss, r_start, r_end, n_layers, n_width, nonlinear ):
+    def __init__(self, n_gauss, r_start, r_end, n_layers, n_width, nonlinear, res=False):
         super(pairMLP, self).__init__()
         
 
@@ -148,12 +148,20 @@ class pairMLP(torch.nn.Module):
         self.layers.append(nn.Linear(n_width, n_gauss))  
         self.layers.append(nlr)  
         self.layers.append(nn.Linear(n_gauss, 1)) 
+        self.res = res  # flag for residue connections 
 
         
     def forward(self, r):
         r = self.smear(r)
         for i in range(len(self.layers)):
-            r = self.layers[i](r)
+            if self.res is False:
+                r = self.layers[i](r)
+            else:
+                dr = self.layers[i](r)
+                if dr.shape[-1] == r.shape[-1]:
+                    r = r + dr 
+                else:
+                    r = dr 
         return r
 
 
