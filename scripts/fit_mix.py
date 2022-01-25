@@ -8,6 +8,49 @@ import numpy as np
 from ase import io 
 from munch import Munch
 
+
+def pretrain(x, params, pairmlp11, pairmlp12, pairmlp22, kT=1.0):
+    'fit to the BI of the first system'
+
+
+    device = params['device']
+    # load target rdfs 
+    rdf_range11, target_rdf11 = np.loadtxt(mix_data[x]['rdf11'], delimiter=',')
+    rdf_range12, target_rdf12 = np.loadtxt(mix_data[x]['rdf12'], delimiter=',')
+    rdf_range22, target_rdf22 = np.loadtxt(mix_data[x]['rdf22'], delimiter=',')
+
+    bi_11 = - kT * torch.log(torch.Tensor( target_rdf11))
+    bi_12 = - kT * torch.log(torch.Tensor( target_rdf12))
+    bi_22 = - kT * torch.log(torch.Tensor( target_rdf22))
+
+    range11, range12, range22 = torch.Tensor(rdf_range11).to(device), torch.Tensor(rdf_range12).to(device), torch.Tensor(rdf_range22).to(device)
+
+
+    pair = LJFamily(epsilon=2.0, sigma=params['sigma'], rep_pow=6, attr_pow=3).to(device)
+
+    optimizer =  torch.optim.Adam(list(pairmlp11.parameters()) + list(pairmlp22.parameters()) + \
+                                 list(pairmlp12.parameters()), lr=1e-4)
+
+
+    print("pretraining pair potentials ")
+    for i in range(1000): 
+
+        pred11 = pairmlp11(range11.reshape(-1, 1)) + pair(range11.reshape(-1, 1))
+        pred12 = pairmlp12(range12.reshape(-1, 1)) + pair(range12.reshape(-1, 1))
+        pred22 = pairmlp22(range22.reshape(-1, 1)) + pair(range22.reshape(-1, 1))
+
+        loss = (pred11.squeeze() - bi_11.to(device )).pow(2).mean() + \
+                (pred12.squeeze() - bi_12.to(device )).pow(2).mean() + \
+                (pred22.squeeze() - bi_22.to(device )).pow(2).mean() 
+
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        if i % 10 == 0:
+            print(i, loss.item())
+
+
 def prepare_sim(sys, x, params, pairmlp11, pairmlp12, pairmlp22):
 
     device = params['device']
@@ -49,10 +92,13 @@ def prepare_sim(sys, x, params, pairmlp11, pairmlp12, pairmlp22):
                          nbr_list_device=device, 
                          index_tuple=(atom2_index, atom2_index)).to(device)
 
+
     prior = PairPotentials(system, pair, cutoff=2.5, 
                            nbr_list_device=device).to(device) # prior over all patricles 
 
-    model = Stack({'mlppot11': mlp11, 'mlppot22': mlp22, 'mlppot12': mlp12, 'prior': prior})
+    model = Stack({'mlppot11': mlp11, 'mlppot22': mlp22, 'mlppot12': mlp12,
+                     'prior': prior
+                    })
 
     # define 
     diffeq = NoseHooverChain(model, 
@@ -112,8 +158,11 @@ def run_mix(params):
     train_sys = {} 
     val_sys = {}
 
-    for x in  params['trainx']: 
+    for i, x in  enumerate(params['trainx']): 
         train_sys = prepare_sim(train_sys, x, params, pairmlp11, pairmlp12, pairmlp22)
+
+        if i == 0: 
+            pretrain(x, params, pairmlp11, pairmlp12, pairmlp22, kT=1.0)
 
 
     if params['valx'] != None:
@@ -188,6 +237,7 @@ def run_mix(params):
     rdf_devs = 0.0
 
     for x in all_sys.keys():
+        print(f"simulating system {x}" )
         for i in range(params['nsim']):
             v_t, q_t, pv_t = all_sys[x].sim.simulate(steps=50, dt=0.005, frequency=50)
 
@@ -227,6 +277,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-logdir", type=str)
     parser.add_argument("-subjob", type=str)
+    parser.add_argument("-nruns", type=int, default=1)
     parser.add_argument("-device", type=int, default=0)
     parser.add_argument("-nepochs", type=int, default=30)
     parser.add_argument("-nsim", type=int, default=40)
@@ -241,7 +292,7 @@ if __name__ == '__main__':
     parser.add_argument("-nonlinear", type=str, default='SELU')
     parser.add_argument("--res", action='store_true', default=False)
 
-
     params = vars(parser.parse_args())
-
-    run_mix(params)
+    for i in range(params['nruns']):
+        print(f"run {i}")
+        run_mix(params)
