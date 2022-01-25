@@ -90,6 +90,34 @@ class ModifiedMorse(torch.nn.Module):
         
         return pot 
 
+
+class BoltzmannInversionSpline(torch.nn.Module):
+    '''
+        Splined boltzmann inverted pair potential
+    '''
+    
+    def __init__(self, rdf_range, rdf, device, kT=1.0):
+        super(BoltzmannInversionSpline, self).__init__()
+        
+        try: 
+            from torchcubicspline import(natural_cubic_spline_coeffs, 
+                             NaturalCubicSpline)
+        except:
+            raise NotImplementedError("install torch cubic spline with pip" +
+                "install git+https://github.com/patrick-kidger/torchcubicspline.git")
+        
+        rdf_range = torch.Tensor(rdf_range).to(device)
+        rdf = torch.Tensor(rdf).reshape(-1, 1).to(device)
+        
+        log_rdf = kT * torch.log(rdf)
+        self.coeffs = natural_cubic_spline_coeffs(rdf_range, log_rdf)
+        self.spline = NaturalCubicSpline(self.coeffs)
+        
+    def forward(self, x):
+        return self.spline.evaluate(x)
+
+
+
 class SplineOverlap(torch.nn.Module):
     '''
         https://journals.aps.org/pre/abstract/10.1103/PhysRevE.80.031105
