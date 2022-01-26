@@ -38,11 +38,11 @@ if params['id'] == None:
         parameters=[
             dict(name='gaussian_width', type='double', bounds=dict(min=0.025, max=0.25)),
             dict(name='sigma', type='double', bounds=dict(min=0.8, max=1.1)),
-            dict(name='lr', type='double', bounds=dict(min=1.0e-4, max=5e-3)),
+            dict(name='lr', type='double', bounds=dict(min=1.0e-5, max=1e-2), transformation="log"),
             dict(name='n_width', type='int', bounds=dict(min=64, max=128)),
             dict(name='n_layers', type='int', bounds=dict(min=2, max=4)),
             dict(name='nonlinear', type='categorical', categorical_values=['ReLU', 'ELU', 'Tanh', 'LeakyReLU', 'ReLU6', 'SELU', 'CELU', 'Tanhshrink']),
-            dict(name='res', type='categorical', categorical_values=['True', 'False']),
+            #dict(name='res', type='categorical', categorical_values=['True', 'False']),
         ],
         observation_budget = n_obs, # how many iterations to run for the optimization
         parallel_bandwidth=10,
@@ -63,10 +63,12 @@ while experiment.progress.observation_count < experiment.observation_budget:
         runparams['nepochs'] = 1
         runparams['n_sim'] = 1 
 
-    if runparams['res'] == 'True':
-        runparams['res'] = True
-    else:
-        runparams['res'] = False
+    # if runparams['res'] == 'True':
+    #     runparams['res'] = True
+    # else:
+    #     runparams['res'] = False
+
+    runparams['res'] = True 
 
     value, failed = run_mix(runparams)
     print(value)
