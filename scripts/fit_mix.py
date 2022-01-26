@@ -29,11 +29,11 @@ def pretrain(x, params, pairmlp11, pairmlp12, pairmlp22, kT=1.0):
     pair = LJFamily(epsilon=2.0, sigma=params['sigma'], rep_pow=6, attr_pow=3).to(device)
 
     optimizer =  torch.optim.Adam(list(pairmlp11.parameters()) + list(pairmlp22.parameters()) + \
-                                 list(pairmlp12.parameters()), lr=1e-4)
+                                 list(pairmlp12.parameters()), lr=1e-3)
 
 
     print("pretraining pair potentials ")
-    for i in range(1000): 
+    for i in range(4000): 
 
         pred11 = pairmlp11(range11.reshape(-1, 1)) + pair(range11.reshape(-1, 1))
         pred12 = pairmlp12(range12.reshape(-1, 1)) + pair(range12.reshape(-1, 1))
