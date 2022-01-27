@@ -9,19 +9,33 @@ from ase import io
 from munch import Munch
 
 
-def pretrain(x, params, pairmlp11, pairmlp12, pairmlp22, kT=1.0):
+def pretrain(x_list, params, pairmlp11, pairmlp12, pairmlp22, kT=1.0):
     'fit to the BI of the first system'
 
 
     device = params['device']
-    # load target rdfs 
-    rdf_range11, target_rdf11 = np.loadtxt(mix_data[x]['rdf11'], delimiter=',')
-    rdf_range12, target_rdf12 = np.loadtxt(mix_data[x]['rdf12'], delimiter=',')
-    rdf_range22, target_rdf22 = np.loadtxt(mix_data[x]['rdf22'], delimiter=',')
 
-    bi_11 = - kT * torch.log(torch.Tensor( target_rdf11))
-    bi_12 = - kT * torch.log(torch.Tensor( target_rdf12))
-    bi_22 = - kT * torch.log(torch.Tensor( target_rdf22))
+    all_target_rdf11 = []
+    all_target_rdf12 = []
+    all_target_rdf22 = []
+
+    for x in x_list:
+        # load target rdfs 
+        rdf_range11, target_rdf11 = np.loadtxt(mix_data[x]['rdf11'], delimiter=',')
+        rdf_range12, target_rdf12 = np.loadtxt(mix_data[x]['rdf12'], delimiter=',')
+        rdf_range22, target_rdf22 = np.loadtxt(mix_data[x]['rdf22'], delimiter=',')
+        
+        all_target_rdf11.append(target_rdf11)
+        all_target_rdf12.append(target_rdf12)
+        all_target_rdf22.append(target_rdf22)
+
+    mean_rdf11 = np.array(all_target_rdf11).mean(0)
+    mean_rdf12 = np.array(all_target_rdf12).mean(0)
+    mean_rdf22 = np.array(all_target_rdf22).mean(0)
+
+    bi_11 = - kT * torch.log(torch.Tensor( mean_rdf11)).to(device)
+    bi_12 = - kT * torch.log(torch.Tensor( mean_rdf12)).to(device)
+    bi_22 = - kT * torch.log(torch.Tensor( mean_rdf22)).to(device)
 
     range11, range12, range22 = torch.Tensor(rdf_range11).to(device), torch.Tensor(rdf_range12).to(device), torch.Tensor(rdf_range22).to(device)
 
@@ -29,12 +43,11 @@ def pretrain(x, params, pairmlp11, pairmlp12, pairmlp22, kT=1.0):
     pair = LJFamily(epsilon=2.0, sigma=params['sigma'], rep_pow=6, attr_pow=3).to(device)
 
     optimizer =  torch.optim.Adam(list(pairmlp11.parameters()) + list(pairmlp22.parameters()) + \
-                                 list(pairmlp12.parameters()), lr=1e-3)
+                                 list(pairmlp12.parameters()), lr=5e-3)
 
 
     print("pretraining pair potentials ")
     for i in range(4000): 
-
         pred11 = pairmlp11(range11.reshape(-1, 1)) + pair(range11.reshape(-1, 1))
         pred12 = pairmlp12(range12.reshape(-1, 1)) + pair(range12.reshape(-1, 1))
         pred22 = pairmlp22(range22.reshape(-1, 1)) + pair(range22.reshape(-1, 1))
@@ -47,7 +60,7 @@ def pretrain(x, params, pairmlp11, pairmlp12, pairmlp22, kT=1.0):
         optimizer.step()
         optimizer.zero_grad()
 
-        if i % 10 == 0:
+        if i % 50 == 0:
             print(i, loss.item())
 
 
@@ -145,24 +158,22 @@ def run_mix(params):
 
 
     # # Define prior potential
-    pairmlp11 = pairMLP(**mlp_parmas)
-    pairmlp22 = pairMLP(**mlp_parmas)
-    pairmlp12 = pairMLP(**mlp_parmas)
+    pairmlp11 = pairMLP(**mlp_parmas).to(device)
+    pairmlp22 = pairMLP(**mlp_parmas).to(device)
+    pairmlp12 = pairMLP(**mlp_parmas).to(device)
 
     # Define potentials for the ground truth 
     pair11 = LennardJones(epsilon=1.0, sigma=0.9).to(device)
     pair22 = LennardJones(epsilon=1.0, sigma=1.1).to(device)
     pair12 = LennardJones(epsilon=1.0, sigma=1.0).to(device)
 
-
     train_sys = {} 
     val_sys = {}
 
+    pretrain(params['trainx'], params, pairmlp11, pairmlp12, pairmlp22, kT=1.0)
+
     for i, x in  enumerate(params['trainx']): 
         train_sys = prepare_sim(train_sys, x, params, pairmlp11, pairmlp12, pairmlp22)
-
-        if i == 0: 
-            pretrain(x, params, pairmlp11, pairmlp12, pairmlp22, kT=1.0)
 
 
     if params['valx'] != None:
