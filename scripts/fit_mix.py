@@ -15,27 +15,27 @@ def pretrain(x_list, params, pairmlp11, pairmlp12, pairmlp22, kT=1.0):
 
     device = params['device']
 
-    all_target_rdf11 = []
-    all_target_rdf12 = []
-    all_target_rdf22 = []
+    all_pot11 = []
+    all_pot12 = []
+    all_pot22 = []
 
     for x in x_list:
         # load target rdfs 
         rdf_range11, target_rdf11 = np.loadtxt(mix_data[x]['rdf11'], delimiter=',')
         rdf_range12, target_rdf12 = np.loadtxt(mix_data[x]['rdf12'], delimiter=',')
         rdf_range22, target_rdf22 = np.loadtxt(mix_data[x]['rdf22'], delimiter=',')
+
+        pot_11 = - kT * torch.log(torch.Tensor(target_rdf11))#.to(device)
+        pot_12 = - kT * torch.log(torch.Tensor(target_rdf12))#.to(device)
+        pot_22 = - kT * torch.log(torch.Tensor(target_rdf22))#.to(device)
         
-        all_target_rdf11.append(target_rdf11)
-        all_target_rdf12.append(target_rdf12)
-        all_target_rdf22.append(target_rdf22)
+        all_pot11.append(pot_11)
+        all_pot12.append(pot_12)
+        all_pot22.append(pot_22)
 
-    mean_rdf11 = np.array(all_target_rdf11).mean(0)
-    mean_rdf12 = np.array(all_target_rdf12).mean(0)
-    mean_rdf22 = np.array(all_target_rdf22).mean(0)
-
-    bi_11 = - kT * torch.log(torch.Tensor( mean_rdf11)).to(device)
-    bi_12 = - kT * torch.log(torch.Tensor( mean_rdf12)).to(device)
-    bi_22 = - kT * torch.log(torch.Tensor( mean_rdf22)).to(device)
+    bi_11 = torch.stack(all_pot11).mean(0)
+    bi_12 = torch.stack(all_pot12).mean(0)
+    bi_22 = torch.stack(all_pot22).mean(0)
 
     bi_11 = torch.nan_to_num(bi_11,  posinf=100.0)
     bi_12 = torch.nan_to_num(bi_12,  posinf=100.0)
@@ -87,7 +87,9 @@ def prepare_sim(sys, x, params, pairmlp11, pairmlp12, pairmlp22):
     atoms = io.read(mix_data[x]['xyz'])
     system = System(atoms, device=device)
     system.set_temperature(mix_data[x]['T'])
-    system, atom1_index, atom2_index = mix_system(system, x)
+
+    atom1_index = torch.nonzero(torch.Tensor(system.get_atomic_numbers() == 1)).squeeze()
+    atom2_index = torch.nonzero(torch.Tensor(system.get_atomic_numbers() == 2)).squeeze()
 
     sys[x].system = system 
 
@@ -173,7 +175,7 @@ def run_mix(params):
     train_sys = {} 
     val_sys = {}
 
-    pretrain(params['trainx'], params, pairmlp11, pairmlp12, pairmlp22, kT=1.0)
+    #pretrain(params['trainx'], params, pairmlp11, pairmlp12, pairmlp22, kT=1.0)
 
     for i, x in  enumerate(params['trainx']): 
         train_sys = prepare_sim(train_sys, x, params, pairmlp11, pairmlp12, pairmlp22)
@@ -201,11 +203,12 @@ def run_mix(params):
 
         loss = torch.Tensor([0.0]).to(device)
 
-        all_rdf11 = []
-        all_rdf12 = []
-        all_rdf22 = [] 
-
         for epoch in range(params['update_epoch']):
+            
+            all_rdf11 = []
+            all_rdf12 = []
+            all_rdf22 = [] 
+
             for x in params['trainx']:
                 tau = params['nsteps']
                 v_t, q_t, pv_t = train_sys[x].sim.simulate(steps=tau, dt=0.005, frequency=tau)
@@ -230,22 +233,21 @@ def run_mix(params):
                 loss_.backward()
 
                 loss += loss_.item()
-        
+
+                mean_all_rdf11 = torch.stack(all_rdf11).detach().cpu().mean(0)
+                mean_all_rdf12 = torch.stack(all_rdf12).detach().cpu().mean(0)
+                mean_all_rdf22 = torch.stack(all_rdf22).detach().cpu().mean(0)
+
+                if i % 5 == 0:  
+                    plot_pairs(train_sys[x].sim, pair11, pair12, pair22, fn=f'{model_path}/x_{x}_{str(i).zfill(3)}_pot.pdf')
+                    plot_sim_rdfs(mean_all_rdf11, mean_all_rdf12, mean_all_rdf22, 
+                                  train_sys[x].target_rdf11, train_sys[x].target_rdf12, train_sys[x].target_rdf22, 
+                                  mix_data[x]['rdf_range'],
+                                  f'{model_path}/x_{x}_{str(i).zfill(3)}_rdf.pdf')
+ 
         optimizer.step()
         optimizer.zero_grad()
  
-        if i % 5 == 0:
-
-            mean_all_rdf11 = torch.stack(all_rdf11).detach().cpu().mean(0)
-            mean_all_rdf12 = torch.stack(all_rdf12).detach().cpu().mean(0)
-            mean_all_rdf22 = torch.stack(all_rdf22).detach().cpu().mean(0)
-
-            plot_pairs(train_sys[x].sim, pair11, pair12, pair22, fn=f'{model_path}/x_{x}_{str(i).zfill(3)}_pot.pdf')
-            plot_sim_rdfs(mean_all_rdf11, mean_all_rdf12, mean_all_rdf22, 
-                          train_sys[x].target_rdf11, train_sys[x].target_rdf12, train_sys[x].target_rdf22, 
-                          mix_data[x]['rdf_range'],
-                          f'{model_path}/x_{x}_{str(i).zfill(3)}_rdf.pdf')
-
         print(loss.item() / params['update_epoch'])
         loss_log.append(loss.item() / params['update_epoch'] )
 
