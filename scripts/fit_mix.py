@@ -37,13 +37,16 @@ def pretrain(x_list, params, pairmlp11, pairmlp12, pairmlp22, kT=1.0):
     bi_12 = - kT * torch.log(torch.Tensor( mean_rdf12)).to(device)
     bi_22 = - kT * torch.log(torch.Tensor( mean_rdf22)).to(device)
 
-    range11, range12, range22 = torch.Tensor(rdf_range11).to(device), torch.Tensor(rdf_range12).to(device), torch.Tensor(rdf_range22).to(device)
+    bi_11 = torch.nan_to_num(bi_11,  posinf=100.0)
+    bi_12 = torch.nan_to_num(bi_12,  posinf=100.0)
+    bi_22 = torch.nan_to_num(bi_22,  posinf=100.0)
 
+    range11, range12, range22 = torch.Tensor(rdf_range11).to(device), torch.Tensor(rdf_range12).to(device), torch.Tensor(rdf_range22).to(device)
 
     pair = LJFamily(epsilon=2.0, sigma=params['sigma'], rep_pow=6, attr_pow=3).to(device)
 
     optimizer =  torch.optim.Adam(list(pairmlp11.parameters()) + list(pairmlp22.parameters()) + \
-                                 list(pairmlp12.parameters()), lr=5e-3)
+                                 list(pairmlp12.parameters()), lr=1e-3)
 
 
     print("pretraining pair potentials ")
@@ -163,8 +166,8 @@ def run_mix(params):
     pairmlp12 = pairMLP(**mlp_parmas).to(device)
 
     # Define potentials for the ground truth 
-    pair11 = LennardJones(epsilon=1.0, sigma=0.9).to(device)
-    pair22 = LennardJones(epsilon=1.0, sigma=1.1).to(device)
+    pair11 = LennardJones(epsilon=1.0, sigma=0.75).to(device)
+    pair22 = LennardJones(epsilon=1.0, sigma=1.25).to(device)
     pair12 = LennardJones(epsilon=1.0, sigma=1.0).to(device)
 
     train_sys = {} 
@@ -182,7 +185,7 @@ def run_mix(params):
 
 
     # try simulating 
-    optimizer = torch.optim.Adam(list(pairmlp11.parameters()) + list(pairmlp22.parameters()) + \
+    optimizer = torch.optim.SGD(list(pairmlp11.parameters()) + list(pairmlp22.parameters()) + \
                                  list(pairmlp12.parameters()), lr=params['lr'])
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
@@ -198,36 +201,53 @@ def run_mix(params):
 
         loss = torch.Tensor([0.0]).to(device)
 
-        for x in params['trainx']:
-            v_t, q_t, pv_t = train_sys[x].sim.simulate(steps=50, dt=0.005, frequency=50)
+        all_rdf11 = []
+        all_rdf12 = []
+        all_rdf22 = [] 
 
-            # check for NaN
-            if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
-                print("encounter NaN")
-                return 10.0, True 
+        for epoch in range(params['update_epoch']):
+            for x in params['trainx']:
+                tau = params['nsteps']
+                v_t, q_t, pv_t = train_sys[x].sim.simulate(steps=tau, dt=0.005, frequency=tau)
 
-            _, _, sim_rdf11 = train_sys[x].rdf11(q_t)
-            _, _, sim_rdf12 = train_sys[x].rdf12(q_t)
-            _, _, sim_rdf22 = train_sys[x].rdf22(q_t)
+                # check for NaN
+                if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
+                    print("encounter NaN")
+                    return 10.0, True 
 
-            loss += (sim_rdf11 - torch.Tensor(train_sys[x].target_rdf11).to(device) ).pow(2).mean() + \
-                    (sim_rdf12 - torch.Tensor(train_sys[x].target_rdf12).to(device) ).pow(2).mean() + \
-                    (sim_rdf22 - torch.Tensor(train_sys[x].target_rdf22).to(device) ).pow(2).mean() 
+                _, _, sim_rdf11 = train_sys[x].rdf11(q_t)
+                _, _, sim_rdf12 = train_sys[x].rdf12(q_t)
+                _, _, sim_rdf22 = train_sys[x].rdf22(q_t)
 
+                loss_ = (sim_rdf11 - torch.Tensor(train_sys[x].target_rdf11).to(device) ).pow(2).mean() + \
+                        (sim_rdf12 - torch.Tensor(train_sys[x].target_rdf12).to(device) ).pow(2).mean() + \
+                        (sim_rdf22 - torch.Tensor(train_sys[x].target_rdf22).to(device) ).pow(2).mean() 
 
-            if i % 5 == 0:
-                plot_pairs(train_sys[x].sim, pair11, pair12, pair22, fn=f'{model_path}/x_{x}_{str(i).zfill(3)}_pot.pdf')
-                plot_sim_rdfs(sim_rdf11.detach().cpu(), sim_rdf12.detach().cpu(), sim_rdf22.detach().cpu(), 
-                              train_sys[x].target_rdf11, train_sys[x].target_rdf12, train_sys[x].target_rdf22, 
-                              mix_data[x]['rdf_range'],
-                              f'{model_path}/x_{x}_{str(i).zfill(3)}_rdf.pdf')
+                all_rdf11.append(sim_rdf11)
+                all_rdf12.append(sim_rdf12)
+                all_rdf22.append(sim_rdf22)
 
-        loss.backward()
+                loss_.backward()
+
+                loss += loss_.item()
+        
         optimizer.step()
         optimizer.zero_grad()
+ 
+        if i % 5 == 0:
 
-        print(loss.item())
-        loss_log.append(loss.item())
+            mean_all_rdf11 = torch.stack(all_rdf11).detach().cpu().mean(0)
+            mean_all_rdf12 = torch.stack(all_rdf12).detach().cpu().mean(0)
+            mean_all_rdf22 = torch.stack(all_rdf22).detach().cpu().mean(0)
+
+            plot_pairs(train_sys[x].sim, pair11, pair12, pair22, fn=f'{model_path}/x_{x}_{str(i).zfill(3)}_pot.pdf')
+            plot_sim_rdfs(mean_all_rdf11, mean_all_rdf12, mean_all_rdf22, 
+                          train_sys[x].target_rdf11, train_sys[x].target_rdf12, train_sys[x].target_rdf22, 
+                          mix_data[x]['rdf_range'],
+                          f'{model_path}/x_{x}_{str(i).zfill(3)}_rdf.pdf')
+
+        print(loss.item() / params['update_epoch'])
+        loss_log.append(loss.item() / params['update_epoch'] )
 
         scheduler.step(loss)
 
@@ -291,7 +311,9 @@ if __name__ == '__main__':
     parser.add_argument("-nruns", type=int, default=1)
     parser.add_argument("-device", type=int, default=0)
     parser.add_argument("-nepochs", type=int, default=30)
+    parser.add_argument("-nsteps", type=int, default=50)
     parser.add_argument("-nsim", type=int, default=40)
+    parser.add_argument("-update_epoch", type=int, default=1)
     parser.add_argument("-trainx", type=float, nargs='+')
     parser.add_argument("-valx", type=float, nargs='+')
     parser.add_argument("-lr", type=float, default=3e-3)

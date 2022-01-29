@@ -41,6 +41,8 @@ if params['id'] == None:
             dict(name='lr', type='double', bounds=dict(min=1.0e-5, max=1e-2), transformation="log"),
             dict(name='n_width', type='int', bounds=dict(min=64, max=128)),
             dict(name='n_layers', type='int', bounds=dict(min=2, max=4)),
+            dict(name='update_epoch', type='int', bounds=dict(min=1, max=15)),
+            dict(name='nsteps', type='int', bounds=dict(min=20, max=60)),
             dict(name='nonlinear', type='categorical', categorical_values=['ReLU', 'ELU', 'Tanh', 'LeakyReLU', 'ReLU6', 'SELU', 'CELU', 'Tanhshrink']),
             #dict(name='res', type='categorical', categorical_values=['True', 'False']),
         ],
