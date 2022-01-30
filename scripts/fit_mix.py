@@ -222,28 +222,15 @@ def run_mix(params):
                 _, _, sim_rdf12 = train_sys[x].rdf12(q_t)
                 _, _, sim_rdf22 = train_sys[x].rdf22(q_t)
 
-                loss_ = (1 / x **2 ) * (sim_rdf11 - torch.Tensor(train_sys[x].target_rdf11).to(device) ).pow(2).mean() + \
-                        (1 / (x * (1 - x)) ) * (sim_rdf12 - torch.Tensor(train_sys[x].target_rdf12).to(device) ).pow(2).mean() + \
-                        (1 / (1 - x)**2 ) * (sim_rdf22 - torch.Tensor(train_sys[x].target_rdf22).to(device) ).pow(2).mean() 
+                loss_ = (sim_rdf11 - torch.Tensor(train_sys[x].target_rdf11).to(device) ).pow(2).mean() + \
+                        (sim_rdf12 - torch.Tensor(train_sys[x].target_rdf12).to(device) ).pow(2).mean() + \
+                        (sim_rdf22 - torch.Tensor(train_sys[x].target_rdf22).to(device) ).pow(2).mean() 
 
                 all_rdf11.append(sim_rdf11)
                 all_rdf12.append(sim_rdf12)
                 all_rdf22.append(sim_rdf22)
 
                 loss_.backward()
-
-
-                def grad_norm(parameters): 
-
-                    total_norm = 0
-                    count = 0 
-                    for p in parameters: # parameters include the biases!
-                        param_norm = p.grad.data.abs().mean()
-                        count += 1 
-                        #print(param_norm.item())
-                    total_norm += param_norm
-
-                    return total_norm / count 
 
                 loss += loss_.item()
 
