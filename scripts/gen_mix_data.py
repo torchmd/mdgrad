@@ -2,7 +2,7 @@ from fit_2_comp import *
 from ase import io 
 
 
-device = 3
+device = 1
 
 mix_data = {0.5: 
                   {'rdf11': '../data/mix_data/x0.5_rdf11.csv', 
@@ -10,34 +10,34 @@ mix_data = {0.5:
                   'rdf12': '../data/mix_data/x0.5_rdf12.csv', 
                   'xyz': '../data/mix_data/x0.5.xyz',
                   'img': '../data/mix_data/x0.5_rdf.pdf',
-                  'rho': 0.8, 
+                  'rho': 0.6, 
                   'size': 4,
-                  'T': 1.2,
+                  'T': 1.0,
                   'n_sim': 1000,
                   'rdf_range': (0.6, 3.3)
              },
-         0.3: 
-              {'rdf11': '../data/mix_data/x0.3_rdf11.csv', 
-              'rdf22': '../data/mix_data/x0.3_rdf22.csv',
-              'rdf12': '../data/mix_data/x0.3_rdf12.csv', 
-              'xyz': '../data/mix_data/x0.3.xyz',
-              'img': '../data/mix_data/x0.3_rdf.pdf',
-              'rho': 0.8, 
+         0.25: 
+              {'rdf11': '../data/mix_data/x0.25_rdf11.csv', 
+              'rdf22': '../data/mix_data/x0.25_rdf22.csv',
+              'rdf12': '../data/mix_data/x0.25_rdf12.csv', 
+              'xyz': '../data/mix_data/x0.25.xyz',
+              'img': '../data/mix_data/x0.25_rdf.pdf',
+              'rho': 0.6, 
               'size': 4,
-              'T': 1.2,
+              'T': 1.0,
               'n_sim': 1000,
               'rdf_range': (0.6, 3.3)
          },
 
-         0.7: 
-              {'rdf11': '../data/mix_data/x0.7_rdf11.csv', 
-              'rdf22': '../data/mix_data/x0.7_rdf22.csv',
-              'rdf12': '../data/mix_data/x0.7_rdf12.csv', 
-              'xyz': '../data/mix_data/x0.7.xyz',
-              'img': '../data/mix_data/x0.7_rdf.pdf',
-              'rho': 0.8, 
+         0.75: 
+              {'rdf11': '../data/mix_data/x0.75_rdf11.csv', 
+              'rdf22': '../data/mix_data/x0.75_rdf22.csv',
+              'rdf12': '../data/mix_data/x0.75_rdf12.csv', 
+              'xyz': '../data/mix_data/x0.75.xyz',
+              'img': '../data/mix_data/x0.75_rdf.pdf',
+              'rho': 0.6, 
               'size': 4,
-              'T': 1.2,
+              'T': 1.0,
               'n_sim': 1000,
               'rdf_range': (0.6, 3.3)
          },
@@ -75,9 +75,6 @@ if __name__ == "__main__":
         pair11 = LennardJones(epsilon=1.0, sigma=0.9)
         pair22 = LennardJones(epsilon=1.0, sigma=1.1)
         pair12 = LennardJones(epsilon=1.0, sigma=1.0)
-        
-        atom1_index = torch.LongTensor(list(range(0, 128)))
-        atom2_index = torch.LongTensor(list(range(128,256)))
         
         pot_11 = PairPotentials(system, pair11, cutoff=2.5, 
                          nbr_list_device=device, 
