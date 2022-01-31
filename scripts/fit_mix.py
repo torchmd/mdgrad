@@ -169,13 +169,13 @@ def run_mix(params):
 
     # Define potentials for the ground truth 
     pair11 = LennardJones(epsilon=1.0, sigma=0.9).to(device)
-    pair22 = LennardJones(epsilon=1.0, sigma=1.0).to(device)
-    pair12 = LennardJones(epsilon=1.0, sigma=1.1).to(device)
+    pair22 = LennardJones(epsilon=1.0, sigma=1.1).to(device)
+    pair12 = LennardJones(epsilon=1.0, sigma=1.0).to(device)
 
     train_sys = {} 
     val_sys = {}
 
-    pretrain(params['trainx'], params, pairmlp11, pairmlp12, pairmlp22, kT=1.0)
+    #pretrain(params['trainx'], params, pairmlp11, pairmlp12, pairmlp22, kT=1.0)
 
     for i, x in  enumerate(params['trainx']): 
         train_sys = prepare_sim(train_sys, x, params, pairmlp11, pairmlp12, pairmlp22)
@@ -306,7 +306,7 @@ def run_mix(params):
     return rdf_devs, False
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': 
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-logdir", type=str)
