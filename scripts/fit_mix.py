@@ -168,9 +168,9 @@ def run_mix(params):
     pairmlp12 = pairMLP(**mlp_parmas).to(device)
 
     # Define potentials for the ground truth 
-    pair11 = LennardJones(epsilon=1.0, sigma=0.75).to(device)
-    pair22 = LennardJones(epsilon=1.0, sigma=1.25).to(device)
-    pair12 = LennardJones(epsilon=1.0, sigma=1.0).to(device)
+    pair11 = LennardJones(epsilon=1.0, sigma=0.9).to(device)
+    pair22 = LennardJones(epsilon=1.0, sigma=1.0).to(device)
+    pair12 = LennardJones(epsilon=1.0, sigma=1.1).to(device)
 
     train_sys = {} 
     val_sys = {}
@@ -298,8 +298,9 @@ def run_mix(params):
 
         # save potentials 
 
-        rdf_devs += np.abs(sim_rdf11 - all_sys[x].target_rdf11).mean() + np.abs(sim_rdf12 - all_sys[x].target_rdf12).mean() + \
-                     np.abs(sim_rdf22 - all_sys[x].target_rdf22).mean()
+        if x in train_sys.keys():
+            rdf_devs += np.abs(sim_rdf11 - all_sys[x].target_rdf11).mean() + np.abs(sim_rdf12 - all_sys[x].target_rdf12).mean() + \
+                         np.abs(sim_rdf22 - all_sys[x].target_rdf22).mean()
 
         print(rdf_devs)
     return rdf_devs, False
