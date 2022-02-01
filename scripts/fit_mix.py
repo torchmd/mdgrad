@@ -302,7 +302,10 @@ def run_mix(params):
             rdf_devs += np.abs(sim_rdf11 - all_sys[x].target_rdf11).mean() + np.abs(sim_rdf12 - all_sys[x].target_rdf12).mean() + \
                          np.abs(sim_rdf22 - all_sys[x].target_rdf22).mean()
 
-        print(rdf_devs)
+    print(rdf_devs)
+    
+    np.savetxt(f"{model_path}/rdf_dev.txt", np.array([rdf_devs]) )
+
     return rdf_devs, False
 
 
