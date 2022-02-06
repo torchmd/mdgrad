@@ -51,7 +51,6 @@ if params['id'] == None:
                 dict(name='cutoff', type='double', bounds=dict(min=4.0, max=8.0)),
                 dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=20.0)),
                 dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
-                dict(name='res', type='categorical',categorical_values=["True", "False"]),
             ],
             observation_budget = n_obs, # how many iterations to run for the optimization
             parallel_bandwidth=10,
@@ -73,6 +72,7 @@ if params['id'] == None:
                 dict(name='n_width', type='int', bounds=dict(min=64, max=128)),
                 dict(name='n_layers', type='int', bounds=dict(min=2, max=5)),
                 dict(name='nonlinear', type='categorical', categorical_values=['ReLU', 'ELU', 'Tanh', 'LeakyReLU', 'ReLU6', 'SELU', 'CELU', 'Tanhshrink']),
+                dict(name='res', type='categorical',categorical_values=["True", "False"]),
             ],
             observation_budget = n_obs, # how many iterations to run for the optimization
             parallel_bandwidth=10,
