@@ -15,7 +15,7 @@ matplotlib.rcParams['text.usetex'] = False
 
 def plot_pair(fn, path, model, prior, device, start=0.5, end=2.5): 
 
-    x = torch.linspace(start, end, 50)[:, None].to(device)
+    x = torch.linspace(start, end, 1000)[:, None].to(device)
     
     u_fit = (model(x) + prior(x)).detach().cpu().numpy()
     u_fit = u_fit - u_fit[-1] 
