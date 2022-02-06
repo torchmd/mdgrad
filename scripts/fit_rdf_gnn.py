@@ -130,7 +130,7 @@ def get_gnn_potential(assignments,  sys_params):
         'n_gaussians': int(assignments['cutoff']//assignments['gaussian_width']),
         'n_convolutions': assignments['n_convolutions'],
         'cutoff': assignments['cutoff'],
-        'trainable_gauss': False
+        'trainable_gauss': assignments['res']
     }
 
     net = get_model(gnn_params)
@@ -145,7 +145,8 @@ def get_pair_potential(assignments, sys_params):
               'r_end': cutoff, 
               'n_width': assignments['n_width'],
               'n_layers': assignments['n_layers'],
-              'nonlinear': assignments['nonlinear']}
+              'nonlinear': assignments['nonlinear'],
+              'res': assignments['res']}
 
     lj_params = {'epsilon': assignments['epsilon'], 
          'sigma': assignments['sigma'],

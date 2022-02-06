@@ -50,7 +50,8 @@ if params['id'] == None:
                 dict(name='lr', type='double', bounds=dict(min=1e-6, max=1e-4)),
                 dict(name='cutoff', type='double', bounds=dict(min=4.0, max=8.0)),
                 dict(name='mse_weight', type='double', bounds=dict(min=0.0, max=20.0)),
-                dict(name='nbins', type='int', bounds=dict(min=32, max=128))
+                dict(name='nbins', type='int', bounds=dict(min=32, max=128)),
+                dict(name='res', type='categorical',categorical_values=["True", "False"]),
             ],
             observation_budget = n_obs, # how many iterations to run for the optimization
             parallel_bandwidth=10,
@@ -110,6 +111,11 @@ while experiment.progress.observation_count < experiment.observation_budget:
             'pair_flag': params['pair'],
             'topology_update_freq': 1
             }
+
+    if suggestion.assignments['res'] == 'True':
+        suggestion.assignments['res'] = True 
+    else:
+        suggestion.assignments['res'] = False 
 
     value = fit_rdf(assignments=suggestion.assignments, 
                             i=i, 
