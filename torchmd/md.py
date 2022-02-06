@@ -229,12 +229,14 @@ class NoseHooverChain(torch.nn.Module):
 
             coupled_forces = (p_v[0] * p.reshape(-1) / self.Q[0]).reshape(-1, 3)
 
-            dvdt = f - coupled_forces
+            dpdt = f - coupled_forces
 
             dpvdt_0 = 2 * (sys_ke - self.T * self.N_dof * 0.5) - p_v[0] * p_v[1]/ self.Q[1]
             dpvdt_mid = (p_v[:-2].pow(2) / self.Q[:-2] - self.T) - p_v[2:]*p_v[1:-1]/ self.Q[2:]
             dpvdt_last = p_v[-2].pow(2) / self.Q[-2] - self.T
-            
+
+            dvdt = dpdt / self.mass[:, None]
+
         return (dvdt, v, torch.cat((dpvdt_0[None], dpvdt_mid, dpvdt_last[None])))
 
     def get_inital_states(self, wrap=True):
