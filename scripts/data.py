@@ -362,6 +362,42 @@ pair_data_dict = {
             "target_pot": LennardJones()
             },
 
+    'lj_0.8183_0.8': {
+            'rho': 0.8183,
+            'T': 0.8, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
+    'lj_0.6393_1.4': {
+            'rho': 0.6393,
+            'T': 1.4, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
+    'lj_0.4412_2.0': {
+            'rho': 0.4412,
+            'T': 2.0, 
+            'start': 0.75, 
+            'end': 3.3,
+            'element': "H",
+            'mass': 1.0,
+            "N_unitcell": 4,
+            "cell": FaceCenteredCubic,
+            "target_pot": LennardJones()
+            },
+
     'softsphere_0.7_1.0': {
             'rdf_fn': '../data/softsphere_data/rdf_rho0.7_T1.0_dt0.01.csv' ,
             'vacf_fn': '../data/softsphere_data/vacf_rho0.7_T1.0_dt0.01.csv' ,
