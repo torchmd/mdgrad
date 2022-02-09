@@ -909,6 +909,45 @@ exp_rdf_data_dict = {
                         "ref": "https://aip.scitation.org/doi/pdf/10.1063/1.4967719"
                         },
 
+    'H20_288K_wu': { 'fn': "../data/water_sim/H2O_288K_wu.csv",
+                   'rho': 1.0,
+                    'T': 288.0, 
+                    'start': 1.8, 
+                    'end': 7.5,
+                    'element': "O" ,
+                    'mass': 18.01528,
+                    "N_unitcell": 8,
+                    "cell": Diamond,
+                    "pressure": 1
+                    },
+
+    'H20_338K_wu': { 'fn': "../data/water_sim/H2O_338K_wu.csv",
+                   'rho': 0.9728,
+                    'T': 338.0, 
+                    'start': 1.8, 
+                    'end': 7.5,
+                    'element': "O" ,
+                    'mass': 18.01528,
+                    "N_unitcell": 8,
+                    "cell": Diamond,
+                    "pressure": 1
+                    },
+
+
+    'H20_388K_wu': { 'fn': "../data/water_sim/H2O_388K_wu.csv",
+                   'rho': 0.938,
+                    'T': 388.0, 
+                    'start': 1.8, 
+                    'end': 7.5,
+                    'element': "O" ,
+                    'mass': 18.01528,
+                    "N_unitcell": 8,
+                    "cell": Diamond,
+                    "pressure": 1
+                    },
+
+
+
     'H2O_long_correlation' : {
                         'ref': 'https://aip.scitation.org/doi/pdf/10.1063/1.4961404'
     },
