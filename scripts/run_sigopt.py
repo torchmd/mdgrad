@@ -72,7 +72,6 @@ if params['id'] == None:
                 dict(name='n_width', type='int', bounds=dict(min=64, max=128)),
                 dict(name='n_layers', type='int', bounds=dict(min=2, max=5)),
                 dict(name='nonlinear', type='categorical', categorical_values=['ReLU', 'ELU', 'Tanh', 'LeakyReLU', 'ReLU6', 'SELU', 'CELU', 'Tanhshrink']),
-                dict(name='res', type='categorical',categorical_values=["True", "False"]),
             ],
             observation_budget = n_obs, # how many iterations to run for the optimization
             parallel_bandwidth=10,
@@ -112,10 +111,7 @@ while experiment.progress.observation_count < experiment.observation_budget:
             'topology_update_freq': 1
             }
 
-    if suggestion.assignments['res'] == 'True':
-        suggestion.assignments['res'] = True 
-    else:
-        suggestion.assignments['res'] = False 
+    suggestion.assignments['res'] = False 
 
     value = fit_rdf(assignments=suggestion.assignments, 
                             i=i, 
