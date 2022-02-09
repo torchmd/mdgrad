@@ -532,6 +532,8 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
     # if np.array(loss_log)[-10:, 1].mean() <=  0.005: 
     #     np.savetxt(model_path + '/potential.txt',  potential, delimiter=',')
 
+    rdf_dev = []
+
     for j, sim in enumerate(sim_list):
 
         #simulate with no optimization
@@ -569,8 +571,6 @@ def fit_lj(assignments, suggestion_id, device, sys_params, project_name):
         all_g_sim = np.array(all_g_sim).mean(0)
         
         # compute target deviation 
-
-        rdf_dev = []
         if data_str in data_str_list:
             drdf = np.abs(all_g_sim - rdf_target_list[j].cpu().numpy()).mean()
             rdf_dev.append(drdf) 
