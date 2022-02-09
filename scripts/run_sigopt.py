@@ -111,8 +111,6 @@ while experiment.progress.observation_count < experiment.observation_budget:
             'topology_update_freq': 1
             }
 
-    suggestion.assignments['res'] = False 
-
     value = fit_rdf(assignments=suggestion.assignments, 
                             i=i, 
                             suggestion_id=suggestion.id, 
