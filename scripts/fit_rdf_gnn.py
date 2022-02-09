@@ -130,7 +130,7 @@ def get_gnn_potential(assignments,  sys_params):
         'n_gaussians': int(assignments['cutoff']//assignments['gaussian_width']),
         'n_convolutions': assignments['n_convolutions'],
         'cutoff': assignments['cutoff'],
-        'trainable_gauss': assignments['res']
+        'trainable_gauss': False
     }
 
     net = get_model(gnn_params)
@@ -146,7 +146,7 @@ def get_pair_potential(assignments, sys_params):
               'n_width': assignments['n_width'],
               'n_layers': assignments['n_layers'],
               'nonlinear': assignments['nonlinear'],
-              'res': assignments['res']}
+              'res': False}
 
     lj_params = {'epsilon': assignments['epsilon'], 
          'sigma': assignments['sigma'],
@@ -347,7 +347,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
         loss_mse = (g_obs - torch.Tensor(all_g_sim).to(device)).pow(2).mean()
 
-        if data_tag is in train_list:
+        if data_tag in train_list:
             rdf_devs.append( (g_obs - torch.Tensor(all_g_sim).to(device)).abs().mean().item())
 
         save_traj(system_list[j], np.stack( sim.log['positions']),  
