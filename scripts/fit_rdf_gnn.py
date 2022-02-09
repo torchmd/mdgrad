@@ -332,7 +332,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             
         trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device)
 
-        test_nbins = 128
+        test_nbins = 256
         x, g_obs, obs = get_observer(system_list[j], data_tag, test_nbins)
 
         all_g_sim = []
@@ -344,9 +344,11 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
         # compute equilibrated rdf 
         loss_js = JS_rdf(g_obs, torch.Tensor(all_g_sim).to(device))
+
         loss_mse = (g_obs - torch.Tensor(all_g_sim).to(device)).pow(2).mean()
 
-        rdf_devs.append( (g_obs - torch.Tensor(all_g_sim).to(device)).abs().mean().item())
+        if data_tag is in train_list:
+            rdf_devs.append( (g_obs - torch.Tensor(all_g_sim).to(device)).abs().mean().item())
 
         save_traj(system_list[j], np.stack( sim.log['positions']),  
             model_path + '/{}_sim.xyz'.format(data_tag), skip=1)
