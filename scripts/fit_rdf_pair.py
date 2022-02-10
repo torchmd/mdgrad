@@ -232,7 +232,7 @@ def get_observer(system, data_str, nbins, t_range, rdf_start):
     rdf_data_path = pair_data_dict[data_str].get("fn", None)
     # generate simulated data 
     if not rdf_data_path:
-        rdf_data, vacf_target = get_target_obs(system, data_str, 150, (rdf_start, rdf_end), nbins=nbins, t_range=t_range, skip=50, dt=dt)
+        rdf_data, vacf_target = get_target_obs(system, data_str, 200, (rdf_start, rdf_end), nbins=nbins, t_range=t_range, skip=50, dt=dt)
         vacf_target = torch.Tensor(vacf_target).to(system.device)
         rdf_data = np.vstack( (np.linspace(rdf_start, rdf_end, nbins), rdf_data))
     else:
