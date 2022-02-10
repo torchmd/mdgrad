@@ -34,7 +34,7 @@ if params['dry_run']:
 else:
     n_obs = 1000
     n_epochs = 1000 # 1000
-    n_sim = 50 # 50 
+    n_sim = 200 # 50 
 
 logdir = params['logdir']
 
