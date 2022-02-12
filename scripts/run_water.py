@@ -13,6 +13,7 @@ parser.add_argument("-nepochs", type=int, default=700)
 parser.add_argument("-nsim", type=int, default=20)
 parser.add_argument("--pair", action='store_true', default=False)
 parser.add_argument("-nruns", type=int, default=1)
+parser.add_argument('-opt_freq', type=int, default=100)
 params = vars(parser.parse_args())
 
 
@@ -47,7 +48,7 @@ params = vars(parser.parse_args())
 
 assignments = {"cutoff":6.16,"epsilon":1.5858519218705223,"gaussian_width":0.20182823407126177,
                 "lr":0.00048351883733428714,"mse_weight":0.12409285934040738,"n_layers":5,
-                "n_width":128,"nbins":128,"nonlinear":"LeakyReLU","opt_freq":100,"power":10,
+                "n_width":128,"nbins":128,"nonlinear":"LeakyReLU","opt_freq":params['opt_freq'],"power":10,
                 "sigma":1.68, 'res': False}
 
 sys_params = {
