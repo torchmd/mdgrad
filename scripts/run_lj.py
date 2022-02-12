@@ -19,6 +19,7 @@ parser.add_argument("-cutoff", type=float)
 parser.add_argument("-vacf_weight", type=float)
 parser.add_argument("-dt", type=float)
 parser.add_argument("-update_freq", type=int)
+parser.add_argument("-opt_freq", type=int, default=120)
 
 parser.add_argument("-name", type=str)
 parser.add_argument("-data", type=str, nargs='+')
@@ -52,7 +53,7 @@ else:
     "n_width": 128,
     "nbins": 100,
     "nonlinear": "ELU",
-    "opt_freq": 120, # 60
+    "opt_freq": params['opt_freq'], # 60
     "power": 10,
     "rdf_weight": 0.95,
     "train_vacf": "True",
