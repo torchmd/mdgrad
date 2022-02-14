@@ -13,7 +13,7 @@ parser.add_argument("-nepochs", type=int, default=700)
 parser.add_argument("-nsim", type=int, default=20)
 parser.add_argument("--pair", action='store_true', default=False)
 parser.add_argument("-nruns", type=int, default=1)
-parser.add_argument('-opt_freq', type=int, default=100)
+parser.add_argument('-opt_freq', type=int, default=84)
 params = vars(parser.parse_args())
 
 
@@ -46,10 +46,15 @@ params = vars(parser.parse_args())
 # }
 
 
-assignments = {"cutoff":6.16,"epsilon":1.5858519218705223,"gaussian_width":0.20182823407126177,
-                "lr":0.00048351883733428714,"mse_weight":0.12409285934040738,"n_layers":5,
-                "n_width":128,"nbins":128,"nonlinear":"LeakyReLU","opt_freq":params['opt_freq'],"power":10,
-                "sigma":1.68, 'res': False}
+# assignments = {"cutoff":6.16,"epsilon":1.5858519218705223,"gaussian_width":0.20182823407126177,
+#                 "lr":0.00048351883733428714,"mse_weight":0.12409285934040738,"n_layers":5,
+#                 "n_width":128,"nbins":110,"nonlinear":"LeakyReLU","opt_freq":params['opt_freq'],"power":10,
+#                 "sigma":1.68, 'res': False}
+
+
+assignments =  {"cutoff":5.746349457855559,"epsilon":0.15405374330511176,"gaussian_width":0.2487535096863422,
+                "lr":0.0022872820899195317,"mse_weight":0.1193057257084694,"n_layers":3,"n_width":88,
+                "nbins":111,"nonlinear":"ReLU6","opt_freq":params['opt_freq'],"power":12,"sigma":2.01746679162889}
 
 sys_params = {
 'dt': 0.5,
