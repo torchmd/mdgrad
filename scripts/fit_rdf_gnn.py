@@ -1,10 +1,10 @@
 import torchmd
 from nff.train import get_model
 from torchmd.system import System
-from torchmd.interface import GNNPotentials, PairPotentials, Stack
+from torchmd.interface import GNNPotentials, PairPotentials, TPairPotentials, Stack
 from torchmd.md import Simulations
 from torchmd.observable import angle_distribution
-from torchmd.potentials import pairMLP
+from torchmd.potentials import pairMLP, TpairMLP
 from ase import units
 from data import exp_rdf_data_dict, get_exp_rdf, get_unit_len
 from plot import *
@@ -137,6 +137,22 @@ def get_gnn_potential(assignments,  sys_params):
     prior = ExcludedVolume(**lj_params)
     return net, prior
 
+def get_tpair_potential(assignments, sys_params):
+
+    cutoff = assignments['cutoff']
+    mlp_parmas = {'n_width': assignments['n_width'],
+              'n_layers': assignments['n_layers'],
+              'nonlinear': assignments['nonlinear']}
+
+    lj_params = {'epsilon': assignments['epsilon'], 
+         'sigma': assignments['sigma'],
+        "power": assignments['power']}
+
+    net = TpairMLP(**mlp_parmas)
+    prior = ExcludedVolume(**lj_params)
+
+    return net, prior
+
 def get_pair_potential(assignments, sys_params):
 
     cutoff = assignments['cutoff']
@@ -157,7 +173,7 @@ def get_pair_potential(assignments, sys_params):
 
     return net, prior
 
-def build_simulators(data_list, system_list, net, prior, cutoff, pair_flag, topology_update_freq=1): 
+def build_simulators(data_list, system_list, net, prior, cutoff, pair_flag, tpair_flag, topology_update_freq=1): 
     model_list = []
     for i, data_tag in enumerate(data_list):
         pair = PairPotentials(system_list[i], prior,
@@ -166,6 +182,12 @@ def build_simulators(data_list, system_list, net, prior, cutoff, pair_flag, topo
 
         if pair_flag:
             NN = PairPotentials(system_list[i], net,
+                cutoff=cutoff,
+                ).to(system_list[i].device)
+
+        elif tpair_flag:
+            T = exp_rdf_data_dict[data_tag]['T']
+            NN = TPairPotentials(system_list[i], net, T,
                 cutoff=cutoff,
                 ).to(system_list[i].device)
         else:
@@ -219,12 +241,14 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     # Initialize potentials, one model that simulate all 
     if sys_params["pair_flag"]:
         net, prior = get_pair_potential(assignments, sys_params)
-
+    elif sys_params['tpair_flag']:   
+        net, prior = get_tpair_potential(assignments, sys_params)
     else:
         net, prior = get_gnn_potential(assignments, sys_params)
 
     sim_list = build_simulators(all_sys, system_list, net, prior, 
                                 cutoff=cutoff, pair_flag=sys_params["pair_flag"],
+                                tpair_flag=sys_params['tpair_flag'],
                                 topology_update_freq=sys_params['topology_update_freq'])
 
     g_target_list = []
@@ -291,6 +315,11 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                                   prior=prior, 
                                   device=device,
                                   start=2, end=8)
+                    
+                    np.savetxt(model_path + '/potential.txt', potential)
+
+                if sys_params['tpair_flag']: 
+                    pass 
 
         #--------------------------------------------------------------------------------
 
@@ -358,7 +387,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         total_loss += loss_mse.item()
 
     np.savetxt(model_path + '/loss.csv', np.array(loss_log))
-    np.savetxt(model_path + '/potential.txt', potential)
     np.savetxt(model_path + '/rdf_mse.txt', np.array(rdf_devs))
 
     return total_loss

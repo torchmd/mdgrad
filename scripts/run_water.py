@@ -12,6 +12,7 @@ parser.add_argument("-device", type=int, default=0)
 parser.add_argument("-nepochs", type=int, default=700)
 parser.add_argument("-nsim", type=int, default=20)
 parser.add_argument("--pair", action='store_true', default=False)
+parser.add_argument("--tpair", action='store_true', default=False)
 parser.add_argument("-nruns", type=int, default=1)
 parser.add_argument('-opt_freq', type=int, default=84)
 params = vars(parser.parse_args())
@@ -65,6 +66,7 @@ sys_params = {
 'size': 4,
 'anneal_flag': 'False',
 'pair_flag': params['pair'],
+'tpair_flag': params['tpair'],
 'topology_update_freq': 1
 }
 
