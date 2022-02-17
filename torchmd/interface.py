@@ -136,6 +136,84 @@ class GNNPotentials(GeneralInteraction):
         return results['energy']
 
 
+class TPairPotentials(GeneralInteraction):
+
+    """Summary
+    
+    Attributes:
+        cutoff (TYPE): Description
+        ex_pairs (TYPE): Description
+        index_tuple (TYPE): Description
+        model (TYPE): Description
+    """
+    
+    def __init__(self, system, pair_model, T, cutoff=2.5, index_tuple=None, ex_pairs=None, nbr_list_device=None):
+        """Summary
+        
+        Args:
+            system (TYPE): Description
+            pair_model (TYPE): Description
+            cutoff (float, optional): Description
+            index_tuple (None, optional): Description
+            ex_pairs (None, optional): Description
+        """
+        super().__init__(system)
+
+        if nbr_list_device == None:
+            self.nbr_list_device = system.device
+        else:
+            self.nbr_list_device = nbr_list_device
+
+        self.model = pair_model
+        self.cutoff = cutoff
+        self.index_tuple = index_tuple
+        self.ex_pairs = ex_pairs
+        self.T = T 
+
+        nbr_list, offsets = generate_nbr_list(
+                                       torch.Tensor(
+                                            system.get_positions()
+                                                ).to(self.nbr_list_device), 
+                                       self.cutoff, 
+                                       self.cell.to(self.nbr_list_device), 
+                                       index_tuple=self.index_tuple, 
+                                       ex_pairs=self.ex_pairs)
+
+        self.nbr_list = nbr_list.detach().to('cpu')
+        self.offsets = offsets.detach().to(system.device)
+
+
+    def _reset_topology(self, xyz):
+        """Summary
+        
+        Args:
+            xyz (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
+        nbr_list, pair_dis, offsets = generate_nbr_list(xyz.to(self.nbr_list_device), 
+                                               self.cutoff, 
+                                               self.cell.to(self.nbr_list_device), 
+                                               index_tuple=self.index_tuple, 
+                                               ex_pairs=self.ex_pairs, 
+                                               get_dis=True)
+
+        self.nbr_list = nbr_list.detach().to('cpu')
+        self.offsets = offsets.detach().to(xyz.device)
+
+        return nbr_list, pair_dis, offsets
+
+    def forward(self, xyz):
+
+        pair_dis = compute_dis(xyz, self.nbr_list, self.offsets, self.cell)
+
+        # the energy takes temperatures here
+        # construct temperature, distance input 
+        input = torch.hstack([ torch.ones_like(pair_dis) * self.T * units.kB, pair_dis])
+        energy = self.model(input).sum()
+        return energy
+
 class PairPotentials(GeneralInteraction):
 
     """Summary

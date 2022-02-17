@@ -5,7 +5,7 @@ from nff.nn.layers import GaussianSmearing
 from torch import nn
 import numpy as np
 from nff.utils.scatter import compute_grad
-
+from ase import units
 from scipy import special
 
 nlr_dict =  {
@@ -190,6 +190,28 @@ class pairMLP(torch.nn.Module):
                     r = r + dr 
                 else:
                     r = dr 
+        return r
+
+class TpairMLP(torch.nn.Module):
+    def __init__(self, n_layers, n_width, nonlinear ):
+        super(TpairMLP, self).__init__()
+
+        nlr = nlr_dict[nonlinear]
+        self.layers = nn.ModuleList(
+            [
+            nn.Linear(2, n_width),
+            nlr]
+            )
+
+        for _ in range(n_layers):
+            self.layers.append(nn.Linear(n_width, n_width))
+            self.layers.append(nlr)
+
+        self.layers.append(nn.Linear(n_width, 1))  
+        
+    def forward(self, r):
+        for i in range(len(self.layers)):
+            r = self.layers[i](r)
         return r
 
 
