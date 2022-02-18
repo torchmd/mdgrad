@@ -210,8 +210,8 @@ class TPairPotentials(GeneralInteraction):
 
         # the energy takes temperatures here
         # construct temperature, distance input 
-        input = torch.hstack([ torch.ones_like(pair_dis) * self.T * units.kB, pair_dis])
-        energy = self.model(input).sum()
+        #input = torch.hstack([ torch.ones_like(pair_dis) * self.T * units.kB, pair_dis])
+        energy = self.model(pair_dis, units.kB* self.T).sum()
         return energy
 
 class PairPotentials(GeneralInteraction):

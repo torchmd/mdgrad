@@ -193,26 +193,15 @@ class pairMLP(torch.nn.Module):
         return r
 
 class TpairMLP(torch.nn.Module):
-    def __init__(self, n_layers, n_width, nonlinear ):
+    def __init__(self, n_gauss, r_start, r_end, n_layers, n_width, nonlinear, res=False ):
         super(TpairMLP, self).__init__()
 
-        nlr = nlr_dict[nonlinear]
-        self.layers = nn.ModuleList(
-            [
-            nn.Linear(2, n_width),
-            nlr]
-            )
+        self.energy = pairMLP(n_gauss, r_start, r_end, n_layers, n_width, nonlinear, res=res)
+        self.entropy = pairMLP(n_gauss, r_start, r_end, n_layers, n_width, nonlinear, res=res)
 
-        for _ in range(n_layers):
-            self.layers.append(nn.Linear(n_width, n_width))
-            self.layers.append(nlr)
-
-        self.layers.append(nn.Linear(n_width, 1))  
-        
-    def forward(self, r):
-        for i in range(len(self.layers)):
-            r = self.layers[i](r)
-        return r
+    def forward(self, r, T):
+        u = self.energy(r) - T * self.entropy(r)
+        return u
 
 
 class toy2d(torch.nn.Module):
