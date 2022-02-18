@@ -140,9 +140,13 @@ def get_gnn_potential(assignments,  sys_params):
 def get_tpair_potential(assignments, sys_params):
 
     cutoff = assignments['cutoff']
-    mlp_parmas = {'n_width': assignments['n_width'],
+    mlp_parmas = {'n_gauss': int(cutoff//assignments['gaussian_width']), 
+              'r_start': 0.0,
+              'r_end': cutoff, 
+              'n_width': assignments['n_width'],
               'n_layers': assignments['n_layers'],
-              'nonlinear': assignments['nonlinear']}
+              'nonlinear': assignments['nonlinear'],
+              'res': False}
 
     lj_params = {'epsilon': assignments['epsilon'], 
          'sigma': assignments['sigma'],
