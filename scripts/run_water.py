@@ -52,10 +52,8 @@ params = vars(parser.parse_args())
 #                 "n_width":128,"nbins":110,"nonlinear":"LeakyReLU","opt_freq":params['opt_freq'],"power":10,
 #                 "sigma":1.68, 'res': False}
 
-
-assignments =  {"cutoff":5.746349457855559,"epsilon":0.15405374330511176,"gaussian_width":0.2487535096863422,
-                "lr":0.0022872820899195317,"mse_weight":0.1193057257084694,"n_layers":3,"n_width":88,
-                "nbins":111,"nonlinear":"ReLU6","opt_freq":params['opt_freq'],"power":12,"sigma":2.01746679162889}
+assignments =  {"cutoff":5.03357321594869,"epsilon":1.8245160642515632,"gaussian_width":0.1548726489982903,"lr":0.0006548601438181719,
+"mse_weight":0.34529615069857633,"n_layers":3,"n_width":115,"nbins":125,"nonlinear":"ELU","opt_freq":192,"power":12,"sigma":1.68191635809129}
 
 sys_params = {
 'dt': 0.5,
