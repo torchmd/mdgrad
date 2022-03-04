@@ -319,11 +319,20 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                                   prior=prior, 
                                   device=device,
                                   start=2, end=8)
-                    
+
                     np.savetxt(model_path + '/potential.txt', potential)
 
-                if sys_params['tpair_flag']: 
-                    pass 
+                if sys_params['tpair_flag']:
+                    T = exp_rdf_data_dict[data_tag]['T'] 
+                    potential = plot_tpair( path=model_path,
+                                 fn=str(i),
+                                  model=net, 
+                                  prior=prior, 
+                                  T = T,
+                                  device=device,
+                                  start=2, end=8)
+
+                    np.savetxt(model_path + f'/potential_{T}K.txt', potential)
 
         #--------------------------------------------------------------------------------
 
