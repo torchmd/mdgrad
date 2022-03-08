@@ -158,7 +158,7 @@ class pairMLP(torch.nn.Module):
             start=r_start,
             stop=r_end,
             n_gaussians=n_gauss,
-            trainable=False
+            trainable=True
         )
         
         self.layers = nn.ModuleList(
