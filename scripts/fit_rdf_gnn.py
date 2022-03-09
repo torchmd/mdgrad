@@ -245,8 +245,105 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
     # Initialize potentials, one model that simulate all 
     if sys_params["pair_flag"]:
         net, prior = get_pair_potential(assignments, sys_params)
+
+        def pair_pretrain(all_sys, net, prior):
+            # ------ code to pretrain -----
+            net = net.to(device)
+            prior = prior.to(device)
+
+            all_pot = []
+            for i, data_tag in enumerate(all_sys):
+                x, g_obs, obs = get_observer(system_list[i], data_tag, nbins)
+                T = exp_rdf_data_dict[data_tag]['T']
+                pot = - units.kB * T * torch.log(g_obs)
+                all_pot.append(pot)
+
+            bi = torch.stack(all_pot).mean(0)
+            bi = torch.nan_to_num(bi,  posinf=100.0)
+
+            f = interpolate.interp1d(x, bi.detach().cpu().numpy())
+            rrange = np.linspace(2.5, 7.5, 1000)
+            u_target = f(rrange)
+
+            u_target = torch.Tensor(u_target).to(device)
+            rrange = torch.Tensor(rrange).to(device)
+
+            optimizer = torch.optim.Adam(list(net.parameters()), lr=1e-3)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                                      'min', 
+                                                      min_lr=0.9e-7, 
+                                                      verbose=True, factor = 0.5, patience=25,
+                                                      threshold=1e-5)
+            
+            for i in range(4000):
+                u_fit = net(rrange.unsqueeze(-1)) + prior(rrange.unsqueeze(-1))
+                loss = (u_fit.squeeze() - u_target).pow(2).mean()
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+
+                scheduler.step(loss.item())
+
+                if i % 50 == 0:
+                    print(i, loss.item())
+
+            np.savetxt(model_path + f'/bi.txt', u_target.detach().cpu().numpy())
+            np.savetxt(model_path + f'/fit.txt', u_fit.detach().cpu().numpy())
+
+        pair_pretrain(all_sys, net, prior) 
+
     elif sys_params['tpair_flag']:   
         net, prior = get_tpair_potential(assignments, sys_params)
+
+        def tpair_pretrain(all_sys, net, prior):
+            net = net.to(device)
+            prior = prior.to(device)
+
+            all_pot = []
+            all_T = []
+            for i, data_tag in enumerate(all_sys):
+                x, g_obs, obs = get_observer(system_list[i], data_tag, nbins)
+                T = exp_rdf_data_dict[data_tag]['T']
+                pot = -units.kB * T * torch.log(g_obs)
+
+                f = interpolate.interp1d(x, pot.detach().cpu().numpy())
+                rrange = np.linspace(2.5, 7.5, 1000)
+                pot = f(rrange)
+
+                all_pot.append(pot)
+                all_T.append(T)
+
+            optimizer = torch.optim.Adam(list(net.parameters()), lr=1e-3)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                                      'min', 
+                                                      min_lr=0.9e-7, 
+                                                      verbose=True, factor = 0.5, patience=25,
+                                                      threshold=1e-5)
+
+            rrange = torch.Tensor(rrange).to(device)
+            for i in range(2000):
+                loss = 0.0
+                for T, u_target in zip(all_T, all_pot): 
+
+                    u_target = torch.Tensor(u_target).to(device)
+                    u_fit = net(rrange.unsqueeze(-1), units.kB * T) + prior(rrange.unsqueeze(-1))
+                    loss += (u_fit.squeeze() - u_target).pow(2).mean()
+
+                    if i == 1999:
+                        np.savetxt(model_path + f'/bi_{T}.txt', u_target.detach().cpu().numpy())
+                        np.savetxt(model_path + f'/fit_{T}.txt', u_fit.detach().cpu().numpy())
+
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+                scheduler.step(loss.item())
+
+                if i % 50 == 0:
+                    print(i, loss.item())
+
+        tpair_pretrain(all_sys, net, prior)
+
+
     else:
         net, prior = get_gnn_potential(assignments, sys_params)
 
@@ -284,6 +381,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
 
         # temperature annealing 
         for j, sim in enumerate(sim_list[:len(train_list)]):
+
             data_tag = all_sys[j]
 
             if sys_params['anneal_flag'] == 'True' and i % assignments['anneal_freq'] == 0:
@@ -333,7 +431,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                                   start=2, end=8)
 
                     np.savetxt(model_path + f'/potential_{T}K.txt', potential)
-
         #--------------------------------------------------------------------------------
 
         loss = loss_js + loss_mse 
