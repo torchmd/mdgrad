@@ -7,6 +7,8 @@ import numpy as np
 from nff.utils.scatter import compute_grad
 from ase import units
 from scipy import special
+from xitorch.interpolate import Interp1D
+from torch.nn import Parameter
 
 nlr_dict =  {
     'ReLU': nn.ReLU(), 
@@ -145,6 +147,17 @@ class SplineOverlap(torch.nn.Module):
         
     def forward(self, x):
         return self.spline.evaluate(x)
+
+
+class pairTab(torch.nn.Module):
+    def __init__(self, nbins=1000, rc=2.5, device='cpu'):
+        super(pairTab, self).__init__()
+        
+        self.tab = Parameter( torch.zeros(nbins).to(device) )
+        self.x = torch.linspace(0.0, rc, nbins).to(device )
+    def forward(self, r):
+        u = Interp1D(self.x, self.tab)(r.squeeze()).unsqueeze(-1)
+        return u
 
 
 class pairMLP(torch.nn.Module):

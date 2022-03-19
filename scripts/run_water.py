@@ -65,7 +65,8 @@ sys_params = {
 'anneal_flag': 'False',
 'pair_flag': params['pair'],
 'tpair_flag': params['tpair'],
-'topology_update_freq': 1
+'topology_update_freq': 1,
+'device': params['device']
 }
 
 print(sys_params)
