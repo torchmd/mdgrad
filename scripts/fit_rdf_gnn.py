@@ -4,7 +4,7 @@ from torchmd.system import System
 from torchmd.interface import GNNPotentials, PairPotentials, TPairPotentials, Stack
 from torchmd.md import Simulations
 from torchmd.observable import angle_distribution
-from torchmd.potentials import pairMLP, TpairMLP
+from torchmd.potentials import pairTab, pairMLP, TpairMLP
 from ase import units
 from data import exp_rdf_data_dict, get_exp_rdf, get_unit_len
 from plot import *
@@ -173,6 +173,9 @@ def get_pair_potential(assignments, sys_params):
         "power": assignments['power']}
 
     net = pairMLP(**mlp_parmas)
+
+    #net = pairTab(rc=10.0, device=sys_params['device'])
+
     prior = ExcludedVolume(**lj_params)
 
     return net, prior
@@ -403,8 +406,18 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         #---------------------------------------------------------------------
             # only optimize on data that needs training 
             if data_tag in train_list:
+
+                def compute_D(dev, rho, rrange):
+                    return (4 * np.pi * rho * (rrange ** 2) * dev ** 2 * (rrange[2]- rrange[1])).sum()
+
                 loss_js += JS_rdf(g_target_list[j], g)
-                loss_mse += assignments['mse_weight'] * (g - g_target_list[j]).pow(2).mean() 
+                #loss_mse += assignments['mse_weight'] * (g - g_target_list[j]).pow(2).mean() 
+
+
+                rrange = torch.linspace(bins[0], bins[-1], g.shape[0])
+                rho = system_list[j].get_number_of_atoms() / system_list[j].get_volume()
+
+                loss_mse += compute_D(g - g_target_list[j], rho, rrange.to(device))
 
             if i % 10 == 0:
                 plot_rdfs(bins_list[j], g_target_list[j], g, "{}_{}".format(data_tag, i),
@@ -433,7 +446,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                     np.savetxt(model_path + f'/potential_{T}K.txt', potential)
         #--------------------------------------------------------------------------------
 
-        loss = loss_js + loss_mse 
+        loss = loss_mse 
         loss.backward()
         
         print("epoch {} | loss: {:.5f}".format(i, loss.item()) ) 
