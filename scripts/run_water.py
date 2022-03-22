@@ -53,7 +53,7 @@ params = vars(parser.parse_args())
 #                 "sigma":1.68, 'res': False}
 
 assignments =  {"cutoff":6.0,"epsilon":1.8245160642515632,"gaussian_width":0.15,"lr":0.0006548601438181719,
-"mse_weight":0.34529615069857633,"n_layers":3,"n_width":115,"nbins":125,"nonlinear":"ELU","opt_freq":192,"power":12,"sigma":1.68191635809129}
+"mse_weight":0.34529615069857633,"n_layers":3,"n_width":115,"nbins":128,"nonlinear":"ELU","opt_freq":192,"power":12,"sigma":1.68191635809129}
 
 sys_params = {
 'dt': 0.5,

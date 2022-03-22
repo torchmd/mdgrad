@@ -413,7 +413,6 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
                 loss_js += JS_rdf(g_target_list[j], g)
                 #loss_mse += assignments['mse_weight'] * (g - g_target_list[j]).pow(2).mean() 
 
-
                 rrange = torch.linspace(bins[0], bins[-1], g.shape[0])
                 rho = system_list[j].get_number_of_atoms() / system_list[j].get_volume()
 
@@ -484,7 +483,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             
         trajs = torch.Tensor( np.stack( sim.log['positions'])).to(system.device)
 
-        test_nbins = 128
+        test_nbins = 800
         x, g_obs, obs = get_observer(system_list[j], data_tag, test_nbins)
 
         all_g_sim = []
