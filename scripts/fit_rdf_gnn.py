@@ -401,7 +401,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             if torch.isnan(q_t.reshape(-1)).sum().item() > 0:
                 return 5 - (i / n_epochs) * 5
 
-            _, bins, g = obs_list[j](q_t[::5])
+            _, bins, g = obs_list[j](q_t[::20])
         
         #---------------------------------------------------------------------
             # only optimize on data that needs training 
