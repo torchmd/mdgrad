@@ -1,6 +1,7 @@
 import argparse
 from fit_rdf_gnn import *
-
+from datetime import datetime
+import random 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-logdir", type=str)
@@ -40,12 +41,17 @@ sys_params = {
 'val': params['val'],
 'size': 4,
 'anneal_flag': 'True',
-'pair_flag': params['pair']
+'pair_flag': params['pair'],
+'topology_update_freq': 1
 }
+
+
+now = datetime.now()
+dt_string = now.strftime("%m-%d-%H-%M-%S") + str(random.randint(0, 100))
 
 value = fit_rdf(assignments=assignments, 
                         i=i, 
-                        suggestion_id=params['name'], 
+                        suggestion_id=params['name'] + dt_string, 
                         device=params['device'],
                         sys_params=sys_params,
                         project_name=params['logdir'])
