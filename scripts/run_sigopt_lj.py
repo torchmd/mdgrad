@@ -16,12 +16,12 @@ parser.add_argument("--dry_run", action='store_true', default=False)
 params = vars(parser.parse_args())
 
 if params['dry_run']:
-    token = 'FSDXBSGDUZUQEDGDCYPCXFTRXFNYBVXVACKZQUWNSOKGKGFN'
+    token = 'GMBSZWXFWPHHUCXSDYLLCBBCBTKZUBVCBQRMCMXEFNEYGCFY'
     n_obs = 2
     n_epochs = 10
     n_sim = 2
 else:
-    token = 'RXGPHWIUAMLHCDJCDBXEWRAUGGNEFECMOFITCRHCEOBRMGJU'
+    token = 'JGTKFUYDJMOKBMDFXICMGNEFBXOOSIPAVSGUWPSMJCVDWYMA'
     n_obs = 1000
     n_epochs = 1000
     n_sim = 50

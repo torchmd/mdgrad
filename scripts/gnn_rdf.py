@@ -118,7 +118,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
             Q=50.0, 
             T=298.0 * units.kB,
             num_chains=5, 
-            adjoint=True).to(device)
+            adjoint=False).to(device)
 
     # define simulator with 
     sim = Simulations(system, diffeq)
@@ -159,7 +159,7 @@ def fit_rdf(assignments, i, suggestion_id, device, sys_params, project_name):
         
         # this shoud be wrapped in some way 
         loss_js = JS_rdf(g_obs, g)
-        loss = loss_js + assignments['mse_weight'] * (g- g_obs).pow(2).sum()
+        loss = assignments['mse_weight'] * (g- g_obs).pow(2).sum()
                 
         print(loss_js.item(), loss.item())
         loss.backward()
