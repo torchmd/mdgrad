@@ -2,6 +2,6 @@ ase==3.20.1
 numpy==1.21.4
 scipy==1.5.2
 torch==1.10.0
-torchcubicspline==0.0.3
+git+https://github.com/patrick-kidger/torchcubicspline.git@master
 torchmd==0.0.2
 xitorch==0.3.0
