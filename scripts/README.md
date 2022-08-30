@@ -1,9 +1,8 @@
 # learning pair potential experiments 
 
 ## LJ systems 
-
-### fit for rho = 0.3
-```python run_lj.py -nruns 1 -device 0 -logdir lj_fit_0.3_0.5_0.7 -name lj -sigma 0.9 -update_freq 1 -cutoff 2.5 -dt 0.005 -vacf_weight 0.0 -data lj_0.3_1.2 lj_0.5_1.2 lj_0.7_1.2```
+### training for rho = 0.3 and test for rho = 0.5, 0.7
+```python run_lj.py -nruns 1 -device 0 -logdir lj_fit_0.3 -name lj -sigma 0.9  -update_freq 1 -cutoff 2.5 -dt 0.005 -vacf_weight 0.0 -data lj_0.3_1.2 -val lj_0.5_1.2 lj_0.7_1.2```
 
 ## mixture systems 
 ### training for x = 0.25 and test for x = 0.5, 0.75
@@ -15,6 +14,6 @@
 
 ## CG water 
 ### simultanoues training for T=288K, 338K, 388K
-```python run_water.py -logdir temp_dependent_water_train_all -data H20_288K_spce H20_338K_spce H20_388K_spce -name water -device 2 --tpair -nruns 1 -nepochs 600 -nsim 500'''
+```python run_water.py -logdir temp_dependent_water_train_all -data H20_288K_spce H20_338K_spce H20_388K_spce -name water -device 2 --tpair -nruns 1 -nepochs 600 -nsim 500```
 
 
