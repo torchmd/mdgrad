@@ -1,5 +1,4 @@
 import argparse
-from sigopt import Connection
 from fit_rdf_pair import *
 from datetime import datetime
 from datetime import date
