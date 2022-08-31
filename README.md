@@ -18,6 +18,23 @@ This repo is under heavy development, your contribution is very much welcomed.
 </p>
 
 
+### Install packages 
+
+I highly recommend creating a dedicated conda environment via: 
+```
+conda create -n mdgrad python=3.8
+```
+
+Download and install 
+```
+git clone https://github.com/torchmd/mdgrad.git
+cd mdgrad
+conda activate mdgrad
+pip install -r requirements.txt # I have tested this, it should work 
+pip install -e . # -e is useful if you want to edit the source code
+```
+
+
 ## Highlights
 
 - Reverse-mode automatic differentiation through ODE Solver (O(1) backprop)
